@@ -1,0 +1,60 @@
+from fastapi import APIRouter
+from fastapi.responses import JSONResponse
+
+from app.models.stats import PublicStatsResponse, RepoStarsResponse
+from app.services.stats_service import get_cached_repo_stars, get_public_stats, record_visit
+
+router = APIRouter(prefix="/api/stats", tags=["stats"])
+
+
+@router.get("", response_model=PublicStatsResponse)
+async def get_stats_route() -> PublicStatsResponse:
+    try:
+        return PublicStatsResponse(**get_public_stats())
+    except Exception:
+        return JSONResponse(
+            status_code=503,
+            content={"error_code": "stats_unavailable", "message": "Reviewer stats are temporarily unavailable."},
+        )
+
+
+@router.post("/visit", response_model=PublicStatsResponse)
+async def record_visit_route() -> PublicStatsResponse:
+    try:
+        return PublicStatsResponse(**record_visit())
+    except Exception:
+        return JSONResponse(
+            status_code=503,
+            content={"error_code": "visit_unavailable", "message": "Reviewer visit stats are temporarily unavailable."},
+        )
+
+
+@router.get("/repo-stars", response_model=RepoStarsResponse)
+async def get_repo_stars_route():
+    try:
+        stars = await get_cached_repo_stars("shalvirajpura2", "reviewer")
+        return RepoStarsResponse(stars=stars)
+    except PermissionError:
+        return JSONResponse(
+            status_code=503,
+            content={
+                "error_code": "github_temporarily_unavailable",
+                "message": "GitHub is temporarily unavailable for repository stats. Please try again shortly.",
+            },
+        )
+    except ConnectionError:
+        return JSONResponse(
+            status_code=503,
+            content={
+                "error_code": "github_unavailable",
+                "message": "GitHub is temporarily unavailable for repository stats. Please try again shortly.",
+            },
+        )
+    except Exception:
+        return JSONResponse(
+            status_code=503,
+            content={
+                "error_code": "repo_stars_unavailable",
+                "message": "Reviewer could not load GitHub stars right now.",
+            },
+        )
