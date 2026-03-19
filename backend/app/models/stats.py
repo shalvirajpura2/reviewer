@@ -10,3 +10,7 @@ class PublicStatsResponse(BaseModel):
 
 class RepoStarsResponse(BaseModel):
     stars: int
+
+
+class RecordVisitRequest(BaseModel):
+    client_id: str

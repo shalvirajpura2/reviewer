@@ -2,7 +2,7 @@ import { Github, Star } from "lucide-react";
 import { useEffect, useState } from "react";
 import { NavLink } from "react-router-dom";
 
-import { get_repo_stars, get_site_stats, record_site_visit } from "../lib/api";
+import { get_or_create_client_id, get_repo_stars, get_site_stats, record_site_visit } from "../lib/api";
 import { cn } from "../lib/cn";
 import { BrandLogo } from "./brand_logo";
 
@@ -13,7 +13,6 @@ const nav_items = [
 
 const repo_url = "https://github.com/shalvirajpura2/reviewer";
 const builder_url = "https://shalvirajpura.xyz";
-const visit_session_key = "reviewer_visit_recorded_v1";
 
 function format_star_count(stars: number) {
   if (stars >= 1000) {
@@ -34,13 +33,9 @@ export function Navbar() {
 
     async function load_nav_data() {
       try {
-        const has_recorded_visit = window.sessionStorage.getItem(visit_session_key) === "1";
-
-        if (!has_recorded_visit) {
-          window.sessionStorage.setItem(visit_session_key, "1");
-        }
-
-        const stats = has_recorded_visit ? await get_site_stats() : await record_site_visit();
+        const client_id = get_or_create_client_id();
+        await record_site_visit(client_id);
+        const stats = await get_site_stats();
 
         if (is_active) {
           set_visitor_count(`#${stats.visitor_count.toLocaleString()}`);

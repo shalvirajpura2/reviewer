@@ -1,7 +1,7 @@
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 
-from app.models.stats import PublicStatsResponse, RepoStarsResponse
+from app.models.stats import PublicStatsResponse, RecordVisitRequest, RepoStarsResponse
 from app.services.stats_service import get_cached_repo_stars, get_public_stats, record_visit
 
 router = APIRouter(prefix="/api/stats", tags=["stats"])
@@ -19,9 +19,14 @@ async def get_stats_route() -> PublicStatsResponse:
 
 
 @router.post("/visit", response_model=PublicStatsResponse)
-async def record_visit_route() -> PublicStatsResponse:
+async def record_visit_route(payload: RecordVisitRequest) -> PublicStatsResponse:
     try:
-        return PublicStatsResponse(**record_visit())
+        return PublicStatsResponse(**record_visit(payload.client_id))
+    except ValueError as error:
+        return JSONResponse(
+            status_code=400,
+            content={"error_code": "invalid_visit", "message": str(error)},
+        )
     except Exception:
         return JSONResponse(
             status_code=503,

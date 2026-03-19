@@ -2,7 +2,6 @@ import json
 import time
 from pathlib import Path
 from threading import Lock
-from urllib.parse import urlparse
 
 from app.core.settings import settings
 from app.services.github_client import fetch_repo_stars
@@ -30,6 +29,7 @@ def _default_stats() -> dict[str, object]:
         "total_live_analyses": 0,
         "total_live_analysis_ms": 0.0,
         "seen_pr_urls": [],
+        "seen_client_ids": [],
     }
 
 
@@ -47,6 +47,9 @@ def _read_stats_file() -> dict[str, object]:
 
     if not isinstance(stats.get("seen_pr_urls"), list):
         stats["seen_pr_urls"] = []
+
+    if not isinstance(stats.get("seen_client_ids"), list):
+        stats["seen_client_ids"] = []
 
     return stats
 
@@ -108,6 +111,13 @@ def _ensure_database_schema() -> None:
                 )
                 cursor.execute(
                     """
+                    CREATE TABLE IF NOT EXISTS seen_clients (
+                        client_id TEXT PRIMARY KEY
+                    )
+                    """
+                )
+                cursor.execute(
+                    """
                     INSERT INTO public_stats (
                         id,
                         visitor_count,
@@ -147,6 +157,8 @@ def _read_stats_database() -> dict[str, object]:
             row = cursor.fetchone()
             cursor.execute("SELECT pr_url FROM seen_pr_urls ORDER BY pr_url")
             seen_pr_urls = [item[0] for item in cursor.fetchall()]
+            cursor.execute("SELECT client_id FROM seen_clients ORDER BY client_id")
+            seen_client_ids = [item[0] for item in cursor.fetchall()]
 
     if not row:
         return _default_stats()
@@ -159,6 +171,7 @@ def _read_stats_database() -> dict[str, object]:
         "total_live_analyses": int(row[4]),
         "total_live_analysis_ms": float(row[5]),
         "seen_pr_urls": seen_pr_urls,
+        "seen_client_ids": seen_client_ids,
     }
 
 
@@ -172,6 +185,7 @@ def _write_stats(stats: dict[str, object]) -> None:
     if _database_enabled():
         _ensure_database_schema()
         seen_pr_urls = list(stats.get("seen_pr_urls", []))
+        seen_client_ids = list(stats.get("seen_client_ids", []))
 
         with _connect_database() as connection:
             with connection.cursor() as cursor:
@@ -202,6 +216,12 @@ def _write_stats(stats: dict[str, object]) -> None:
                         "INSERT INTO seen_pr_urls (pr_url) VALUES (%s) ON CONFLICT (pr_url) DO NOTHING",
                         [(pr_url,) for pr_url in seen_pr_urls],
                     )
+                cursor.execute("DELETE FROM seen_clients")
+                if seen_client_ids:
+                    cursor.executemany(
+                        "INSERT INTO seen_clients (client_id) VALUES (%s) ON CONFLICT (client_id) DO NOTHING",
+                        [(client_id,) for client_id in seen_client_ids],
+                    )
             connection.commit()
         return
 
@@ -227,11 +247,19 @@ def get_public_stats() -> dict[str, int | float | None]:
     }
 
 
-def record_visit() -> dict[str, int | float | None]:
+def record_visit(client_id: str) -> dict[str, int | float | None]:
+    normalized_client_id = client_id.strip()
+    if not normalized_client_id:
+        raise ValueError("Client id is required.")
+
     with _stats_lock:
         stats = _read_stats()
-        stats["visitor_count"] = int(stats.get("visitor_count", 0) or 0) + 1
-        _write_stats(stats)
+        seen_client_ids = list(stats.get("seen_client_ids", []))
+        if normalized_client_id not in seen_client_ids:
+            seen_client_ids.append(normalized_client_id)
+            stats["seen_client_ids"] = seen_client_ids
+            stats["visitor_count"] = int(stats.get("visitor_count", 0) or 0) + 1
+            _write_stats(stats)
 
     return get_public_stats()
 

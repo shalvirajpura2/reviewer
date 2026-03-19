@@ -54,6 +54,18 @@ async function request_json<T>(path: string, init?: RequestInit, fallback_messag
   return payload as T;
 }
 
+export function get_or_create_client_id() {
+  const storage_key = "reviewer_client_id_v1";
+  const existing_client_id = window.localStorage.getItem(storage_key);
+  if (existing_client_id) {
+    return existing_client_id;
+  }
+
+  const next_client_id = window.crypto?.randomUUID?.() ?? `reviewer-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  window.localStorage.setItem(storage_key, next_client_id);
+  return next_client_id;
+}
+
 export async function analyze_pr(pr_url: string): Promise<BackendAnalysisResult> {
   const normalized_pr_url = normalize_pr_url(pr_url);
   const validation_error = pr_url_validation_message(normalized_pr_url);
@@ -79,10 +91,16 @@ export async function get_site_stats(): Promise<SiteStats> {
   return request_json<SiteStats>("/api/stats", undefined, "Reviewer stats are unavailable.");
 }
 
-export async function record_site_visit(): Promise<SiteStats> {
+export async function record_site_visit(client_id: string): Promise<SiteStats> {
   return request_json<SiteStats>(
     "/api/stats/visit",
-    { method: "POST" },
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ client_id }),
+    },
     "Reviewer visit stats are unavailable."
   );
 }
