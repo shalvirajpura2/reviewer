@@ -1,3 +1,4 @@
+import { Analytics } from "@vercel/analytics/react";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 
 import { AppErrorBoundary } from "./components/app_error_boundary";
@@ -21,6 +22,7 @@ export function App() {
             <Route path="/result" element={<ResultPage />} />
             <Route path="*" element={<NotFoundPage />} />
           </Routes>
+          <Analytics />
         </div>
       </AppErrorBoundary>
     </BrowserRouter>

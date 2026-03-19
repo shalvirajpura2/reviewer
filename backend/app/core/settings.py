@@ -6,6 +6,7 @@ class Settings:
     github_api_base = os.getenv("GITHUB_API_BASE", "https://api.github.com")
     backend_port = int(os.getenv("BACKEND_PORT", "8000"))
     cache_ttl_seconds = int(os.getenv("CACHE_TTL_SECONDS", "300"))
+    database_url = os.getenv("DATABASE_URL")
     cors_allow_origins = [
         origin.strip()
         for origin in os.getenv(
@@ -14,6 +15,7 @@ class Settings:
         ).split(",")
         if origin.strip()
     ]
+    cors_allow_origin_regex = os.getenv("CORS_ALLOW_ORIGIN_REGEX", r"https://.*\.vercel\.app") or None
 
 
 settings = Settings()
