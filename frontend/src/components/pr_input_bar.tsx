@@ -6,7 +6,7 @@ import { normalize_pr_url, pr_url_validation_message, sample_pr_url } from "../l
 
 export function PrInputBar() {
   const navigate = useNavigate();
-  const [pr_url, set_pr_url] = useState(sample_pr_url);
+  const [pr_url, set_pr_url] = useState("");
   const [is_loading, set_is_loading] = useState(false);
   const [validation_message, set_validation_message] = useState<string | null>(null);
 
