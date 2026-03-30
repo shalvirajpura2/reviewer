@@ -116,19 +116,19 @@ def build_fallback_result(cache_key: str, error: Exception) -> PrAnalysisResult 
     return fallback_result
 
 
-async def analyze_pull_request(pr_url: str, client_key: str) -> PrAnalysisResult:
+async def analyze_pull_request(pr_url: str, client_key: str, force_refresh: bool = False) -> PrAnalysisResult:
     await enforce_request_limit(client_key)
 
     parsed_pr = parse_pr_url(pr_url)
     cache_key = str(parsed_pr["normalized_url"])
-    memory_cached_result = read_memory_cached_result(cache_key)
+    memory_cached_result = None if force_refresh else read_memory_cached_result(cache_key)
 
     if memory_cached_result:
         cached_result, _ = memory_cached_result
         record_analysis(cache_key, 0.0, "cached", cached_result)
         return cached_result
 
-    saved_cached_result = read_saved_cached_result(cache_key, settings.cache_ttl_seconds)
+    saved_cached_result = None if force_refresh else read_saved_cached_result(cache_key, settings.cache_ttl_seconds)
     if saved_cached_result:
         cached_result, age_seconds = saved_cached_result
         cached_payload = _cache_age_copy(cached_result, "cached", age_seconds)

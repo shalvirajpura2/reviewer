@@ -13,14 +13,12 @@ import type {
   ReviewTopRiskFile,
 } from "../types/review";
 
-
 const loading_steps = [
   "Reading pull request metadata",
   "Scanning changed files and commits",
   "Ranking risky files for review",
   "Building your review workspace",
 ];
-
 
 function verdict_tone(verdict: ReviewResult["verdict"]) {
   if (verdict === "mergeable") return "safe";
@@ -113,11 +111,10 @@ function confidence_pill_copy(result: ReviewResult) {
   return `${confidence} confidence`;
 }
 
-
 function risk_level(score: number) {
-  if (score >= 70) return { label: "High", className: "rp-risk-level rp-risk-level-high" };
-  if (score >= 40) return { label: "Watch", className: "rp-risk-level rp-risk-level-medium" };
-  return { label: "Low", className: "rp-risk-level rp-risk-level-low" };
+  if (score >= 70) return { label: "High", class_name: "rp-risk-level rp-risk-level-high" };
+  if (score >= 40) return { label: "Watch", class_name: "rp-risk-level rp-risk-level-medium" };
+  return { label: "Low", class_name: "rp-risk-level rp-risk-level-low" };
 }
 
 function file_summary(file: ReviewTopRiskFile) {
@@ -185,6 +182,34 @@ function animate_dial(element: HTMLElement, target: number, duration = 1100) {
   }
 
   requestAnimationFrame(tick);
+}
+
+function build_share_url(pr_url: string) {
+  if (typeof window === "undefined") {
+    return `/result?pr_url=${encodeURIComponent(pr_url)}`;
+  }
+
+  return `${window.location.origin}/result?pr_url=${encodeURIComponent(pr_url)}`;
+}
+
+function build_share_summary(result: ReviewResult) {
+  const first_focus = result.top_risk_files[0]?.filename ?? "No single file highlighted";
+  return [
+    `${result.repo_name}`,
+    `Verdict: ${verdict_copy(result.verdict)}`,
+    `Confidence: ${result.merge_confidence}/100`,
+    `Start with: ${first_focus}`,
+    `Source: ${report_badge(result)}`,
+  ].join("\n");
+}
+
+async function copy_text(value: string) {
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(value);
+    return;
+  }
+
+  throw new Error("Clipboard is unavailable in this browser.");
 }
 
 function FocusPanel({ file, next_actions }: { file: ReviewTopRiskFile; next_actions: string[] }) {
@@ -264,7 +289,7 @@ function DeepPanels({ result }: { result: ReviewResult }) {
                       <div className="rp-risk-summary">{item.summary}</div>
                     </div>
                     <div className="rp-risk-score-stack">
-                      <span className={level.className}>{level.label}</span>
+                      <span className={level.class_name}>{level.label}</span>
                       <span className="rp-risk-score">{item.score}</span>
                     </div>
                   </div>
@@ -390,56 +415,126 @@ export function ResultPage() {
   const [error_message, set_error_message] = useState<string | null>(null);
   const [selected_file, set_selected_file] = useState<string | null>(null);
   const [deep_open, set_deep_open] = useState(false);
+  const [is_refreshing, set_is_refreshing] = useState(false);
+  const [share_feedback, set_share_feedback] = useState<string | null>(null);
 
   const dial_ref = useRef<HTMLDivElement | null>(null);
+  const dial_timeout_ref = useRef<number>(0);
+  const feedback_timeout_ref = useRef<number>(0);
+
+  async function run_analysis(force_refresh = false) {
+    const validation_error = pr_url_validation_message(pr_url);
+    if (validation_error) {
+      set_error_message(validation_error);
+      set_is_loading(false);
+      set_is_refreshing(false);
+      return;
+    }
+
+    if (force_refresh) {
+      set_is_refreshing(true);
+    } else {
+      set_is_loading(true);
+      set_result(null);
+    }
+
+    set_error_message(null);
+
+    try {
+      const analysis = await analyze_pr(pr_url, force_refresh);
+      const next_result = map_analysis_to_review(analysis);
+      set_result(next_result);
+      set_selected_file(next_result.top_risk_files[0]?.filename ?? null);
+
+      window.clearTimeout(dial_timeout_ref.current);
+      dial_timeout_ref.current = window.setTimeout(() => {
+        if (dial_ref.current) {
+          animate_dial(dial_ref.current, next_result.merge_confidence);
+        }
+      }, 320);
+    } catch (error) {
+      set_error_message(error instanceof Error ? error.message : "Reviewer could not analyze that pull request.");
+    } finally {
+      set_is_loading(false);
+      set_is_refreshing(false);
+    }
+  }
 
   useEffect(() => {
-    let active = true;
-    let timeout = 0;
+    let is_active = true;
 
-    async function load() {
-      set_is_loading(true);
-      set_error_message(null);
-      set_result(null);
-
-      const validation_error = pr_url_validation_message(pr_url);
-      if (validation_error) {
-        if (!active) return;
-        set_error_message(validation_error);
-        set_is_loading(false);
+    void (async () => {
+      if (!is_active) {
         return;
       }
+      await run_analysis();
+    })();
 
+    return () => {
+      is_active = false;
+      window.clearTimeout(dial_timeout_ref.current);
+      window.clearTimeout(feedback_timeout_ref.current);
+    };
+  }, [pr_url]);
+
+  async function handle_copy_summary() {
+    if (!result) {
+      return;
+    }
+
+    try {
+      await copy_text(build_share_summary(result));
+      set_share_feedback("Review summary copied.");
+    } catch (error) {
+      set_share_feedback(error instanceof Error ? error.message : "Reviewer could not copy the summary.");
+    }
+  }
+
+  async function handle_copy_link() {
+    try {
+      await copy_text(build_share_url(pr_url));
+      set_share_feedback("Review link copied.");
+    } catch (error) {
+      set_share_feedback(error instanceof Error ? error.message : "Reviewer could not copy the link.");
+    }
+  }
+
+  async function handle_share_review() {
+    if (!result) {
+      return;
+    }
+
+    const share_url = build_share_url(pr_url);
+    const share_title = `${result.repo_name} review`;
+    const share_text = build_share_summary(result);
+
+    if (navigator.share) {
       try {
-        const analysis = await analyze_pr(pr_url);
-        if (!active) return;
-
-        const next_result = map_analysis_to_review(analysis);
-        set_result(next_result);
-        set_selected_file(next_result.top_risk_files[0]?.filename ?? null);
-
-        timeout = window.setTimeout(() => {
-          if (dial_ref.current) {
-            animate_dial(dial_ref.current, next_result.merge_confidence);
-          }
-        }, 320);
-      } catch (error) {
-        if (!active) return;
-        set_error_message(error instanceof Error ? error.message : "Reviewer could not analyze that pull request.");
-      } finally {
-        if (active) {
-          set_is_loading(false);
-        }
+        await navigator.share({ title: share_title, text: share_text, url: share_url });
+        set_share_feedback("Review shared.");
+        return;
+      } catch {
       }
     }
 
-    void load();
+    await handle_copy_link();
+  }
+
+  useEffect(() => {
+    if (!share_feedback) {
+      return;
+    }
+
+    window.clearTimeout(feedback_timeout_ref.current);
+    feedback_timeout_ref.current = window.setTimeout(() => {
+      set_share_feedback(null);
+    }, 2200);
 
     return () => {
-      active = false;
-      window.clearTimeout(timeout);
+      window.clearTimeout(dial_timeout_ref.current);
+      window.clearTimeout(feedback_timeout_ref.current);
     };
-  }, [pr_url]);
+  }, [share_feedback]);
 
   if (!raw_pr_url) {
     return <Navigate to="/" replace />;
@@ -498,6 +593,21 @@ export function ResultPage() {
               <div className="rp-verdict-eyebrow">decision</div>
               <div className={`rp-verdict-text ${verdict_tone(result.verdict)}`}>{verdict_copy(result.verdict)}</div>
               <div className="rp-verdict-summary">{result.summary}</div>
+              <div className="rp-share-row">
+                <button type="button" className="rp-secondary-btn" onClick={() => void handle_copy_summary()}>
+                  Copy summary
+                </button>
+                <button type="button" className="rp-secondary-btn" onClick={() => void handle_copy_link()}>
+                  Copy link
+                </button>
+                <button type="button" className="rp-secondary-btn" onClick={() => void handle_share_review()}>
+                  Share review
+                </button>
+                <button type="button" className="rp-secondary-btn rp-secondary-btn-strong" onClick={() => void run_analysis(true)} disabled={is_refreshing}>
+                  {is_refreshing ? "Refreshing..." : "Fetch fresh live analysis"}
+                </button>
+              </div>
+              {share_feedback ? <div className="rp-share-feedback">{share_feedback}</div> : null}
             </div>
 
             <div className="rp-hero-dial">

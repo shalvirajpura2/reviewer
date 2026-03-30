@@ -28,7 +28,7 @@ def resolve_client_key(request: Request) -> str:
 @router.post("/analyze", response_model=PrAnalysisResult)
 async def analyze_route(payload: AnalyzeRequest, request: Request):
     try:
-        return await analyze_pull_request(payload.pr_url, resolve_client_key(request))
+        return await analyze_pull_request(payload.pr_url, resolve_client_key(request), payload.force_refresh)
     except ValueError as error:
         return JSONResponse(status_code=400, content={"error_code": "invalid_request", "message": str(error)})
     except FileNotFoundError as error:

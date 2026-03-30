@@ -5,6 +5,7 @@ from pydantic import BaseModel, Field
 
 class AnalyzeRequest(BaseModel):
     pr_url: str = Field(min_length=1)
+    force_refresh: bool = False
 
 
 class GithubPrMetadata(BaseModel):

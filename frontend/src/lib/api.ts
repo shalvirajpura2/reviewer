@@ -78,7 +78,7 @@ export function get_or_create_client_id() {
   return next_client_id;
 }
 
-export async function analyze_pr(pr_url: string): Promise<BackendAnalysisResult> {
+export async function analyze_pr(pr_url: string, force_refresh = false): Promise<BackendAnalysisResult> {
   const normalized_pr_url = normalize_pr_url(pr_url);
   const validation_error = pr_url_validation_message(normalized_pr_url);
 
@@ -94,7 +94,7 @@ export async function analyze_pr(pr_url: string): Promise<BackendAnalysisResult>
         "Content-Type": "application/json",
         "X-Reviewer-Client-Id": get_or_create_client_id(),
       },
-      body: JSON.stringify({ pr_url: normalized_pr_url }),
+      body: JSON.stringify({ pr_url: normalized_pr_url, force_refresh }),
     },
     "Reviewer could not analyze that pull request."
   );
