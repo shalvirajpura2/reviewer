@@ -28,6 +28,13 @@ export interface ReviewSignalEvidence {
   evidence: string[];
 }
 
+export interface ReviewRecommendation {
+  id: string;
+  title: string;
+  detail: string;
+  priority: "now" | "soon" | "nice_to_have";
+}
+
 export interface ReviewTopRiskFile {
   filename: string;
   risk_level: "low" | "medium" | "high";
@@ -52,6 +59,7 @@ export interface ReviewProvenance {
   data_sources: string[];
   score_version: string;
   coverage: ReviewCoverage;
+  source_updated_at?: string;
 }
 
 export interface ReviewResult {
@@ -62,6 +70,7 @@ export interface ReviewResult {
   base_branch?: string;
   head_branch?: string;
   created_at?: string;
+  updated_at?: string;
   report_status?: "demo" | "live" | "cached" | "fallback";
   merge_confidence: number;
   verdict: "mergeable" | "focused review" | "review needed";
@@ -83,6 +92,7 @@ export interface ReviewResult {
   file_groups: ReviewFileGroup[];
   review_focus: string[];
   signal_evidence: ReviewSignalEvidence[];
+  review_plan: ReviewRecommendation[];
   top_risk_files: ReviewTopRiskFile[];
   provenance?: ReviewProvenance;
 }

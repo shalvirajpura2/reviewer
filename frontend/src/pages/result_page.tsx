@@ -8,6 +8,7 @@ import { normalize_pr_url, pr_url_validation_message } from "../lib/pr_url";
 import { map_analysis_to_review } from "../lib/review_mapper";
 import type {
   ReviewFileGroup,
+  ReviewRecommendation,
   ReviewResult,
   ReviewRiskItem,
   ReviewTopRiskFile,
@@ -78,6 +79,19 @@ function format_date(value?: string) {
   }).format(date);
 }
 
+function format_date_time(value?: string) {
+  if (!value) return "-";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "-";
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(date);
+}
+
 function report_badge(result: ReviewResult) {
   if (result.report_status === "fallback") return "saved fallback";
   if (result.report_status === "cached") return "live cache";
@@ -115,6 +129,42 @@ function risk_level(score: number) {
   if (score >= 70) return { label: "High", class_name: "rp-risk-level rp-risk-level-high" };
   if (score >= 40) return { label: "Watch", class_name: "rp-risk-level rp-risk-level-medium" };
   return { label: "Low", class_name: "rp-risk-level rp-risk-level-low" };
+}
+
+function priority_class(priority: ReviewRecommendation["priority"]) {
+  if (priority === "now") return "rp-plan-priority rp-plan-priority-now";
+  if (priority === "soon") return "rp-plan-priority rp-plan-priority-soon";
+  return "rp-plan-priority rp-plan-priority-later";
+}
+
+function priority_copy(priority: ReviewRecommendation["priority"]) {
+  if (priority === "now") return "Do now";
+  if (priority === "soon") return "Do soon";
+  return "Nice to have";
+}
+
+function certainty_title(result: ReviewResult) {
+  if (result.report_status === "fallback") return "Fresh live data was unavailable";
+  if (result.provenance?.coverage.is_partial) return "Some of this review is incomplete";
+  if ((result.provenance?.confidence_in_score ?? "medium") === "high") return "The review surface looks well covered";
+  if ((result.provenance?.confidence_in_score ?? "medium") === "low") return "Use this score for triage, not final approval";
+  return "This is a strong first-pass review";
+}
+
+function certainty_copy(result: ReviewResult) {
+  if (result.report_status === "fallback") {
+    return "Reviewer fell back to the last saved successful analysis, so validate the current diff directly on GitHub before relying on the verdict.";
+  }
+
+  if (result.provenance?.coverage.is_partial) {
+    return "GitHub did not return full review context for every file, so use the queue to start strong and then inspect the remaining surfaces directly.";
+  }
+
+  if ((result.provenance?.confidence_in_score ?? "medium") === "low") {
+    return "The PR is broad enough that the score should help you prioritize reviewer time more than decide the final merge on its own.";
+  }
+
+  return "The current review has enough diff context to guide where a developer should start, what to validate, and which files deserve the first pass.";
 }
 
 function file_summary(file: ReviewTopRiskFile) {
@@ -263,6 +313,78 @@ function FocusPanel({ file, next_actions }: { file: ReviewTopRiskFile; next_acti
         ))}
       </div>
     </>
+  );
+}
+
+function ReviewPlanPanel({ result }: { result: ReviewResult }) {
+  return (
+    <div className="rp-guide-panel">
+      <div className="rp-panel-header">
+        <div className="rp-card-label">review path</div>
+        <div className="rp-panel-hint">Use this as your first reviewer pass</div>
+      </div>
+
+      <div className="rp-guide-copy">
+        Reviewer suggests a reading order so the diff feels like a guided review instead of a flat dashboard.
+      </div>
+
+      <div className="rp-plan-list">
+        {result.review_plan.slice(0, 3).map((item, index) => (
+          <div key={item.id} className="rp-plan-item">
+            <div className="rp-plan-head">
+              <div className="rp-plan-index">0{index + 1}</div>
+              <div className="rp-plan-title-wrap">
+                <div className="rp-plan-title">{item.title}</div>
+                <div className="rp-plan-detail">{item.detail}</div>
+              </div>
+              <span className={priority_class(item.priority)}>{priority_copy(item.priority)}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function CertaintyPanel({ result }: { result: ReviewResult }) {
+  return (
+    <div className="rp-guide-panel">
+      <div className="rp-panel-header">
+        <div className="rp-card-label">certainty and limits</div>
+        <div className="rp-panel-hint">Know what this score can and cannot tell you</div>
+      </div>
+
+      <div className="rp-certainty-title">{certainty_title(result)}</div>
+      <div className="rp-guide-copy">{certainty_copy(result)}</div>
+
+      <div className="rp-certainty-grid">
+        <div className="rp-certainty-stat">
+          <span className="rp-certainty-stat-value">{result.base_branch ?? "base"}</span>
+          <span className="rp-certainty-stat-label">base branch</span>
+        </div>
+        <div className="rp-certainty-stat">
+          <span className="rp-certainty-stat-value">{result.head_branch ?? "head"}</span>
+          <span className="rp-certainty-stat-label">head branch</span>
+        </div>
+        <div className="rp-certainty-stat">
+          <span className="rp-certainty-stat-value">{result.stats.additions}</span>
+          <span className="rp-certainty-stat-label">additions</span>
+        </div>
+        <div className="rp-certainty-stat">
+          <span className="rp-certainty-stat-value">{result.stats.deletions}</span>
+          <span className="rp-certainty-stat-label">deletions</span>
+        </div>
+      </div>
+
+      <div className="rp-guide-notes">
+        {[
+          `Updated on GitHub: ${format_date_time(result.updated_at ?? result.provenance?.source_updated_at)}`,
+          ...result.limitations.slice(0, 3),
+        ].map((item) => (
+          <div key={item} className="rp-prov-item">{item}</div>
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -541,6 +663,7 @@ export function ResultPage() {
   }
 
   const created_at = format_date(result?.created_at);
+  const updated_at = format_date(result?.updated_at ?? result?.provenance?.source_updated_at);
   const top_files = result?.top_risk_files ?? [];
   const next_actions = result?.next_actions ?? [];
   const focused = top_files.find((file) => file.filename === selected_file) ?? top_files[0] ?? null;
@@ -579,7 +702,8 @@ export function ResultPage() {
                 <span className="rp-pill-dot" />
                 {report_badge(result)}
               </div>
-              <div className="rp-pill">{created_at}</div>
+              <div className="rp-pill">Opened {created_at}</div>
+              <div className="rp-pill">Updated {updated_at}</div>
               <div className="rp-pill">{coverage_pill_copy(result)}</div>
               <div className="rp-pill">{confidence_pill_copy(result)}</div>
               <a className="rp-pill rp-pill-link" href={result.pr_url} target="_blank" rel="noreferrer">
@@ -671,18 +795,27 @@ export function ResultPage() {
             </div>
 
             <div className="rp-action-card rp-action-card-highlight">
-              <div className="rp-card-label">recommended next step</div>
+              <div className="rp-card-label">first move</div>
+              <div className="rp-action-card-title">{result.review_plan[0]?.title ?? "Run one focused reviewer pass before merge"}</div>
+              <div className="rp-action-card-copy">
+                {result.review_plan[0]?.detail ?? "Start with the highest-risk file, then validate the reviewer path before merge."}
+              </div>
               {(next_actions.length > 0 ? next_actions.slice(0, 2) : ["Run one focused reviewer pass before merge"]).map((item) => (
                 <div key={item} className="rp-next-item">{item}</div>
               ))}
             </div>
           </div>
 
+          <div className="rp-guide-grid rp-anim" style={{ "--rp-delay": "150ms" } as CSSProperties}>
+            <ReviewPlanPanel result={result} />
+            <CertaintyPanel result={result} />
+          </div>
+
           <div className="rp-main-grid rp-anim" style={{ "--rp-delay": "180ms" } as CSSProperties}>
             <div className="rp-queue-panel">
               <div className="rp-panel-header">
                 <div className="rp-card-label">review queue</div>
-                <div className="rp-panel-hint">Click a file to inspect it in detail</div>
+                <div className="rp-panel-hint">Start at 01, then open GitHub when you want full diff context</div>
               </div>
               {top_files.length > 0 ? (
                 top_files.map((file, index) => (
@@ -708,7 +841,7 @@ export function ResultPage() {
             <div className="rp-focus-panel">
               <div className="rp-panel-header">
                 <div className="rp-card-label">selected file</div>
-                <div className="rp-panel-hint">Context updates when you switch files</div>
+                <div className="rp-panel-hint">Why this file matters and what the reviewer should verify</div>
               </div>
               {focused ? <FocusPanel key={focused.filename} file={focused} next_actions={next_actions} /> : <div className="rp-empty-state">No prioritized file available.</div>}
             </div>

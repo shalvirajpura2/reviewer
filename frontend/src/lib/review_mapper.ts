@@ -1,6 +1,7 @@
 import type {
   BackendAnalysisResult,
   ReviewResult,
+  ReviewRecommendation,
   ReviewRiskBreakdownItem,
   ReviewRiskItem,
   ReviewScoreMovementItem,
@@ -123,6 +124,26 @@ function build_recent_commits(result: BackendAnalysisResult): ReviewScoreMovemen
   ];
 }
 
+function build_review_plan(result: BackendAnalysisResult): ReviewRecommendation[] {
+  if (result.recommendations.length > 0) {
+    return result.recommendations.slice(0, 5).map((item) => ({
+      id: item.id,
+      title: item.title,
+      detail: item.detail,
+      priority: item.priority
+    }));
+  }
+
+  return [
+    {
+      id: "standard_review",
+      title: "Run a standard merge review",
+      detail: "The current analysis looks contained, so a normal reviewer pass should be enough before merge.",
+      priority: "nice_to_have"
+    }
+  ];
+}
+
 function build_signal_evidence(result: BackendAnalysisResult): ReviewSignalEvidence[] {
   if (result.triggered_signals.length === 0) {
     return [
@@ -176,6 +197,7 @@ export function map_analysis_to_review(result: BackendAnalysisResult): ReviewRes
     base_branch: result.metadata.base_branch,
     head_branch: result.metadata.head_branch,
     created_at: result.metadata.created_at,
+    updated_at: result.metadata.updated_at,
     report_status: result.analysis_context.cache_status,
     merge_confidence: result.score,
     verdict: map_verdict(result.label),
@@ -197,6 +219,7 @@ export function map_analysis_to_review(result: BackendAnalysisResult): ReviewRes
     file_groups: build_file_groups(result),
     review_focus: build_review_focus(result),
     signal_evidence: build_signal_evidence(result),
+    review_plan: build_review_plan(result),
     top_risk_files: result.top_risk_files.slice(0, 5).map((item) => ({
       filename: item.filename,
       risk_level: item.risk_level,
@@ -211,7 +234,8 @@ export function map_analysis_to_review(result: BackendAnalysisResult): ReviewRes
       confidence_in_score: result.analysis_context.confidence_in_score,
       data_sources: result.analysis_context.data_sources,
       score_version: result.score_summary.score_version,
-      coverage: result.analysis_context.coverage
+      coverage: result.analysis_context.coverage,
+      source_updated_at: result.metadata.updated_at
     }
   };
 }

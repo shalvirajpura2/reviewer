@@ -7584,3 +7584,174 @@ nav {
     width: 100%;
   }
 }
+
+.rp-guide-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1px;
+  margin-bottom: 1px;
+}
+
+.rp-guide-panel {
+  padding: 22px;
+  background: rgba(12, 18, 29, 0.86);
+  border: 1px solid rgba(var(--border2), 0.18);
+}
+
+.rp-guide-copy {
+  margin-top: 8px;
+  font-size: 14px;
+  line-height: 1.72;
+  color: var(--rp-text-2);
+}
+
+.rp-plan-list {
+  display: grid;
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.rp-plan-item {
+  padding: 14px;
+  border: 1px solid rgba(var(--border2), 0.18);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.rp-plan-head {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 12px;
+  align-items: start;
+}
+
+.rp-plan-index,
+.rp-plan-priority,
+.rp-certainty-stat-label {
+  font-family: "JetBrains Mono", monospace;
+}
+
+.rp-plan-index {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+  min-height: 32px;
+  border-radius: 999px;
+  background: rgba(92, 255, 138, 0.1);
+  color: var(--rp-green);
+  font-size: 11px;
+  letter-spacing: 0.05em;
+}
+
+.rp-plan-title {
+  font-family: "Plus Jakarta Sans", sans-serif;
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--rp-text);
+}
+
+.rp-plan-detail {
+  margin-top: 6px;
+  font-size: 13px;
+  line-height: 1.68;
+  color: var(--rp-text-2);
+}
+
+.rp-plan-priority {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  font-size: 10px;
+  letter-spacing: 0.05em;
+}
+
+.rp-plan-priority-now {
+  color: var(--rp-red);
+  background: rgba(255, 92, 92, 0.14);
+}
+
+.rp-plan-priority-soon {
+  color: var(--rp-amber);
+  background: rgba(255, 179, 64, 0.14);
+}
+
+.rp-plan-priority-later {
+  color: var(--rp-green);
+  background: rgba(92, 255, 138, 0.14);
+}
+
+.rp-certainty-title,
+.rp-action-card-title {
+  margin-top: 10px;
+  font-family: "Plus Jakarta Sans", sans-serif;
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--rp-text);
+}
+
+.rp-action-card-copy {
+  margin-top: 8px;
+  margin-bottom: 14px;
+  font-size: 13px;
+  line-height: 1.68;
+  color: var(--rp-text-2);
+}
+
+.rp-certainty-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.rp-certainty-stat {
+  padding: 14px;
+  border: 1px solid rgba(var(--border2), 0.18);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.rp-certainty-stat-value {
+  display: block;
+  font-family: "Plus Jakarta Sans", sans-serif;
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--rp-text);
+}
+
+.rp-certainty-stat-label {
+  display: block;
+  margin-top: 6px;
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--rp-text-3);
+}
+
+.rp-guide-notes {
+  display: grid;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+@media (max-width: 900px) {
+  .rp-guide-grid,
+  .rp-certainty-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .rp-guide-panel {
+    padding: 20px;
+  }
+}
+
+@media (max-width: 640px) {
+  .rp-plan-head {
+    grid-template-columns: 1fr;
+  }
+}
