@@ -7225,3 +7225,198 @@ nav {
     grid-template-columns: 1fr;
   }
 }
+
+.page-intro-copy {
+  max-width: 62ch;
+  font-size: 15px;
+  line-height: 1.78;
+  color: rgb(var(--text2));
+}
+
+.how-bottom-grid-balanced {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.how-footer-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 22px;
+}
+
+@media (max-width: 900px) {
+  nav {
+    padding: 12px 20px;
+  }
+
+  .site-nav {
+    grid-template-columns: 1fr;
+    gap: 14px;
+    align-items: start;
+  }
+
+  .nav-left,
+  .nav-right,
+  .nav-center {
+    width: 100%;
+  }
+
+  .nav-right {
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .nav-center {
+    display: block;
+    order: 3;
+  }
+
+  .nav-tabs {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    padding-bottom: 2px;
+    scrollbar-width: none;
+  }
+
+  .nav-tabs::-webkit-scrollbar {
+    display: none;
+  }
+
+  .nav-tab {
+    flex: 0 0 auto;
+  }
+
+  .home-hero {
+    padding-top: 52px;
+    padding-bottom: 40px;
+  }
+
+  .hero-h1,
+  .how-h1,
+  .history-title {
+    max-width: 12ch;
+    font-size: clamp(30px, 10vw, 46px);
+    line-height: 1.04;
+  }
+
+  .hero-sub,
+  .how-sub,
+  .history-copy,
+  .recent-analyses-copy,
+  .page-intro-copy {
+    font-size: 15px;
+    line-height: 1.75;
+  }
+
+  .hero-stats {
+    grid-template-columns: 1fr;
+  }
+
+  .stat-item,
+  .stat-item-padded {
+    padding: 18px 0;
+    border-right: none;
+    border-bottom: 1px solid rgb(var(--border));
+  }
+
+  .stat-item:last-child {
+    border-bottom: none;
+  }
+
+  .recent-analysis-card,
+  .history-card,
+  .how-overview-card,
+  .how-step-card,
+  .how-limit-panel,
+  .rp-action-card,
+  .rp-queue-panel,
+  .rp-focus-panel,
+  .rp-dp-panel,
+  .rp-sec-panel {
+    padding: 18px;
+  }
+
+  .recent-analysis-card-actions,
+  .history-card-actions,
+  .history-actions,
+  .how-footer-actions,
+  .rp-share-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .recent-analyses-link,
+  .history-action,
+  .history-card-link,
+  .recent-analysis-action,
+  .rp-secondary-btn {
+    width: 100%;
+  }
+
+  .how-bottom-grid-balanced,
+  .how-overview-grid,
+  .how-bottom-grid,
+  .history-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .rp-topbar-pills {
+    width: 100%;
+  }
+
+  .rp-pill,
+  .rp-pill-link {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 640px) {
+  .history-page {
+    padding: 22px 20px 0;
+  }
+
+  .history-hero,
+  .recent-analysis-card,
+  .history-card,
+  .recent-analysis-empty,
+  .history-empty {
+    border-radius: 20px;
+  }
+
+  .recent-analysis-head,
+  .history-card-head,
+  .rp-risk-card-head {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .recent-analysis-score,
+  .history-score {
+    font-size: 24px;
+  }
+
+  .rp-topbar-left,
+  .rp-pr-title,
+  .rp-repo-label {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .rp-pr-title {
+    font-size: clamp(24px, 8vw, 34px);
+    line-height: 1.08;
+  }
+
+  .rp-verdict-summary,
+  .rp-focus-text,
+  .rp-review-focus,
+  .rp-bullet,
+  .rp-loading-copy,
+  .rp-error-msg {
+    font-size: 14px;
+    line-height: 1.72;
+  }
+}
