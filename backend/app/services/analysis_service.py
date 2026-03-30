@@ -43,11 +43,19 @@ async def analyze_pull_request(pr_url: str) -> PrAnalysisResult:
 
     started_at = time.perf_counter()
     metadata = await fetch_pr_metadata(parsed_pr)
-    files = await fetch_pr_files(parsed_pr)
+    files, partial_reasons = await fetch_pr_files(parsed_pr, metadata.changed_files)
     commits = await fetch_pr_commits(parsed_pr)
     classified_files = classify_files(files)
     signals = detect_signals(metadata, classified_files)
-    result = build_result(metadata, classified_files, commits, signals, cache_status="live")
+    result = build_result(
+        metadata,
+        classified_files,
+        commits,
+        signals,
+        cache_status="live",
+        total_files=metadata.changed_files,
+        partial_reasons=partial_reasons,
+    )
     store_cached_result(cache_key, result)
     duration_ms = (time.perf_counter() - started_at) * 1000
     record_analysis(cache_key, duration_ms, "live")

@@ -37,11 +37,20 @@ export interface ReviewTopRiskFile {
   is_sensitive: boolean;
 }
 
+export interface ReviewCoverage {
+  files_analyzed: number;
+  total_files: number;
+  patchless_files: number;
+  is_partial: boolean;
+  partial_reasons: string[];
+}
+
 export interface ReviewProvenance {
   cache_status: "live" | "cached";
-  confidence_in_score: "high" | "medium";
+  confidence_in_score: "high" | "medium" | "low";
   data_sources: string[];
   score_version: string;
+  coverage: ReviewCoverage;
 }
 
 export interface ReviewResult {
@@ -62,9 +71,11 @@ export interface ReviewResult {
   limitations: string[];
   stats: {
     files_changed: number;
+    files_analyzed: number;
     additions: number;
     deletions: number;
     commits: number;
+    patchless_files: number;
   };
   risk_breakdown: ReviewRiskBreakdownItem[];
   score_movement: ReviewScoreMovementItem[];
@@ -148,12 +159,21 @@ export interface BackendCommitSummary {
   html_url?: string | null;
 }
 
+export interface BackendAnalysisCoverage {
+  files_analyzed: number;
+  total_files: number;
+  patchless_files: number;
+  is_partial: boolean;
+  partial_reasons: string[];
+}
+
 export interface BackendAnalysisContext {
-  confidence_in_score: "high" | "medium";
+  confidence_in_score: "high" | "medium" | "low";
   summary: string;
   limitations: string[];
   data_sources: string[];
   cache_status: "live" | "cached";
+  coverage: BackendAnalysisCoverage;
 }
 
 export interface BackendAnalysisResult {

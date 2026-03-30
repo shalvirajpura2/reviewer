@@ -92,6 +92,26 @@ function source_badge_short(result: ReviewResult) {
   return "analysis";
 }
 
+function coverage_pill_copy(result: ReviewResult) {
+  const coverage = result.provenance?.coverage;
+
+  if (!coverage) {
+    return "analysis coverage";
+  }
+
+  if (coverage.is_partial) {
+    return `${coverage.files_analyzed}/${coverage.total_files} files analyzed`;
+  }
+
+  return `${coverage.total_files} files analyzed`;
+}
+
+function confidence_pill_copy(result: ReviewResult) {
+  const confidence = result.provenance?.confidence_in_score ?? "unknown";
+  return `${confidence} confidence`;
+}
+
+
 function risk_level(score: number) {
   if (score >= 70) return { label: "High", className: "rp-risk-level rp-risk-level-high" };
   if (score >= 40) return { label: "Watch", className: "rp-risk-level rp-risk-level-medium" };
@@ -331,6 +351,7 @@ function DeepPanels({ result }: { result: ReviewResult }) {
             `source: ${result.provenance?.cache_status ?? "unknown"}`,
             `confidence: ${result.provenance?.confidence_in_score ?? "unknown"}`,
             `score version: ${result.provenance?.score_version ?? "unknown"}`,
+            `patchless files: ${result.stats.patchless_files}`,
             ...(result.provenance?.data_sources ?? []).map((source) => `data: ${source}`),
           ].map((item) => (
             <div key={item} className="rp-prov-item">{item}</div>
@@ -453,6 +474,8 @@ export function ResultPage() {
                 {report_badge(result)}
               </div>
               <div className="rp-pill">{created_at}</div>
+              <div className="rp-pill">{coverage_pill_copy(result)}</div>
+              <div className="rp-pill">{confidence_pill_copy(result)}</div>
               <a className="rp-pill rp-pill-link" href={result.pr_url} target="_blank" rel="noreferrer">
                 Open on GitHub
               </a>
@@ -483,8 +506,8 @@ export function ResultPage() {
 
               <div className="rp-mini-stats">
                 <div className="rp-mini-stat">
-                  <span className="rp-mini-stat-val">{result.stats.files_changed}</span>
-                  <span className="rp-mini-stat-key">files</span>
+                  <span className="rp-mini-stat-val">{result.stats.files_analyzed}/{result.stats.files_changed}</span>
+                  <span className="rp-mini-stat-key">files analyzed</span>
                 </div>
                 <div className="rp-mini-stat">
                   <span className="rp-mini-stat-val">{result.stats.commits}</span>

@@ -111,12 +111,21 @@ class ScoreSummary(BaseModel):
     score_version: str
 
 
+class AnalysisCoverage(BaseModel):
+    files_analyzed: int
+    total_files: int
+    patchless_files: int
+    is_partial: bool
+    partial_reasons: list[str]
+
+
 class AnalysisContext(BaseModel):
-    confidence_in_score: Literal["high", "medium"]
+    confidence_in_score: Literal["high", "medium", "low"]
     summary: str
     limitations: list[str]
     data_sources: list[str]
     cache_status: Literal["live", "cached"]
+    coverage: AnalysisCoverage
 
 
 class PrAnalysisResult(BaseModel):

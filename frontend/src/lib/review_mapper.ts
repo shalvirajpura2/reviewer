@@ -20,6 +20,12 @@ function map_verdict(label: BackendAnalysisResult["label"]): ReviewResult["verdi
 }
 
 function build_summary(result: BackendAnalysisResult) {
+  const coverage = result.analysis_context.coverage;
+
+  if (coverage.is_partial && coverage.partial_reasons.length > 0) {
+    return `Partial analysis: ${coverage.partial_reasons[0]}`;
+  }
+
   if (result.analysis_context.summary) {
     return result.analysis_context.summary;
   }
@@ -59,19 +65,23 @@ function build_top_risks(result: BackendAnalysisResult): ReviewRiskItem[] {
 }
 
 function build_next_actions(result: BackendAnalysisResult) {
-  if (result.recommendations.length > 0) {
-    return result.recommendations.slice(0, 5).map((item) => item.title);
+  const next_actions = result.recommendations.length > 0
+    ? result.recommendations.slice(0, 5).map((item) => item.title)
+    : ["Run a final reviewer pass before merge"];
+
+  if (result.analysis_context.coverage.is_partial) {
+    return ["Review the remaining files directly on GitHub", ...next_actions].slice(0, 5);
   }
 
-  return ["Run a final reviewer pass before merge"];
+  return next_actions;
 }
 
 function map_breakdown_level(score: number): ReviewRiskBreakdownItem["level"] {
-  if (score >= 70) {
+  if (score >= 20) {
     return "high";
   }
 
-  if (score >= 40) {
+  if (score >= 10) {
     return "medium";
   }
 
@@ -144,6 +154,11 @@ function build_review_focus(result: BackendAnalysisResult) {
   return build_changed_areas(result).slice(0, 4).map((item) => `Review ${item}`);
 }
 
+function build_limitations(result: BackendAnalysisResult) {
+  const partial_reasons = result.analysis_context.coverage.partial_reasons;
+  return [...partial_reasons, ...result.analysis_context.limitations];
+}
+
 export function map_analysis_to_review(result: BackendAnalysisResult): ReviewResult {
   return {
     pr_title: result.metadata.title,
@@ -160,12 +175,14 @@ export function map_analysis_to_review(result: BackendAnalysisResult): ReviewRes
     top_risks: build_top_risks(result),
     next_actions: build_next_actions(result),
     changed_areas: build_changed_areas(result),
-    limitations: result.analysis_context.limitations,
+    limitations: build_limitations(result),
     stats: {
       files_changed: result.metadata.changed_files,
+      files_analyzed: result.analysis_context.coverage.files_analyzed,
       additions: result.metadata.additions,
       deletions: result.metadata.deletions,
-      commits: result.metadata.commits
+      commits: result.metadata.commits,
+      patchless_files: result.analysis_context.coverage.patchless_files
     },
     risk_breakdown: build_risk_breakdown(result),
     score_movement: build_recent_commits(result),
@@ -184,8 +201,8 @@ export function map_analysis_to_review(result: BackendAnalysisResult): ReviewRes
       cache_status: result.analysis_context.cache_status,
       confidence_in_score: result.analysis_context.confidence_in_score,
       data_sources: result.analysis_context.data_sources,
-      score_version: result.score_summary.score_version
+      score_version: result.score_summary.score_version,
+      coverage: result.analysis_context.coverage
     }
   };
 }
-
