@@ -23,7 +23,7 @@ _db_lock = Lock()
 _repo_stars_cache = {"value": None, "expires_at": 0.0}
 _repo_stars_ttl_seconds = 300
 _db_initialized = False
-_recent_analyses_limit = 8
+_recent_analyses_limit = 18
 
 
 def _default_stats() -> dict[str, object]:

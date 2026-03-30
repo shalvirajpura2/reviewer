@@ -1,5 +1,6 @@
 import { useEffect, useState, type ElementType } from "react";
 import { Activity, Eye, ShieldCheck, Sparkles } from "lucide-react";
+import { Link } from "react-router-dom";
 
 import { BackgroundBoxes } from "../components/background_boxes";
 import { PrInputBar } from "../components/pr_input_bar";
@@ -107,6 +108,10 @@ function source_badge(analysis: RecentAnalysis) {
   }
 
   return analysis.cache_status;
+}
+
+function result_path(pr_url: string) {
+  return `/result?pr_url=${encodeURIComponent(pr_url)}`;
 }
 
 export function HomePage() {
@@ -242,27 +247,37 @@ export function HomePage() {
       </div>
 
       <div className="features-section recent-analyses-section">
-        <div className="section-label">Recent analyses</div>
-        <div className="recent-analyses-copy">
-          See what people have been running through Reviewer lately. Open one of these PRs, compare the score, or paste your own.
+        <div className="recent-analyses-topbar">
+          <div>
+            <div className="section-label">Recent analyses</div>
+            <div className="recent-analyses-copy">
+              Reopen saved reviews inside Reviewer, compare the score, or jump out to GitHub when you need the raw PR.
+            </div>
+          </div>
+          <Link to="/history" className="recent-analyses-link">Open full history</Link>
         </div>
         <div className="recent-analyses-grid">
           {recent_analyses.length > 0 ? recent_analyses.map((analysis) => (
-            <a key={analysis.pr_url} href={analysis.pr_url} target="_blank" rel="noreferrer" className="recent-analysis-card">
-              <div className="recent-analysis-head">
-                <div>
-                  <div className="recent-analysis-repo">{analysis.repo_name} #{analysis.pr_number}</div>
-                  <div className="recent-analysis-title">{analysis.title}</div>
+            <div key={analysis.pr_url} className="recent-analysis-card">
+              <Link to={result_path(analysis.pr_url)} className="recent-analysis-main-link">
+                <div className="recent-analysis-head">
+                  <div>
+                    <div className="recent-analysis-repo">{analysis.repo_name} #{analysis.pr_number}</div>
+                    <div className="recent-analysis-title">{analysis.title}</div>
+                  </div>
+                  <div className="recent-analysis-score">{analysis.score}</div>
                 </div>
-                <div className="recent-analysis-score">{analysis.score}</div>
+                <div className="recent-analysis-meta-row">
+                  <span className="recent-analysis-chip">{confidence_badge(analysis)}</span>
+                  <span className="recent-analysis-chip recent-analysis-chip-muted">{source_badge(analysis)}</span>
+                  <span className="recent-analysis-time">{format_relative_time(analysis.analyzed_at)}</span>
+                </div>
+              </Link>
+              <div className="recent-analysis-card-actions">
+                <Link to={result_path(analysis.pr_url)} className="recent-analysis-action recent-analysis-action-primary">Open in Reviewer</Link>
+                <a href={analysis.pr_url} target="_blank" rel="noreferrer" className="recent-analysis-action">Open PR</a>
               </div>
-              <div className="recent-analysis-meta-row">
-                <span className="recent-analysis-chip">{confidence_badge(analysis)}</span>
-                <span className="recent-analysis-chip recent-analysis-chip-muted">{source_badge(analysis)}</span>
-                <span className="recent-analysis-time">{format_relative_time(analysis.analyzed_at)}</span>
-              </div>
-              <div className="recent-analysis-footer">Open this PR on GitHub</div>
-            </a>
+            </div>
           )) : (
             <div className="recent-analysis-empty">
               Recent PR analyses will show up here after people start using the product with real GitHub pull requests.
