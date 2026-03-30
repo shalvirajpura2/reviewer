@@ -24,8 +24,13 @@ class RecentAnalysisItem(BaseModel):
     score: int
     verdict: str
     confidence_label: str
+    confidence_in_score: str | None = None
     analyzed_at: str
+    source_updated_at: str | None = None
     cache_status: str
+    files_changed: int | None = None
+    files_analyzed: int | None = None
+    is_partial: bool | None = None
 
 
 class RecentAnalysesResponse(BaseModel):

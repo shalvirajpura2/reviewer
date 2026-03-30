@@ -115,7 +115,7 @@ async def build_live_analysis(parsed_pr: dict[str, str | int], cache_key: str) -
     files, partial_reasons = await fetch_pr_files(parsed_pr, metadata.changed_files)
     commits, commit_partial_reasons = await fetch_pr_commits(parsed_pr, metadata.commits)
     classified_files = classify_files(files)
-    signals = detect_signals(metadata, classified_files)
+    signals = detect_signals(metadata, classified_files, commits)
     result = build_result(
         metadata,
         classified_files,

@@ -31,6 +31,8 @@ TOP_FILE_REASON_LABELS = {
     "frontend": "user-facing behavior may shift",
     "backend": "server-side behavior changed",
     "test": "tests changed alongside implementation",
+    "generated": "generated output changed",
+    "lockfile": "lockfile or dependency pin changed",
 }
 
 
@@ -78,13 +80,17 @@ def build_analysis_coverage(
 def build_confidence_in_score(
     files: list[ClassifiedFile],
     signals: list[RiskSignal],
+    commits: list[GithubCommitSummary],
     coverage: AnalysisCoverage,
     cache_status: str,
 ) -> str:
     if cache_status == "fallback" or coverage.is_partial:
         return "low"
 
-    if len(files) <= 8 and len(signals) <= 4:
+    if len(files) >= 35 or len(commits) >= 20:
+        return "low"
+
+    if len(files) <= 8 and len(signals) <= 4 and coverage.patchless_files == 0:
         return "high"
 
     return "medium"
@@ -103,6 +109,13 @@ def build_confidence_summary(
         return (
             f"Showing the latest saved analysis because GitHub could not serve a fresh review right now. "
             f"Saved context covers {scope_summary} and {len(commits)} commits. Patch coverage note: {patch_summary}."
+        )
+
+    if len(files) >= 35 or len(commits) >= 20:
+        return (
+            f"Built from GitHub metadata, {scope_summary}, {len(commits)} commits, deterministic scoring rules, "
+            f"and patch-level structure hints. The review surface is broad enough that this score should guide triage more than final approval. "
+            f"Patch coverage note: {patch_summary}. Response source: {cache_status}."
         )
 
     return (
@@ -205,6 +218,9 @@ def compute_top_file_score(file: ClassifiedFile, test_files_present: bool) -> in
     if not test_files_present and (file.is_sensitive or file.blast_radius_weight >= 4):
         score += 12
 
+    if "generated" in file.areas or "asset" in file.areas:
+        score -= 10
+
     return score
 
 
@@ -269,7 +285,7 @@ def build_result(
         commits=commits,
         score_summary=ScoreSummary(**score_payload["score_summary"]),
         analysis_context=AnalysisContext(
-            confidence_in_score=build_confidence_in_score(files, signals, coverage, cache_status),
+            confidence_in_score=build_confidence_in_score(files, signals, commits, coverage, cache_status),
             summary=build_confidence_summary(files, commits, cache_status, coverage),
             limitations=analysis_limitations,
             data_sources=["GitHub PR metadata", "GitHub changed files", "GitHub commits", "deterministic rules engine"],

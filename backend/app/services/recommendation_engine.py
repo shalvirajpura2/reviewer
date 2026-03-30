@@ -26,6 +26,12 @@ recommendation_map = {
         detail="When dependencies change without test updates, run the flows most exposed to version and lockfile drift.",
         priority="soon",
     ),
+    "lockfile_only_dependency_refresh": RecommendationItem(
+        id="scan_lockfile_refresh",
+        title="Scan the dependency refresh scope",
+        detail="This looks closer to a lockfile refresh, so confirm whether package manifests or runtime behavior changed alongside it.",
+        priority="nice_to_have",
+    ),
     "migration_detected": RecommendationItem(
         id="validate_migration_rollout",
         title="Validate migration rollout and rollback",
@@ -61,6 +67,36 @@ recommendation_map = {
         title="Walk the full user flow across layers",
         detail="When frontend and backend change together, test the end-to-end path instead of reviewing each layer in isolation.",
         priority="now",
+    ),
+    "patchless_code_changes": RecommendationItem(
+        id="open_hidden_diff_context",
+        title="Open files with limited diff visibility",
+        detail="Some changed code came back without patch hunks, so inspect the full file view in GitHub before trusting the score completely.",
+        priority="now",
+    ),
+    "rename_heavy_refactor": RecommendationItem(
+        id="verify_refactor_mappings",
+        title="Verify rename and move intent",
+        detail="A rename-heavy PR can hide behavior changes, so confirm each moved file still maps to the same runtime responsibility.",
+        priority="soon",
+    ),
+    "broad_shallow_change": RecommendationItem(
+        id="review_by_surface_area",
+        title="Review by surface area, not commit order",
+        detail="A wide but shallow PR is easy to skim past, so group the review by risk area and ownership instead of scanning linearly.",
+        priority="soon",
+    ),
+    "high_commit_count": RecommendationItem(
+        id="check_final_state_over_commit_story",
+        title="Check the final state, not just the commit story",
+        detail="A long commit train can obscure the final behavior, so review the merged diff and key files directly.",
+        priority="soon",
+    ),
+    "generated_output_changed": RecommendationItem(
+        id="confirm_generated_artifacts",
+        title="Confirm generated artifacts are intentional",
+        detail="Generated output changed with implementation, so verify whether those files are expected build artifacts or accidental noise.",
+        priority="nice_to_have",
     ),
     "no_tests_for_sensitive_change": RecommendationItem(
         id="add_regression_tests",

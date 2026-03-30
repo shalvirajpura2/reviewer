@@ -158,18 +158,82 @@ def _ensure_database_schema() -> None:
                         score INTEGER NOT NULL,
                         verdict TEXT NOT NULL,
                         confidence_label TEXT NOT NULL,
-                        cache_status TEXT NOT NULL
+                        confidence_in_score TEXT,
+                        source_updated_at TIMESTAMPTZ,
+                        cache_status TEXT NOT NULL,
+                        files_changed INTEGER,
+                        files_analyzed INTEGER,
+                        is_partial BOOLEAN
                     )
                     """
+                )
+                cursor.execute(
+                    "ALTER TABLE recent_analyses ADD COLUMN IF NOT EXISTS confidence_in_score TEXT"
+                )
+                cursor.execute(
+                    "ALTER TABLE recent_analyses ADD COLUMN IF NOT EXISTS source_updated_at TIMESTAMPTZ"
+                )
+                cursor.execute(
+                    "ALTER TABLE recent_analyses ADD COLUMN IF NOT EXISTS files_changed INTEGER"
+                )
+                cursor.execute(
+                    "ALTER TABLE recent_analyses ADD COLUMN IF NOT EXISTS files_analyzed INTEGER"
+                )
+                cursor.execute(
+                    "ALTER TABLE recent_analyses ADD COLUMN IF NOT EXISTS is_partial BOOLEAN"
                 )
                 cursor.execute(
                     """
                     CREATE TABLE IF NOT EXISTS cached_analyses (
                         pr_url TEXT PRIMARY KEY,
                         cached_at TIMESTAMPTZ NOT NULL,
+                        repo_name TEXT,
+                        pr_number INTEGER,
+                        title TEXT,
+                        score INTEGER,
+                        verdict TEXT,
+                        confidence_label TEXT,
+                        confidence_in_score TEXT,
+                        source_updated_at TIMESTAMPTZ,
+                        files_changed INTEGER,
+                        files_analyzed INTEGER,
+                        is_partial BOOLEAN,
                         result_json TEXT NOT NULL
                     )
                     """
+                )
+                cursor.execute(
+                    "ALTER TABLE cached_analyses ADD COLUMN IF NOT EXISTS repo_name TEXT"
+                )
+                cursor.execute(
+                    "ALTER TABLE cached_analyses ADD COLUMN IF NOT EXISTS pr_number INTEGER"
+                )
+                cursor.execute(
+                    "ALTER TABLE cached_analyses ADD COLUMN IF NOT EXISTS title TEXT"
+                )
+                cursor.execute(
+                    "ALTER TABLE cached_analyses ADD COLUMN IF NOT EXISTS score INTEGER"
+                )
+                cursor.execute(
+                    "ALTER TABLE cached_analyses ADD COLUMN IF NOT EXISTS verdict TEXT"
+                )
+                cursor.execute(
+                    "ALTER TABLE cached_analyses ADD COLUMN IF NOT EXISTS confidence_label TEXT"
+                )
+                cursor.execute(
+                    "ALTER TABLE cached_analyses ADD COLUMN IF NOT EXISTS confidence_in_score TEXT"
+                )
+                cursor.execute(
+                    "ALTER TABLE cached_analyses ADD COLUMN IF NOT EXISTS source_updated_at TIMESTAMPTZ"
+                )
+                cursor.execute(
+                    "ALTER TABLE cached_analyses ADD COLUMN IF NOT EXISTS files_changed INTEGER"
+                )
+                cursor.execute(
+                    "ALTER TABLE cached_analyses ADD COLUMN IF NOT EXISTS files_analyzed INTEGER"
+                )
+                cursor.execute(
+                    "ALTER TABLE cached_analyses ADD COLUMN IF NOT EXISTS is_partial BOOLEAN"
                 )
                 cursor.execute(
                     """
@@ -189,6 +253,51 @@ def _ensure_database_schema() -> None:
             connection.commit()
 
         _db_initialized = True
+
+
+def _read_recent_analyses_database(cursor) -> list[dict[str, object]]:
+    cursor.execute(
+        """
+        SELECT
+            repo_name,
+            pr_number,
+            title,
+            pr_url,
+            score,
+            verdict,
+            confidence_label,
+            confidence_in_score,
+            analyzed_at,
+            source_updated_at,
+            cache_status,
+            files_changed,
+            files_analyzed,
+            is_partial
+        FROM recent_analyses
+        ORDER BY analyzed_at DESC
+        LIMIT %s
+        """,
+        (_recent_analyses_limit,),
+    )
+    return [
+        {
+            "repo_name": item[0],
+            "pr_number": int(item[1]),
+            "title": item[2],
+            "pr_url": item[3],
+            "score": int(item[4]),
+            "verdict": item[5],
+            "confidence_label": item[6],
+            "confidence_in_score": item[7],
+            "analyzed_at": item[8].isoformat() if item[8] else "",
+            "source_updated_at": item[9].isoformat() if item[9] else None,
+            "cache_status": item[10],
+            "files_changed": int(item[11]) if item[11] is not None else None,
+            "files_analyzed": int(item[12]) if item[12] is not None else None,
+            "is_partial": bool(item[13]) if item[13] is not None else None,
+        }
+        for item in cursor.fetchall()
+    ]
 
 
 def _read_stats_database() -> dict[str, object]:
@@ -214,29 +323,7 @@ def _read_stats_database() -> dict[str, object]:
             seen_pr_urls = [item[0] for item in cursor.fetchall()]
             cursor.execute("SELECT client_id FROM seen_clients ORDER BY client_id")
             seen_client_ids = [item[0] for item in cursor.fetchall()]
-            cursor.execute(
-                """
-                SELECT repo_name, pr_number, title, pr_url, score, verdict, confidence_label, analyzed_at, cache_status
-                FROM recent_analyses
-                ORDER BY analyzed_at DESC
-                LIMIT %s
-                """,
-                (_recent_analyses_limit,),
-            )
-            recent_analyses = [
-                {
-                    "repo_name": item[0],
-                    "pr_number": int(item[1]),
-                    "title": item[2],
-                    "pr_url": item[3],
-                    "score": int(item[4]),
-                    "verdict": item[5],
-                    "confidence_label": item[6],
-                    "analyzed_at": item[7].isoformat() if item[7] else "",
-                    "cache_status": item[8],
-                }
-                for item in cursor.fetchall()
-            ]
+            recent_analyses = _read_recent_analyses_database(cursor)
 
     if not row:
         return _default_stats()
@@ -314,10 +401,15 @@ def _write_stats(stats: dict[str, object]) -> None:
                             score,
                             verdict,
                             confidence_label,
+                            confidence_in_score,
                             analyzed_at,
-                            cache_status
+                            source_updated_at,
+                            cache_status,
+                            files_changed,
+                            files_analyzed,
+                            is_partial
                         )
-                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                         """,
                         [
                             (
@@ -328,8 +420,13 @@ def _write_stats(stats: dict[str, object]) -> None:
                                 int(item.get("score", 0) or 0),
                                 item.get("verdict", ""),
                                 item.get("confidence_label", ""),
+                                item.get("confidence_in_score"),
                                 item.get("analyzed_at", ""),
+                                item.get("source_updated_at"),
                                 item.get("cache_status", "live"),
+                                int(item.get("files_changed", 0)) if item.get("files_changed") is not None else None,
+                                int(item.get("files_analyzed", 0)) if item.get("files_analyzed") is not None else None,
+                                bool(item.get("is_partial")) if item.get("is_partial") is not None else None,
                             )
                             for item in recent_analyses
                         ],
@@ -348,8 +445,25 @@ def _deserialize_result(payload: dict[str, object]) -> PrAnalysisResult:
     return PrAnalysisResult.model_validate(payload)
 
 
+def _analysis_metadata_entry(result: PrAnalysisResult) -> dict[str, object]:
+    return {
+        "repo_name": result.metadata.repo_full_name,
+        "pr_number": result.metadata.pull_number,
+        "title": result.metadata.title,
+        "score": result.score,
+        "verdict": result.verdict,
+        "confidence_label": result.label,
+        "confidence_in_score": result.analysis_context.confidence_in_score,
+        "source_updated_at": result.metadata.updated_at,
+        "files_changed": result.metadata.changed_files,
+        "files_analyzed": result.analysis_context.coverage.files_analyzed,
+        "is_partial": result.analysis_context.coverage.is_partial,
+    }
+
+
 def store_cached_analysis(pr_url: str, result: PrAnalysisResult) -> None:
     cached_at = datetime.now(timezone.utc)
+    metadata_entry = _analysis_metadata_entry(result)
 
     if _database_enabled():
         _ensure_database_schema()
@@ -358,12 +472,55 @@ def store_cached_analysis(pr_url: str, result: PrAnalysisResult) -> None:
                 with connection.cursor() as cursor:
                     cursor.execute(
                         """
-                        INSERT INTO cached_analyses (pr_url, cached_at, result_json)
-                        VALUES (%s, %s, %s)
+                        INSERT INTO cached_analyses (
+                            pr_url,
+                            cached_at,
+                            repo_name,
+                            pr_number,
+                            title,
+                            score,
+                            verdict,
+                            confidence_label,
+                            confidence_in_score,
+                            source_updated_at,
+                            files_changed,
+                            files_analyzed,
+                            is_partial,
+                            result_json
+                        )
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                         ON CONFLICT (pr_url)
-                        DO UPDATE SET cached_at = EXCLUDED.cached_at, result_json = EXCLUDED.result_json
+                        DO UPDATE SET
+                            cached_at = EXCLUDED.cached_at,
+                            repo_name = EXCLUDED.repo_name,
+                            pr_number = EXCLUDED.pr_number,
+                            title = EXCLUDED.title,
+                            score = EXCLUDED.score,
+                            verdict = EXCLUDED.verdict,
+                            confidence_label = EXCLUDED.confidence_label,
+                            confidence_in_score = EXCLUDED.confidence_in_score,
+                            source_updated_at = EXCLUDED.source_updated_at,
+                            files_changed = EXCLUDED.files_changed,
+                            files_analyzed = EXCLUDED.files_analyzed,
+                            is_partial = EXCLUDED.is_partial,
+                            result_json = EXCLUDED.result_json
                         """,
-                        (pr_url, cached_at, json.dumps(_serialize_result(result))),
+                        (
+                            pr_url,
+                            cached_at,
+                            metadata_entry["repo_name"],
+                            metadata_entry["pr_number"],
+                            metadata_entry["title"],
+                            metadata_entry["score"],
+                            metadata_entry["verdict"],
+                            metadata_entry["confidence_label"],
+                            metadata_entry["confidence_in_score"],
+                            metadata_entry["source_updated_at"],
+                            metadata_entry["files_changed"],
+                            metadata_entry["files_analyzed"],
+                            metadata_entry["is_partial"],
+                            json.dumps(_serialize_result(result)),
+                        ),
                     )
                 connection.commit()
         return
@@ -374,6 +531,7 @@ def store_cached_analysis(pr_url: str, result: PrAnalysisResult) -> None:
         items[pr_url] = {
             "cached_at": cached_at.isoformat(),
             "result": _serialize_result(result),
+            **metadata_entry,
         }
         analysis_cache_payload["items"] = items
         _write_json_file(_analysis_cache_file, analysis_cache_payload)
@@ -436,16 +594,22 @@ def get_cached_analysis(pr_url: str, max_age_seconds: int | None = None) -> tupl
 
 
 def _recent_analysis_entry(result: PrAnalysisResult, cache_status: str) -> dict[str, object]:
+    metadata_entry = _analysis_metadata_entry(result)
     return {
-        "repo_name": result.metadata.repo_full_name,
-        "pr_number": result.metadata.pull_number,
-        "title": result.metadata.title,
+        "repo_name": metadata_entry["repo_name"],
+        "pr_number": metadata_entry["pr_number"],
+        "title": metadata_entry["title"],
         "pr_url": result.metadata.html_url,
-        "score": result.score,
-        "verdict": result.verdict,
-        "confidence_label": result.label,
+        "score": metadata_entry["score"],
+        "verdict": metadata_entry["verdict"],
+        "confidence_label": metadata_entry["confidence_label"],
+        "confidence_in_score": metadata_entry["confidence_in_score"],
         "analyzed_at": datetime.now(timezone.utc).isoformat(),
+        "source_updated_at": metadata_entry["source_updated_at"],
         "cache_status": cache_status,
+        "files_changed": metadata_entry["files_changed"],
+        "files_analyzed": metadata_entry["files_analyzed"],
+        "is_partial": metadata_entry["is_partial"],
     }
 
 
