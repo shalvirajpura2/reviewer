@@ -14,6 +14,18 @@ export type RepoStars = {
   stars: number;
 };
 
+export type RecentAnalysis = {
+  repo_name: string;
+  pr_number: number;
+  title: string;
+  pr_url: string;
+  score: number;
+  verdict: string;
+  confidence_label: string;
+  analyzed_at: string;
+  cache_status: string;
+};
+
 type ApiErrorPayload = {
   message?: string;
   detail?: string;
@@ -89,6 +101,16 @@ export async function analyze_pr(pr_url: string): Promise<BackendAnalysisResult>
 
 export async function get_site_stats(): Promise<SiteStats> {
   return request_json<SiteStats>("/api/stats", undefined, "Reviewer stats are unavailable.");
+}
+
+export async function get_recent_analyses(): Promise<RecentAnalysis[]> {
+  const payload = await request_json<{ items: RecentAnalysis[] }>(
+    "/api/stats/recent-analyses",
+    undefined,
+    "Reviewer recent analyses are unavailable."
+  );
+
+  return payload.items;
 }
 
 export async function record_site_visit(client_id: string): Promise<SiteStats> {

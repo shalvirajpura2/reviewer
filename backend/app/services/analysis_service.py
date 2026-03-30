@@ -38,7 +38,7 @@ async def analyze_pull_request(pr_url: str) -> PrAnalysisResult:
     cached_result = read_cached_result(cache_key)
 
     if cached_result:
-        record_analysis(cache_key, 0.0, "cached")
+        record_analysis(cache_key, 0.0, "cached", cached_result)
         return cached_result
 
     started_at = time.perf_counter()
@@ -58,5 +58,5 @@ async def analyze_pull_request(pr_url: str) -> PrAnalysisResult:
     )
     store_cached_result(cache_key, result)
     duration_ms = (time.perf_counter() - started_at) * 1000
-    record_analysis(cache_key, duration_ms, "live")
+    record_analysis(cache_key, duration_ms, "live", result)
     return result

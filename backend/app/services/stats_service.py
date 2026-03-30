@@ -1,9 +1,12 @@
+from datetime import datetime, timezone
+from typing import cast
 import json
 import time
 from pathlib import Path
 from threading import Lock
 
 from app.core.settings import settings
+from app.models.analysis import PrAnalysisResult
 from app.services.github_client import fetch_repo_stars
 
 try:
@@ -18,6 +21,7 @@ _db_lock = Lock()
 _repo_stars_cache = {"value": None, "expires_at": 0.0}
 _repo_stars_ttl_seconds = 300
 _db_initialized = False
+_recent_analyses_limit = 8
 
 
 def _default_stats() -> dict[str, object]:
@@ -30,6 +34,7 @@ def _default_stats() -> dict[str, object]:
         "total_live_analysis_ms": 0.0,
         "seen_pr_urls": [],
         "seen_client_ids": [],
+        "recent_analyses": [],
     }
 
 
@@ -50,6 +55,9 @@ def _read_stats_file() -> dict[str, object]:
 
     if not isinstance(stats.get("seen_client_ids"), list):
         stats["seen_client_ids"] = []
+
+    if not isinstance(stats.get("recent_analyses"), list):
+        stats["recent_analyses"] = []
 
     return stats
 
@@ -118,6 +126,21 @@ def _ensure_database_schema() -> None:
                 )
                 cursor.execute(
                     """
+                    CREATE TABLE IF NOT EXISTS recent_analyses (
+                        analyzed_at TIMESTAMPTZ NOT NULL,
+                        repo_name TEXT NOT NULL,
+                        pr_number INTEGER NOT NULL,
+                        title TEXT NOT NULL,
+                        pr_url TEXT NOT NULL,
+                        score INTEGER NOT NULL,
+                        verdict TEXT NOT NULL,
+                        confidence_label TEXT NOT NULL,
+                        cache_status TEXT NOT NULL
+                    )
+                    """
+                )
+                cursor.execute(
+                    """
                     INSERT INTO public_stats (
                         id,
                         visitor_count,
@@ -159,6 +182,29 @@ def _read_stats_database() -> dict[str, object]:
             seen_pr_urls = [item[0] for item in cursor.fetchall()]
             cursor.execute("SELECT client_id FROM seen_clients ORDER BY client_id")
             seen_client_ids = [item[0] for item in cursor.fetchall()]
+            cursor.execute(
+                """
+                SELECT repo_name, pr_number, title, pr_url, score, verdict, confidence_label, analyzed_at, cache_status
+                FROM recent_analyses
+                ORDER BY analyzed_at DESC
+                LIMIT %s
+                """,
+                (_recent_analyses_limit,),
+            )
+            recent_analyses = [
+                {
+                    "repo_name": item[0],
+                    "pr_number": int(item[1]),
+                    "title": item[2],
+                    "pr_url": item[3],
+                    "score": int(item[4]),
+                    "verdict": item[5],
+                    "confidence_label": item[6],
+                    "analyzed_at": item[7].isoformat() if item[7] else "",
+                    "cache_status": item[8],
+                }
+                for item in cursor.fetchall()
+            ]
 
     if not row:
         return _default_stats()
@@ -172,6 +218,7 @@ def _read_stats_database() -> dict[str, object]:
         "total_live_analysis_ms": float(row[5]),
         "seen_pr_urls": seen_pr_urls,
         "seen_client_ids": seen_client_ids,
+        "recent_analyses": recent_analyses,
     }
 
 
@@ -186,6 +233,7 @@ def _write_stats(stats: dict[str, object]) -> None:
         _ensure_database_schema()
         seen_pr_urls = list(stats.get("seen_pr_urls", []))
         seen_client_ids = list(stats.get("seen_client_ids", []))
+        recent_analyses = list(stats.get("recent_analyses", []))[:_recent_analyses_limit]
 
         with _connect_database() as connection:
             with connection.cursor() as cursor:
@@ -222,10 +270,70 @@ def _write_stats(stats: dict[str, object]) -> None:
                         "INSERT INTO seen_clients (client_id) VALUES (%s) ON CONFLICT (client_id) DO NOTHING",
                         [(client_id,) for client_id in seen_client_ids],
                     )
+                cursor.execute("DELETE FROM recent_analyses")
+                if recent_analyses:
+                    cursor.executemany(
+                        """
+                        INSERT INTO recent_analyses (
+                            repo_name,
+                            pr_number,
+                            title,
+                            pr_url,
+                            score,
+                            verdict,
+                            confidence_label,
+                            analyzed_at,
+                            cache_status
+                        )
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                        """,
+                        [
+                            (
+                                item.get("repo_name", ""),
+                                int(item.get("pr_number", 0) or 0),
+                                item.get("title", ""),
+                                item.get("pr_url", ""),
+                                int(item.get("score", 0) or 0),
+                                item.get("verdict", ""),
+                                item.get("confidence_label", ""),
+                                item.get("analyzed_at", ""),
+                                item.get("cache_status", "live"),
+                            )
+                            for item in recent_analyses
+                        ],
+                    )
             connection.commit()
         return
 
     _write_stats_file(stats)
+
+
+def _recent_analysis_entry(result: PrAnalysisResult, cache_status: str) -> dict[str, object]:
+    return {
+        "repo_name": result.metadata.repo_full_name,
+        "pr_number": result.metadata.pull_number,
+        "title": result.metadata.title,
+        "pr_url": result.metadata.html_url,
+        "score": result.score,
+        "verdict": result.verdict,
+        "confidence_label": result.label,
+        "analyzed_at": datetime.now(timezone.utc).isoformat(),
+        "cache_status": cache_status,
+    }
+
+
+def _merge_recent_analyses(existing_items: list[dict[str, object]], next_item: dict[str, object]) -> list[dict[str, object]]:
+    merged_items = [next_item]
+    next_pr_url = str(next_item.get("pr_url", ""))
+
+    for item in existing_items:
+        if str(item.get("pr_url", "")) == next_pr_url:
+            continue
+        merged_items.append(item)
+        if len(merged_items) >= _recent_analyses_limit:
+            break
+
+    return merged_items
 
 
 def get_public_stats() -> dict[str, int | float | None]:
@@ -247,6 +355,13 @@ def get_public_stats() -> dict[str, int | float | None]:
     }
 
 
+def get_recent_analyses() -> list[dict[str, object]]:
+    with _stats_lock:
+        stats = _read_stats()
+        recent_analyses = list(cast(list[dict[str, object]], stats.get("recent_analyses", [])))
+    return recent_analyses[:_recent_analyses_limit]
+
+
 def record_visit(client_id: str) -> dict[str, int | float | None]:
     normalized_client_id = client_id.strip()
     if not normalized_client_id:
@@ -264,7 +379,7 @@ def record_visit(client_id: str) -> dict[str, int | float | None]:
     return get_public_stats()
 
 
-def record_analysis(pr_url: str, duration_ms: float, cache_status: str) -> None:
+def record_analysis(pr_url: str, duration_ms: float, cache_status: str, result: PrAnalysisResult | None = None) -> None:
     with _stats_lock:
         stats = _read_stats()
         stats["total_reports_generated"] = int(stats.get("total_reports_generated", 0) or 0) + 1
@@ -278,6 +393,10 @@ def record_analysis(pr_url: str, duration_ms: float, cache_status: str) -> None:
 
             stats["total_live_analyses"] = int(stats.get("total_live_analyses", 0) or 0) + 1
             stats["total_live_analysis_ms"] = float(stats.get("total_live_analysis_ms", 0.0) or 0.0) + duration_ms
+
+        if result is not None:
+            recent_analyses = list(cast(list[dict[str, object]], stats.get("recent_analyses", [])))
+            stats["recent_analyses"] = _merge_recent_analyses(recent_analyses, _recent_analysis_entry(result, cache_status))
 
         _write_stats(stats)
 

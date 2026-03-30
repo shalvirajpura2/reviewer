@@ -14,3 +14,19 @@ class RepoStarsResponse(BaseModel):
 
 class RecordVisitRequest(BaseModel):
     client_id: str
+
+
+class RecentAnalysisItem(BaseModel):
+    repo_name: str
+    pr_number: int
+    title: str
+    pr_url: str
+    score: int
+    verdict: str
+    confidence_label: str
+    analyzed_at: str
+    cache_status: str
+
+
+class RecentAnalysesResponse(BaseModel):
+    items: list[RecentAnalysisItem]

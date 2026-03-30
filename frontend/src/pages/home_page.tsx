@@ -4,7 +4,7 @@ import { Activity, Eye, ShieldCheck, Sparkles } from "lucide-react";
 import { BackgroundBoxes } from "../components/background_boxes";
 import { PrInputBar } from "../components/pr_input_bar";
 import { SiteFooter } from "../components/site_footer";
-import { get_site_stats, type SiteStats } from "../lib/api";
+import { get_recent_analyses, get_site_stats, type RecentAnalysis, type SiteStats } from "../lib/api";
 
 const LottiePlayer = "lottie-player" as ElementType;
 
@@ -63,27 +63,67 @@ function format_avg_time(value: number | null) {
   return value.toFixed(1);
 }
 
+function format_relative_time(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return "recently";
+  }
+
+  const diff_ms = Date.now() - date.getTime();
+  const diff_minutes = Math.max(1, Math.round(diff_ms / 60000));
+
+  if (diff_minutes < 60) {
+    return `${diff_minutes}m ago`;
+  }
+
+  const diff_hours = Math.round(diff_minutes / 60);
+  if (diff_hours < 24) {
+    return `${diff_hours}h ago`;
+  }
+
+  const diff_days = Math.round(diff_hours / 24);
+  return `${diff_days}d ago`;
+}
+
+function confidence_badge(analysis: RecentAnalysis) {
+  if (analysis.score >= 85) {
+    return "mergeable";
+  }
+
+  if (analysis.score >= 70) {
+    return "focused review";
+  }
+
+  return "review needed";
+}
+
 export function HomePage() {
   const [site_stats, set_site_stats] = useState<SiteStats | null>(null);
+  const [recent_analyses, set_recent_analyses] = useState<RecentAnalysis[]>([]);
 
   useEffect(() => {
     let is_active = true;
 
-    async function load_site_stats() {
+    async function load_home_data() {
       try {
-        const next_site_stats = await get_site_stats();
+        const [next_site_stats, next_recent_analyses] = await Promise.all([
+          get_site_stats(),
+          get_recent_analyses(),
+        ]);
 
         if (is_active) {
           set_site_stats(next_site_stats);
+          set_recent_analyses(next_recent_analyses.slice(0, 4));
         }
       } catch {
         if (is_active) {
           set_site_stats(null);
+          set_recent_analyses([]);
         }
       }
     }
 
-    void load_site_stats();
+    void load_home_data();
 
     return () => {
       is_active = false;
@@ -186,6 +226,36 @@ export function HomePage() {
               </div>
             );
           })}
+        </div>
+      </div>
+
+      <div className="features-section recent-analyses-section">
+        <div className="section-label">Recent analyses</div>
+        <div className="recent-analyses-copy">
+          See what people have been running through Reviewer lately. Open one of these PRs, compare the score, or paste your own.
+        </div>
+        <div className="recent-analyses-grid">
+          {recent_analyses.length > 0 ? recent_analyses.map((analysis) => (
+            <a key={analysis.pr_url} href={analysis.pr_url} target="_blank" rel="noreferrer" className="recent-analysis-card">
+              <div className="recent-analysis-head">
+                <div>
+                  <div className="recent-analysis-repo">{analysis.repo_name} #{analysis.pr_number}</div>
+                  <div className="recent-analysis-title">{analysis.title}</div>
+                </div>
+                <div className="recent-analysis-score">{analysis.score}</div>
+              </div>
+              <div className="recent-analysis-meta-row">
+                <span className="recent-analysis-chip">{confidence_badge(analysis)}</span>
+                <span className="recent-analysis-chip recent-analysis-chip-muted">{analysis.cache_status}</span>
+                <span className="recent-analysis-time">{format_relative_time(analysis.analyzed_at)}</span>
+              </div>
+              <div className="recent-analysis-footer">Open this PR on GitHub</div>
+            </a>
+          )) : (
+            <div className="recent-analysis-empty">
+              Recent PR analyses will show up here after people start using the product with real GitHub pull requests.
+            </div>
+          )}
         </div>
       </div>
 
