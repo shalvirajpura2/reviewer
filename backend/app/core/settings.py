@@ -5,6 +5,7 @@ class Settings:
     github_token = os.getenv("GITHUB_TOKEN")
     github_api_base = os.getenv("GITHUB_API_BASE", "https://api.github.com")
     backend_port = int(os.getenv("BACKEND_PORT", "8000"))
+    log_level = os.getenv("LOG_LEVEL", "INFO").upper()
     cache_ttl_seconds = int(os.getenv("CACHE_TTL_SECONDS", "300"))
     stale_cache_ttl_seconds = int(os.getenv("STALE_CACHE_TTL_SECONDS", "43200"))
     analyze_window_seconds = int(os.getenv("ANALYZE_WINDOW_SECONDS", "60"))
