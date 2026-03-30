@@ -2,7 +2,7 @@ import asyncio
 import time
 
 from app.core.settings import settings
-from app.models.analysis import PrAnalysisResult
+from app.models.analysis import PrAnalysisResult, PrPreviewResult
 from app.services.file_classifier import classify_files
 from app.services.github_client import fetch_pr_commits, fetch_pr_files, fetch_pr_metadata
 from app.services.pr_url_parser import parse_pr_url
@@ -114,6 +114,12 @@ def build_fallback_result(cache_key: str, error: Exception) -> PrAnalysisResult 
         fallback_result.analysis_context.limitations = [error_note, *limitations]
     record_analysis(cache_key, 0.0, "fallback", fallback_result)
     return fallback_result
+
+
+async def preview_pull_request(pr_url: str) -> PrPreviewResult:
+    parsed_pr = parse_pr_url(pr_url)
+    metadata = await fetch_pr_metadata(parsed_pr)
+    return PrPreviewResult(metadata=metadata)
 
 
 async def analyze_pull_request(pr_url: str, client_key: str, force_refresh: bool = False) -> PrAnalysisResult:

@@ -1,4 +1,4 @@
-import type { BackendAnalysisResult } from "../types/review";
+import type { BackendAnalysisResult, BackendMetadata } from "../types/review";
 import { normalize_pr_url, pr_url_validation_message } from "./pr_url";
 
 const configured_backend_url = import.meta.env.VITE_BACKEND_URL?.replace(/\/$/, "");
@@ -24,6 +24,10 @@ export type RecentAnalysis = {
   confidence_label: string;
   analyzed_at: string;
   cache_status: string;
+};
+
+export type PrPreview = {
+  metadata: BackendMetadata;
 };
 
 type ApiErrorPayload = {
@@ -76,6 +80,27 @@ export function get_or_create_client_id() {
   const next_client_id = window.crypto?.randomUUID?.() ?? `reviewer-${Date.now()}-${Math.random().toString(16).slice(2)}`;
   window.localStorage.setItem(storage_key, next_client_id);
   return next_client_id;
+}
+
+export async function preview_pr(pr_url: string): Promise<PrPreview> {
+  const normalized_pr_url = normalize_pr_url(pr_url);
+  const validation_error = pr_url_validation_message(normalized_pr_url);
+
+  if (validation_error) {
+    throw new Error(validation_error);
+  }
+
+  return request_json<PrPreview>(
+    "/api/preview",
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ pr_url: normalized_pr_url }),
+    },
+    "Reviewer could not preview that pull request."
+  );
 }
 
 export async function analyze_pr(pr_url: string, force_refresh = false): Promise<BackendAnalysisResult> {

@@ -8,6 +8,10 @@ class AnalyzeRequest(BaseModel):
     force_refresh: bool = False
 
 
+class PreviewRequest(BaseModel):
+    pr_url: str = Field(min_length=1)
+
+
 class GithubPrMetadata(BaseModel):
     owner: str
     repo: str
@@ -128,6 +132,10 @@ class AnalysisContext(BaseModel):
     data_sources: list[str]
     cache_status: Literal["live", "cached", "fallback"]
     coverage: AnalysisCoverage
+
+
+class PrPreviewResult(BaseModel):
+    metadata: GithubPrMetadata
 
 
 class PrAnalysisResult(BaseModel):
