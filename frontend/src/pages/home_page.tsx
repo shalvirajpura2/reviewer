@@ -97,6 +97,18 @@ function confidence_badge(analysis: RecentAnalysis) {
   return "review needed";
 }
 
+function source_badge(analysis: RecentAnalysis) {
+  if (analysis.cache_status === "fallback") {
+    return "saved fallback";
+  }
+
+  if (analysis.cache_status === "cached") {
+    return "cache";
+  }
+
+  return analysis.cache_status;
+}
+
 export function HomePage() {
   const [site_stats, set_site_stats] = useState<SiteStats | null>(null);
   const [recent_analyses, set_recent_analyses] = useState<RecentAnalysis[]>([]);
@@ -246,7 +258,7 @@ export function HomePage() {
               </div>
               <div className="recent-analysis-meta-row">
                 <span className="recent-analysis-chip">{confidence_badge(analysis)}</span>
-                <span className="recent-analysis-chip recent-analysis-chip-muted">{analysis.cache_status}</span>
+                <span className="recent-analysis-chip recent-analysis-chip-muted">{source_badge(analysis)}</span>
                 <span className="recent-analysis-time">{format_relative_time(analysis.analyzed_at)}</span>
               </div>
               <div className="recent-analysis-footer">Open this PR on GitHub</div>

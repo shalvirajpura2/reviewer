@@ -15,7 +15,9 @@ except ImportError:
     psycopg = None
 
 _stats_file = Path(__file__).resolve().parents[2] / "data" / "stats.json"
+_analysis_cache_file = Path(__file__).resolve().parents[2] / "data" / "analysis_cache.json"
 _stats_lock = Lock()
+_analysis_cache_lock = Lock()
 _repo_stars_lock = Lock()
 _db_lock = Lock()
 _repo_stars_cache = {"value": None, "expires_at": 0.0}
@@ -38,17 +40,29 @@ def _default_stats() -> dict[str, object]:
     }
 
 
-def _read_stats_file() -> dict[str, object]:
-    if not _stats_file.exists():
-        return _default_stats()
+def _default_analysis_cache() -> dict[str, object]:
+    return {"items": {}}
+
+
+def _read_json_file(path: Path, fallback: dict[str, object]) -> dict[str, object]:
+    if not path.exists():
+        return fallback
 
     try:
-        payload = json.loads(_stats_file.read_text(encoding="utf-8"))
+        payload = json.loads(path.read_text(encoding="utf-8"))
     except (json.JSONDecodeError, OSError):
-        return _default_stats()
+        return fallback
 
-    stats = _default_stats()
-    stats.update(payload if isinstance(payload, dict) else {})
+    if not isinstance(payload, dict):
+        return fallback
+
+    merged_payload = dict(fallback)
+    merged_payload.update(payload)
+    return merged_payload
+
+
+def _read_stats_file() -> dict[str, object]:
+    stats = _read_json_file(_stats_file, _default_stats())
 
     if not isinstance(stats.get("seen_pr_urls"), list):
         stats["seen_pr_urls"] = []
@@ -62,9 +76,18 @@ def _read_stats_file() -> dict[str, object]:
     return stats
 
 
-def _write_stats_file(stats: dict[str, object]) -> None:
-    _stats_file.parent.mkdir(parents=True, exist_ok=True)
-    _stats_file.write_text(json.dumps(stats, indent=2), encoding="utf-8")
+def _read_analysis_cache_file() -> dict[str, object]:
+    analysis_cache = _read_json_file(_analysis_cache_file, _default_analysis_cache())
+
+    if not isinstance(analysis_cache.get("items"), dict):
+        analysis_cache["items"] = {}
+
+    return analysis_cache
+
+
+def _write_json_file(path: Path, payload: dict[str, object]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
 
 
 def _normalize_database_url(database_url: str) -> str:
@@ -136,6 +159,15 @@ def _ensure_database_schema() -> None:
                         verdict TEXT NOT NULL,
                         confidence_label TEXT NOT NULL,
                         cache_status TEXT NOT NULL
+                    )
+                    """
+                )
+                cursor.execute(
+                    """
+                    CREATE TABLE IF NOT EXISTS cached_analyses (
+                        pr_url TEXT PRIMARY KEY,
+                        cached_at TIMESTAMPTZ NOT NULL,
+                        result_json TEXT NOT NULL
                     )
                     """
                 )
@@ -305,7 +337,102 @@ def _write_stats(stats: dict[str, object]) -> None:
             connection.commit()
         return
 
-    _write_stats_file(stats)
+    _write_json_file(_stats_file, stats)
+
+
+def _serialize_result(result: PrAnalysisResult) -> dict[str, object]:
+    return cast(dict[str, object], result.model_dump(mode="json"))
+
+
+def _deserialize_result(payload: dict[str, object]) -> PrAnalysisResult:
+    return PrAnalysisResult.model_validate(payload)
+
+
+def store_cached_analysis(pr_url: str, result: PrAnalysisResult) -> None:
+    cached_at = datetime.now(timezone.utc)
+
+    if _database_enabled():
+        _ensure_database_schema()
+        with _analysis_cache_lock:
+            with _connect_database() as connection:
+                with connection.cursor() as cursor:
+                    cursor.execute(
+                        """
+                        INSERT INTO cached_analyses (pr_url, cached_at, result_json)
+                        VALUES (%s, %s, %s)
+                        ON CONFLICT (pr_url)
+                        DO UPDATE SET cached_at = EXCLUDED.cached_at, result_json = EXCLUDED.result_json
+                        """,
+                        (pr_url, cached_at, json.dumps(_serialize_result(result))),
+                    )
+                connection.commit()
+        return
+
+    with _analysis_cache_lock:
+        analysis_cache_payload = _read_analysis_cache_file()
+        items = cast(dict[str, object], analysis_cache_payload.get("items", {}))
+        items[pr_url] = {
+            "cached_at": cached_at.isoformat(),
+            "result": _serialize_result(result),
+        }
+        analysis_cache_payload["items"] = items
+        _write_json_file(_analysis_cache_file, analysis_cache_payload)
+
+
+def get_cached_analysis(pr_url: str, max_age_seconds: int | None = None) -> tuple[PrAnalysisResult, float] | None:
+    if _database_enabled():
+        _ensure_database_schema()
+        with _analysis_cache_lock:
+            with _connect_database() as connection:
+                with connection.cursor() as cursor:
+                    cursor.execute(
+                        "SELECT cached_at, result_json FROM cached_analyses WHERE pr_url = %s",
+                        (pr_url,),
+                    )
+                    row = cursor.fetchone()
+        if not row:
+            return None
+
+        cached_at = row[0]
+        result_payload = row[1]
+        age_seconds = (datetime.now(timezone.utc) - cached_at).total_seconds()
+        if max_age_seconds is not None and age_seconds > max_age_seconds:
+            return None
+
+        try:
+            parsed_payload = json.loads(result_payload)
+            return _deserialize_result(parsed_payload), age_seconds
+        except (json.JSONDecodeError, ValueError, TypeError):
+            return None
+
+    with _analysis_cache_lock:
+        analysis_cache_payload = _read_analysis_cache_file()
+        items = cast(dict[str, object], analysis_cache_payload.get("items", {}))
+        raw_item = items.get(pr_url)
+
+    if not isinstance(raw_item, dict):
+        return None
+
+    cached_at_raw = raw_item.get("cached_at")
+    result_payload = raw_item.get("result")
+    if not isinstance(cached_at_raw, str) or not isinstance(result_payload, dict):
+        return None
+
+    try:
+        cached_at = datetime.fromisoformat(cached_at_raw)
+        if cached_at.tzinfo is None:
+            cached_at = cached_at.replace(tzinfo=timezone.utc)
+    except ValueError:
+        return None
+
+    age_seconds = (datetime.now(timezone.utc) - cached_at).total_seconds()
+    if max_age_seconds is not None and age_seconds > max_age_seconds:
+        return None
+
+    try:
+        return _deserialize_result(cast(dict[str, object], result_payload)), age_seconds
+    except ValueError:
+        return None
 
 
 def _recent_analysis_entry(result: PrAnalysisResult, cache_status: str) -> dict[str, object]:

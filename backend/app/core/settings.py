@@ -6,6 +6,9 @@ class Settings:
     github_api_base = os.getenv("GITHUB_API_BASE", "https://api.github.com")
     backend_port = int(os.getenv("BACKEND_PORT", "8000"))
     cache_ttl_seconds = int(os.getenv("CACHE_TTL_SECONDS", "300"))
+    stale_cache_ttl_seconds = int(os.getenv("STALE_CACHE_TTL_SECONDS", "43200"))
+    analyze_window_seconds = int(os.getenv("ANALYZE_WINDOW_SECONDS", "60"))
+    analyze_requests_per_window = int(os.getenv("ANALYZE_REQUESTS_PER_WINDOW", "6"))
     database_url = os.getenv("DATABASE_URL")
     cors_allow_origins = [
         origin.strip()

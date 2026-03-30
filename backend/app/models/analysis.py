@@ -125,7 +125,7 @@ class AnalysisContext(BaseModel):
     summary: str
     limitations: list[str]
     data_sources: list[str]
-    cache_status: Literal["live", "cached"]
+    cache_status: Literal["live", "cached", "fallback"]
     coverage: AnalysisCoverage
 
 

@@ -81,12 +81,14 @@ function format_date(value?: string) {
 }
 
 function report_badge(result: ReviewResult) {
+  if (result.report_status === "fallback") return "saved fallback";
   if (result.report_status === "cached") return "live cache";
   if (result.report_status === "live") return "live analysis";
   return "analysis data";
 }
 
 function source_badge_short(result: ReviewResult) {
+  if (result.report_status === "fallback") return "saved";
   if (result.report_status === "cached") return "cache";
   if (result.report_status === "live") return "live";
   return "analysis";
@@ -357,12 +359,13 @@ function DeepPanels({ result }: { result: ReviewResult }) {
           <div className="rp-card-label">analysis provenance</div>
           {[
             `source: ${result.provenance?.cache_status ?? "unknown"}`,
+            result.provenance?.cache_status === "fallback" ? "fresh fetch: GitHub unavailable, using saved review" : null,
             `confidence: ${result.provenance?.confidence_in_score ?? "unknown"}`,
             `score version: ${result.provenance?.score_version ?? "unknown"}`,
             `patchless files: ${result.stats.patchless_files}`,
             ...(result.provenance?.data_sources ?? []).map((source) => `data: ${source}`),
-          ].map((item) => (
-            <div key={item} className="rp-prov-item">{item}</div>
+          ].filter(Boolean).map((item) => (
+            <div key={String(item)} className="rp-prov-item">{item}</div>
           ))}
         </div>
 

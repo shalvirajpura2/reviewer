@@ -79,8 +79,9 @@ def build_confidence_in_score(
     files: list[ClassifiedFile],
     signals: list[RiskSignal],
     coverage: AnalysisCoverage,
+    cache_status: str,
 ) -> str:
-    if coverage.is_partial:
+    if cache_status == "fallback" or coverage.is_partial:
         return "low"
 
     if len(files) <= 8 and len(signals) <= 4:
@@ -97,6 +98,12 @@ def build_confidence_summary(
 ) -> str:
     scope_summary = f"{coverage.files_analyzed} of {coverage.total_files} changed files analyzed"
     patch_summary = f"{coverage.patchless_files} files without patch hunks" if coverage.patchless_files else "full patch hints where available"
+
+    if cache_status == "fallback":
+        return (
+            f"Showing the latest saved analysis because GitHub could not serve a fresh review right now. "
+            f"Saved context covers {scope_summary} and {len(commits)} commits. Patch coverage note: {patch_summary}."
+        )
 
     return (
         f"Built from GitHub metadata, {scope_summary}, {len(commits)} commits, deterministic scoring rules, "
@@ -262,7 +269,7 @@ def build_result(
         commits=commits,
         score_summary=ScoreSummary(**score_payload["score_summary"]),
         analysis_context=AnalysisContext(
-            confidence_in_score=build_confidence_in_score(files, signals, coverage),
+            confidence_in_score=build_confidence_in_score(files, signals, coverage, cache_status),
             summary=build_confidence_summary(files, commits, cache_status, coverage),
             limitations=analysis_limitations,
             data_sources=["GitHub PR metadata", "GitHub changed files", "GitHub commits", "deterministic rules engine"],

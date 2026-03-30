@@ -22,6 +22,10 @@ function map_verdict(label: BackendAnalysisResult["label"]): ReviewResult["verdi
 function build_summary(result: BackendAnalysisResult) {
   const coverage = result.analysis_context.coverage;
 
+  if (result.analysis_context.cache_status === "fallback") {
+    return result.analysis_context.summary;
+  }
+
   if (coverage.is_partial && coverage.partial_reasons.length > 0) {
     return `Partial analysis: ${coverage.partial_reasons[0]}`;
   }
@@ -68,6 +72,10 @@ function build_next_actions(result: BackendAnalysisResult) {
   const next_actions = result.recommendations.length > 0
     ? result.recommendations.slice(0, 5).map((item) => item.title)
     : ["Run a final reviewer pass before merge"];
+
+  if (result.analysis_context.cache_status === "fallback") {
+    return ["Retry for a fresh live analysis in a few minutes", ...next_actions].slice(0, 5);
+  }
 
   if (result.analysis_context.coverage.is_partial) {
     return ["Review the remaining files directly on GitHub", ...next_actions].slice(0, 5);

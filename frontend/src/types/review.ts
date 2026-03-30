@@ -47,7 +47,7 @@ export interface ReviewCoverage {
 }
 
 export interface ReviewProvenance {
-  cache_status: "live" | "cached";
+  cache_status: "live" | "cached" | "fallback";
   confidence_in_score: "high" | "medium" | "low";
   data_sources: string[];
   score_version: string;
@@ -174,7 +174,7 @@ export interface BackendAnalysisContext {
   summary: string;
   limitations: string[];
   data_sources: string[];
-  cache_status: "live" | "cached";
+  cache_status: "live" | "cached" | "fallback";
   coverage: BackendAnalysisCoverage;
 }
 
