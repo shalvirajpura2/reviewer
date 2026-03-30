@@ -26,9 +26,9 @@ def resolve_client_key(request: Request) -> str:
 
 
 @router.post("/preview", response_model=PrPreviewResult)
-async def preview_route(payload: PreviewRequest):
+async def preview_route(payload: PreviewRequest, request: Request):
     try:
-        return await preview_pull_request(payload.pr_url)
+        return await preview_pull_request(payload.pr_url, resolve_client_key(request))
     except ValueError as error:
         return JSONResponse(status_code=400, content={"error_code": "invalid_request", "message": str(error)})
     except FileNotFoundError as error:

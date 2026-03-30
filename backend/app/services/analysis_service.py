@@ -12,9 +12,12 @@ from app.services.stats_service import get_cached_analysis, record_analysis, sto
 
 
 analysis_cache: dict[str, tuple[float, PrAnalysisResult]] = {}
+preview_cache: dict[str, tuple[float, PrPreviewResult]] = {}
 inflight_analyses: dict[str, asyncio.Task[PrAnalysisResult]] = {}
+inflight_previews: dict[str, asyncio.Task[PrPreviewResult]] = {}
 request_history: dict[str, list[float]] = {}
 inflight_lock = asyncio.Lock()
+inflight_preview_lock = asyncio.Lock()
 request_history_lock = asyncio.Lock()
 
 
@@ -54,6 +57,23 @@ def write_memory_cached_result(cache_key: str, result: PrAnalysisResult, cached_
     analysis_cache[cache_key] = (cached_at or time.time(), result)
 
 
+def read_memory_cached_preview(cache_key: str) -> PrPreviewResult | None:
+    cached_entry = preview_cache.get(cache_key)
+    if not cached_entry:
+        return None
+
+    cached_at, cached_preview = cached_entry
+    if time.time() - cached_at > settings.cache_ttl_seconds:
+        preview_cache.pop(cache_key, None)
+        return None
+
+    return cached_preview.model_copy(deep=True)
+
+
+def write_memory_cached_preview(cache_key: str, result: PrPreviewResult) -> None:
+    preview_cache[cache_key] = (time.time(), result)
+
+
 def read_saved_cached_result(cache_key: str, max_age_seconds: int) -> tuple[PrAnalysisResult, float] | None:
     cached_entry = get_cached_analysis(cache_key, max_age_seconds)
     if not cached_entry:
@@ -64,25 +84,36 @@ def read_saved_cached_result(cache_key: str, max_age_seconds: int) -> tuple[PrAn
     return cached_result, age_seconds
 
 
-async def enforce_request_limit(client_key: str) -> None:
+async def enforce_request_limit(client_key: str, action_name: str) -> None:
     normalized_client_key = client_key.strip() or "anonymous"
     now = time.time()
-    window_start = now - settings.analyze_window_seconds
+
+    if action_name == "preview":
+        window_seconds = settings.preview_window_seconds
+        request_limit = settings.preview_requests_per_window
+        error_message = "Reviewer is protecting GitHub previews right now. Please wait a minute before previewing more pull requests."
+    else:
+        window_seconds = settings.analyze_window_seconds
+        request_limit = settings.analyze_requests_per_window
+        error_message = "Reviewer is protecting GitHub right now. Please wait a minute before analyzing more pull requests."
+
+    history_key = f"{action_name}:{normalized_client_key}"
+    window_start = now - window_seconds
 
     async with request_history_lock:
-        recent_requests = [stamp for stamp in request_history.get(normalized_client_key, []) if stamp >= window_start]
-        if len(recent_requests) >= settings.analyze_requests_per_window:
-            raise PermissionError("Reviewer is protecting GitHub right now. Please wait a minute before analyzing more pull requests.")
+        recent_requests = [stamp for stamp in request_history.get(history_key, []) if stamp >= window_start]
+        if len(recent_requests) >= request_limit:
+            raise PermissionError(error_message)
 
         recent_requests.append(now)
-        request_history[normalized_client_key] = recent_requests
+        request_history[history_key] = recent_requests
 
 
 async def build_live_analysis(parsed_pr: dict[str, str | int], cache_key: str) -> PrAnalysisResult:
     started_at = time.perf_counter()
     metadata = await fetch_pr_metadata(parsed_pr)
     files, partial_reasons = await fetch_pr_files(parsed_pr, metadata.changed_files)
-    commits = await fetch_pr_commits(parsed_pr)
+    commits, commit_partial_reasons = await fetch_pr_commits(parsed_pr, metadata.commits)
     classified_files = classify_files(files)
     signals = detect_signals(metadata, classified_files)
     result = build_result(
@@ -92,7 +123,7 @@ async def build_live_analysis(parsed_pr: dict[str, str | int], cache_key: str) -
         signals,
         cache_status="live",
         total_files=metadata.changed_files,
-        partial_reasons=partial_reasons,
+        partial_reasons=[*partial_reasons, *commit_partial_reasons],
     )
     write_memory_cached_result(cache_key, result)
     store_cached_analysis(cache_key, result)
@@ -116,14 +147,42 @@ def build_fallback_result(cache_key: str, error: Exception) -> PrAnalysisResult 
     return fallback_result
 
 
-async def preview_pull_request(pr_url: str) -> PrPreviewResult:
-    parsed_pr = parse_pr_url(pr_url)
+async def build_preview(parsed_pr: dict[str, str | int]) -> PrPreviewResult:
     metadata = await fetch_pr_metadata(parsed_pr)
     return PrPreviewResult(metadata=metadata)
 
 
+async def preview_pull_request(pr_url: str, client_key: str) -> PrPreviewResult:
+    await enforce_request_limit(client_key, "preview")
+
+    parsed_pr = parse_pr_url(pr_url)
+    cache_key = str(parsed_pr["normalized_url"])
+    cached_preview = read_memory_cached_preview(cache_key)
+
+    if cached_preview:
+        return cached_preview
+
+    async with inflight_preview_lock:
+        inflight_task = inflight_previews.get(cache_key)
+        is_owner = inflight_task is None
+        if is_owner:
+            inflight_task = asyncio.create_task(build_preview(parsed_pr))
+            inflight_previews[cache_key] = inflight_task
+
+    try:
+        preview_result = await inflight_task
+    finally:
+        if is_owner:
+            async with inflight_preview_lock:
+                if inflight_previews.get(cache_key) is inflight_task:
+                    inflight_previews.pop(cache_key, None)
+
+    write_memory_cached_preview(cache_key, preview_result)
+    return preview_result.model_copy(deep=True)
+
+
 async def analyze_pull_request(pr_url: str, client_key: str, force_refresh: bool = False) -> PrAnalysisResult:
-    await enforce_request_limit(client_key)
+    await enforce_request_limit(client_key, "analyze")
 
     parsed_pr = parse_pr_url(pr_url)
     cache_key = str(parsed_pr["normalized_url"])

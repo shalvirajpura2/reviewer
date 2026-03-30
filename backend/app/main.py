@@ -43,5 +43,9 @@ app.include_router(stats_router)
 
 
 @app.get("/health")
-async def health_check() -> dict[str, str]:
-    return {"status": "ok"}
+async def health_check() -> dict[str, str | bool]:
+    return {
+        "status": "ok",
+        "github_token_configured": bool(settings.github_token),
+        "database_configured": bool(settings.database_url),
+    }

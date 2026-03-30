@@ -8,6 +8,7 @@ from app.models.analysis import ChangedFile, GithubCommitSummary, GithubPrMetada
 max_pr_file_pages = 30
 
 
+
 def build_headers() -> dict[str, str]:
     headers = {
         "Accept": "application/vnd.github+json",
@@ -120,28 +121,53 @@ async def fetch_pr_files(
     return collected_files, partial_reasons
 
 
-async def fetch_pr_commits(parsed_pr: dict[str, str | int]) -> list[GithubCommitSummary]:
-    payload = await github_fetch(
-        f"/repos/{parsed_pr['owner']}/{parsed_pr['repo']}/pulls/{parsed_pr['pull_number']}/commits?per_page=100"
-    )
-
+async def fetch_pr_commits(
+    parsed_pr: dict[str, str | int],
+    expected_commit_count: int | None = None,
+) -> tuple[list[GithubCommitSummary], list[str]]:
     commits: list[GithubCommitSummary] = []
-    for item in payload[:100]:
-        message = item.get("commit", {}).get("message", "")
-        first_line = message.splitlines()[0] if message else "Commit"
-        commits.append(
-            GithubCommitSummary(
-                sha=item["sha"][:7],
-                message=first_line,
-                author=item.get("author", {}).get("login")
-                or item.get("commit", {}).get("author", {}).get("name")
-                or "unknown",
-                authored_at=item.get("commit", {}).get("author", {}).get("date"),
-                html_url=item.get("html_url"),
-            )
+    partial_reasons: list[str] = []
+    page = 1
+
+    while page <= settings.max_pr_commit_pages:
+        payload = await github_fetch(
+            f"/repos/{parsed_pr['owner']}/{parsed_pr['repo']}/pulls/{parsed_pr['pull_number']}/commits?per_page=100&page={page}"
         )
 
-    return commits
+        if not payload:
+            break
+
+        for item in payload:
+            message = item.get("commit", {}).get("message", "")
+            first_line = message.splitlines()[0] if message else "Commit"
+            commits.append(
+                GithubCommitSummary(
+                    sha=item["sha"][:7],
+                    message=first_line,
+                    author=item.get("author", {}).get("login")
+                    or item.get("commit", {}).get("author", {}).get("name")
+                    or "unknown",
+                    authored_at=item.get("commit", {}).get("author", {}).get("date"),
+                    html_url=item.get("html_url"),
+                )
+            )
+
+        if len(payload) < 100:
+            break
+
+        page += 1
+
+    if page > settings.max_pr_commit_pages:
+        partial_reasons.append(
+            f"GitHub commit pagination was capped after {settings.max_pr_commit_pages * 100} commits to protect service reliability."
+        )
+
+    if expected_commit_count is not None and len(commits) < expected_commit_count:
+        partial_reasons.append(
+            f"Reviewer analyzed {len(commits)} of {expected_commit_count} commits returned by GitHub."
+        )
+
+    return commits, partial_reasons
 
 
 async def fetch_repo_stars(owner: str, repo: str) -> int:

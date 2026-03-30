@@ -96,6 +96,7 @@ export async function preview_pr(pr_url: string): Promise<PrPreview> {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        "X-Reviewer-Client-Id": get_or_create_client_id(),
       },
       body: JSON.stringify({ pr_url: normalized_pr_url }),
     },

@@ -9,6 +9,9 @@ class Settings:
     stale_cache_ttl_seconds = int(os.getenv("STALE_CACHE_TTL_SECONDS", "43200"))
     analyze_window_seconds = int(os.getenv("ANALYZE_WINDOW_SECONDS", "60"))
     analyze_requests_per_window = int(os.getenv("ANALYZE_REQUESTS_PER_WINDOW", "6"))
+    preview_window_seconds = int(os.getenv("PREVIEW_WINDOW_SECONDS", "60"))
+    preview_requests_per_window = int(os.getenv("PREVIEW_REQUESTS_PER_WINDOW", "12"))
+    max_pr_commit_pages = int(os.getenv("MAX_PR_COMMIT_PAGES", "10"))
     database_url = os.getenv("DATABASE_URL")
     cors_allow_origins = [
         origin.strip()
