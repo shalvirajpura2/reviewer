@@ -6,7 +6,6 @@ import { PrInputBar } from "../components/pr_input_bar";
 import { SiteFooter } from "../components/site_footer";
 import { get_site_stats, type SiteStats } from "../lib/api";
 
-
 const LottiePlayer = "lottie-player" as ElementType;
 
 const feature_items = [
@@ -41,9 +40,15 @@ const feature_items = [
 ];
 
 const hero_points = [
-  "Live GitHub pull request data",
-  "Deterministic scoring, not AI guesswork",
-  "Top files to inspect first",
+  "Bring a PR you actually care about",
+  "Get a review path before you open GitHub tabs",
+  "See what makes the diff feel risky",
+];
+
+const proof_items = [
+  "Find the three files reviewers should inspect first.",
+  "Turn broad diffs into a focused review plan.",
+  "Understand why a PR feels safe, risky, or incomplete.",
 ];
 
 function format_avg_time(value: number | null) {
@@ -107,12 +112,13 @@ export function HomePage() {
           </div>
 
           <h1 className="hero-h1">
-            Review the right files <br />
-            before you <span className="hl">merge</span>.
+            Bring your real PR. <br />
+            Find what deserves <span className="hl">review first</span>.
           </h1>
           <p className="hero-sub">
-            Paste any <b>public GitHub pull request</b> and get a structured merge report in seconds: a confidence score,
-            the top files to inspect, evidence-backed risks, and clear next reviewer actions.
+            Reviewer is built for the pull request you are already thinking about right now. Paste any <b>public GitHub PR</b>
+            and get a focused review path: the risky files, the signals behind them, and a clear sense of whether the diff
+            looks routine or deserves deeper attention.
           </p>
 
           <div className="hero-points hero-points-centered">
@@ -124,8 +130,17 @@ export function HomePage() {
             ))}
           </div>
 
+          <div className="hero-proof-grid">
+            {proof_items.map((proof_item, index) => (
+              <div key={proof_item} className="hero-proof-card">
+                <div className="hero-proof-index">0{index + 1}</div>
+                <div className="hero-proof-copy">{proof_item}</div>
+              </div>
+            ))}
+          </div>
+
           <div className="hero-input-shell">
-            <div className="hero-panel-label">Start with one pull request URL</div>
+            <div className="hero-panel-label">Start with one pull request URL you actually want to inspect</div>
             <PrInputBar />
           </div>
 

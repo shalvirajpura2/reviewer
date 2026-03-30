@@ -1,5 +1,5 @@
 import type { CSSProperties } from "react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, Navigate, useSearchParams } from "react-router-dom";
 
 import { SiteFooter } from "../components/site_footer";
@@ -12,6 +12,14 @@ import type {
   ReviewRiskItem,
   ReviewTopRiskFile,
 } from "../types/review";
+
+
+const loading_steps = [
+  "Reading pull request metadata",
+  "Scanning changed files and commits",
+  "Ranking risky files for review",
+  "Building your review workspace",
+];
 
 
 function verdict_tone(verdict: ReviewResult["verdict"]) {
@@ -405,7 +413,7 @@ export function ResultPage() {
     return <Navigate to="/" replace />;
   }
 
-  const created_at = useMemo(() => format_date(result?.created_at), [result?.created_at]);
+  const created_at = format_date(result?.created_at);
   const top_files = result?.top_risk_files ?? [];
   const next_actions = result?.next_actions ?? [];
   const focused = top_files.find((file) => file.filename === selected_file) ?? top_files[0] ?? null;
@@ -414,8 +422,17 @@ export function ResultPage() {
     <div className="rp-page">
       {is_loading ? (
         <div className="rp-loading rp-anim" style={{ "--rp-delay": "0ms" } as CSSProperties}>
-          <div className="rp-loading-title">analyzing pull request</div>
+          <div className="rp-loading-title">building your review</div>
+          <div className="rp-loading-copy">Reviewer is pulling the PR context, ranking risk, and preparing the files worth reading first.</div>
           <div className="rp-shimmer-bar" />
+          <div className="rp-loading-steps">
+            {loading_steps.map((step, index) => (
+              <div key={step} className="rp-loading-step" style={{ "--rp-delay": `${index * 90}ms` } as CSSProperties}>
+                <span className="rp-loading-step-index">0{index + 1}</span>
+                <span>{step}</span>
+              </div>
+            ))}
+          </div>
         </div>
       ) : error_message || !result ? (
         <div className="rp-error rp-anim" style={{ "--rp-delay": "0ms" } as CSSProperties}>
