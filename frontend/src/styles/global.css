@@ -6843,3 +6843,39 @@ nav {
     align-items: flex-start;
   }
 }
+
+.rp-file-btn-row {
+  padding: 9px 0;
+  border-bottom: 1px solid rgba(var(--border2), 0.18);
+}
+
+.rp-file-btn-row:last-child {
+  border-bottom: none;
+}
+
+.rp-file-btn-row .rp-file-btn {
+  padding: 0;
+  border-bottom: none;
+}
+
+.rp-inline-link,
+.rp-focus-link {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 11px;
+  color: var(--rp-green);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.rp-inline-link {
+  display: inline-flex;
+  margin-top: 6px;
+}
+
+.rp-focus-link-row {
+  margin-bottom: 20px;
+}
+
+.rp-focus-link {
+  display: inline-flex;
+}

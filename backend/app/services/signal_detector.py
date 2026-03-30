@@ -1,4 +1,4 @@
-﻿from app.models.analysis import ClassifiedFile, GithubPrMetadata, RiskSignal
+from app.models.analysis import ClassifiedFile, GithubPrMetadata, RiskSignal
 
 
 def detect_signals(metadata: GithubPrMetadata, files: list[ClassifiedFile]) -> list[RiskSignal]:
@@ -10,6 +10,9 @@ def detect_signals(metadata: GithubPrMetadata, files: list[ClassifiedFile]) -> l
     test_files = [file for file in files if "test" in file.areas]
     shared_core_files = [file for file in files if "shared_core" in file.areas]
     middleware_files = [file for file in files if "middleware" in file.areas]
+    frontend_files = [file for file in files if "frontend" in file.areas and "test" not in file.areas]
+    backend_files = [file for file in files if "backend" in file.areas and "test" not in file.areas]
+    code_files = [file for file in files if "docs" not in file.areas and "test" not in file.areas]
     docs_only = bool(files) and all("docs" in file.areas for file in files)
     total_changes = metadata.additions + metadata.deletions
     blast_radius_score = sum(file.blast_radius_weight for file in files)
@@ -90,6 +93,18 @@ def detect_signals(metadata: GithubPrMetadata, files: list[ClassifiedFile]) -> l
             )
         )
 
+    if config_files and code_files:
+        signals.append(
+            RiskSignal(
+                id="runtime_and_config_changed",
+                label="Runtime and config changed together",
+                severity="medium",
+                evidence=[file.filename for file in (config_files + code_files)[:4]],
+                score_impact=-7,
+                breakdown_key="config_risk",
+            )
+        )
+
     if shared_core_files or blast_radius_score >= 12:
         signals.append(
             RiskSignal(
@@ -111,6 +126,30 @@ def detect_signals(metadata: GithubPrMetadata, files: list[ClassifiedFile]) -> l
                 evidence=[file.filename for file in middleware_files[:4]],
                 score_impact=-8,
                 breakdown_key="sensitive_code_risk",
+            )
+        )
+
+    if frontend_files and backend_files and metadata.changed_files >= 6:
+        signals.append(
+            RiskSignal(
+                id="cross_stack_change",
+                label="Frontend and backend changed together",
+                severity="medium",
+                evidence=[file.filename for file in (frontend_files[:2] + backend_files[:2])],
+                score_impact=-7,
+                breakdown_key="blast_radius_risk",
+            )
+        )
+
+    if dependency_files and not test_files:
+        signals.append(
+            RiskSignal(
+                id="dependencies_without_tests",
+                label="Dependencies changed without test updates",
+                severity="medium",
+                evidence=[file.filename for file in dependency_files[:3]],
+                score_impact=-5,
+                breakdown_key="dependency_risk",
             )
         )
 
@@ -162,7 +201,18 @@ def detect_signals(metadata: GithubPrMetadata, files: list[ClassifiedFile]) -> l
             )
         )
 
-    if not test_files and metadata.changed_files >= 8:
+    if not test_files and len(code_files) >= 5:
+        signals.append(
+            RiskSignal(
+                id="implementation_without_tests",
+                label="Implementation changed without nearby tests",
+                severity="medium",
+                evidence=[file.filename for file in code_files[:4]],
+                score_impact=-8,
+                breakdown_key="test_risk",
+            )
+        )
+    elif not test_files and metadata.changed_files >= 8:
         signals.append(
             RiskSignal(
                 id="no_tests_changed",

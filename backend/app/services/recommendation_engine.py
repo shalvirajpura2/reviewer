@@ -1,4 +1,4 @@
-﻿from app.models.analysis import RecommendationItem, RiskSignal
+from app.models.analysis import RecommendationItem, RiskSignal
 
 
 recommendation_map = {
@@ -20,6 +20,12 @@ recommendation_map = {
         detail="Check release notes, lockfile changes, and transitive risk before merging.",
         priority="now",
     ),
+    "dependencies_without_tests": RecommendationItem(
+        id="exercise_dependency_paths",
+        title="Exercise dependency-affected paths",
+        detail="When dependencies change without test updates, run the flows most exposed to version and lockfile drift.",
+        priority="soon",
+    ),
     "migration_detected": RecommendationItem(
         id="validate_migration_rollout",
         title="Validate migration rollout and rollback",
@@ -31,6 +37,12 @@ recommendation_map = {
         title="Verify config changes in staging",
         detail="Exercise the changed environment or workflow path before approving merge.",
         priority="soon",
+    ),
+    "runtime_and_config_changed": RecommendationItem(
+        id="trace_runtime_with_config",
+        title="Trace the runtime path behind config edits",
+        detail="When code and configuration move together, confirm the changed settings still match the new runtime behavior.",
+        priority="now",
     ),
     "shared_core_module_touched": RecommendationItem(
         id="request_owner_review",
@@ -44,11 +56,23 @@ recommendation_map = {
         detail="Check routing, guards, and request interception paths that may affect multiple flows.",
         priority="soon",
     ),
+    "cross_stack_change": RecommendationItem(
+        id="walk_the_full_user_flow",
+        title="Walk the full user flow across layers",
+        detail="When frontend and backend change together, test the end-to-end path instead of reviewing each layer in isolation.",
+        priority="now",
+    ),
     "no_tests_for_sensitive_change": RecommendationItem(
         id="add_regression_tests",
         title="Add tests for risky paths",
         detail="Sensitive logic changed without test coverage updates, so ask for targeted regression tests.",
         priority="now",
+    ),
+    "implementation_without_tests": RecommendationItem(
+        id="ask_for_behavior_checks",
+        title="Ask for behavior checks or targeted tests",
+        detail="Implementation changed across several files without test updates, so confirm how the team validated the behavior.",
+        priority="soon",
     ),
     "no_tests_changed": RecommendationItem(
         id="confirm_test_strategy",
@@ -89,4 +113,3 @@ def generate_recommendations(signals: list[RiskSignal]) -> list[RecommendationIt
 
     priority_order = {"now": 0, "soon": 1, "nice_to_have": 2}
     return sorted(collected.values(), key=lambda item: priority_order[item.priority])
-

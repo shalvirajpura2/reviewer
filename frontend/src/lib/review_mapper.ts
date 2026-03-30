@@ -195,7 +195,8 @@ export function map_analysis_to_review(result: BackendAnalysisResult): ReviewRes
       reasons: item.reasons,
       changes: item.changes,
       areas: item.areas,
-      is_sensitive: item.is_sensitive
+      is_sensitive: item.is_sensitive,
+      blob_url: item.blob_url
     })),
     provenance: {
       cache_status: result.analysis_context.cache_status,

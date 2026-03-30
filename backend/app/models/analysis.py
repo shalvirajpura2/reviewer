@@ -102,6 +102,7 @@ class TopRiskFile(BaseModel):
     changes: int
     areas: list[str]
     is_sensitive: bool
+    blob_url: str | None = None
 
 
 class ScoreSummary(BaseModel):

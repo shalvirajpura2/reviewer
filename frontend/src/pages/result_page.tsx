@@ -215,6 +215,14 @@ function FocusPanel({ file, next_actions }: { file: ReviewTopRiskFile; next_acti
         ))}
       </div>
 
+      {file.blob_url ? (
+        <div className="rp-focus-link-row">
+          <a className="rp-focus-link" href={file.blob_url} target="_blank" rel="noreferrer">
+            Open this file on GitHub
+          </a>
+        </div>
+      ) : null}
+
       <div className="rp-focus-section">
         <div className="rp-focus-section-title">Reviewer should verify</div>
         {checks.map((item, index) => (
@@ -535,10 +543,17 @@ export function ResultPage() {
             <div className="rp-action-card">
               <div className="rp-card-label">check these first</div>
               {top_files.slice(0, 3).map((file) => (
-                <button key={file.filename} type="button" className="rp-file-btn" onClick={() => set_selected_file(file.filename)}>
-                  <span>{file.filename}</span>
-                  <span className="rp-file-btn-arrow">&gt;</span>
-                </button>
+                <div key={file.filename} className="rp-file-btn-row">
+                  <button type="button" className="rp-file-btn" onClick={() => set_selected_file(file.filename)}>
+                    <span>{file.filename}</span>
+                    <span className="rp-file-btn-arrow">&gt;</span>
+                  </button>
+                  {file.blob_url ? (
+                    <a className="rp-inline-link" href={file.blob_url} target="_blank" rel="noreferrer">
+                      Open file
+                    </a>
+                  ) : null}
+                </div>
               ))}
             </div>
 

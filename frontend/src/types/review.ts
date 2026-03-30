@@ -35,6 +35,7 @@ export interface ReviewTopRiskFile {
   changes: number;
   areas: string[];
   is_sensitive: boolean;
+  blob_url?: string | null;
 }
 
 export interface ReviewCoverage {
@@ -149,6 +150,7 @@ export interface BackendTopRiskFile {
   changes: number;
   areas: string[];
   is_sensitive: boolean;
+  blob_url?: string | null;
 }
 
 export interface BackendCommitSummary {

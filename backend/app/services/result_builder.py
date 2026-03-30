@@ -149,6 +149,9 @@ def build_file_reasons(file: ClassifiedFile, test_files_present: bool) -> list[s
     elif file.blast_radius_weight >= 3:
         reasons.append("moderate blast radius")
 
+    if file.status == "renamed" and file.previous_filename:
+        reasons.append(f"renamed from {file.previous_filename}")
+
     for area in file.areas:
         label = TOP_FILE_REASON_LABELS.get(area)
         if label and label not in reasons:
@@ -189,6 +192,9 @@ def compute_top_file_score(file: ClassifiedFile, test_files_present: bool) -> in
     if file.symbol_hints:
         score += 8
 
+    if file.status == "renamed" and file.previous_filename:
+        score += 6
+
     if not test_files_present and (file.is_sensitive or file.blast_radius_weight >= 4):
         score += 12
 
@@ -222,6 +228,7 @@ def build_top_risk_files(files: list[ClassifiedFile]) -> list[TopRiskFile]:
                 changes=file.changes,
                 areas=file.areas,
                 is_sensitive=file.is_sensitive,
+                blob_url=file.blob_url,
             )
         )
 
