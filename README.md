@@ -1,59 +1,87 @@
 # Reviewer
 
 <p align="center">
-  <img src="./frontend/public/favicon.svg" alt="Reviewer logo" width="88" />
+  <img src="./frontend/public/favicon.svg" alt="Reviewer logo" width="96" />
 </p>
 
 <p align="center">
-  <strong>Reviewer</strong><br/>
-  Deterministic PR review for public GitHub pull requests
+  <strong>Deterministic PR review for public GitHub pull requests.</strong>
 </p>
 
 <p align="center">
-  Paste a PR URL. Reviewer fetches live GitHub data, scores merge risk with deterministic rules, and shows the files worth reviewing first.
+  Reviewer helps developers decide where to start, what deserves attention, and how much to trust the current review surface.
 </p>
 
 <p align="center">
-  <a href="https://github.com/shalvirajpura2/reviewer">GitHub</a>
-  |
-  <a href="#local-setup">Run locally</a>
+  <img src="https://img.shields.io/badge/FastAPI-Backend-0F766E?style=for-the-badge&logo=fastapi&logoColor=white" alt="FastAPI" />
+  <img src="https://img.shields.io/badge/React-Frontend-0F172A?style=for-the-badge&logo=react&logoColor=61DAFB" alt="React" />
+  <img src="https://img.shields.io/badge/TypeScript-App-1D4ED8?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript" />
+  <img src="https://img.shields.io/badge/Python-Analysis-1E3A8A?style=for-the-badge&logo=python&logoColor=white" alt="Python" />
+  <img src="https://img.shields.io/badge/Pytest%20%2B%20Vitest-Tested-111827?style=for-the-badge" alt="Tested" />
 </p>
 
-## What Reviewer does
+## Table of contents
 
-Reviewer is built for one clear job:
+- [What Reviewer is](#what-reviewer-is)
+- [Why it feels different](#why-it-feels-different)
+- [What the product returns](#what-the-product-returns)
+- [How it works](#how-it-works)
+- [Architecture](#architecture)
+- [Repository layout](#repository-layout)
+- [Important product files](#important-product-files)
+- [Tech stack](#tech-stack)
+- [Local setup](#local-setup)
+- [Environment](#environment)
+- [Quality checks](#quality-checks)
+- [Current direction](#current-direction)
 
-1. Make a review call.
-2. Show what is driving that call.
-3. Point the reviewer to the right files first.
+## What Reviewer is
 
-Instead of producing a vague AI-style summary, Reviewer tries to feel like a real engineering tool:
+Reviewer is a product-first pull request review tool for public GitHub PRs.
 
-- deterministic and explainable
-- fast enough to use in a real workflow
-- honest about what it can and cannot verify
-- designed around reviewer action, not dashboard noise
+Paste a PR URL and Reviewer will:
+
+1. fetch live GitHub PR metadata, changed files, and commits
+2. classify the files and detect deterministic review signals
+3. score merge risk without pretending to know more than it does
+4. show the files a reviewer should inspect first
+5. surface evidence, provenance, and limitations clearly
+
+The goal is not to generate fluffy AI commentary. The goal is to help a developer review a PR faster and with better focus.
 
 ## Why it feels different
 
-Most PR review tools do one of two things poorly:
+Most review tools lean too hard in one of two directions:
 
-- they dump too much information and make the reviewer do the sorting
-- they hide behind generic AI confidence without enough proof
+- they dump raw information and make the reviewer do the sorting
+- they produce confident language without enough evidence
 
-Reviewer takes a different approach:
+Reviewer is intentionally different:
 
-- live GitHub PR metadata, changed files, and commits
-- deterministic merge scoring instead of unverifiable model confidence
-- ranked review queue instead of an undirected report
-- signal evidence, provenance, and limitations shown directly
-- focused result page that helps a developer decide where to start
+- deterministic scoring instead of opaque model confidence
+- review-first UX instead of dashboard-first UX
+- explicit limitations when the analysis is partial
+- ranked files and review notes instead of generic summaries
+- backend truth shown directly in the frontend
 
-## Review flow
+## What the product returns
 
-The backend is intentionally structured as a deterministic review pipeline.
+Reviewer is designed to answer the practical questions a developer actually has:
 
-![Reviewer flow](./docs/readme/reviewer-flow.svg)
+- what is the review call
+- what is driving that call
+- which files should be opened first
+- what should be verified next
+- how trustworthy is this result
+
+The result page is built around:
+
+- decision
+- why attention
+- check these first
+- selected file context
+- recommended next step
+- deeper evidence only when needed
 
 ## How it works
 
@@ -65,52 +93,6 @@ flowchart LR
   D --> E["Rank Top Files and Build Recommendations"]
   E --> F["Render Review Workspace with Evidence and Limits"]
 ```
-
-## What the reviewer sees
-
-Reviewer returns a structured review experience with:
-
-- a merge verdict
-- a confidence score
-- top risk signals
-- the files to inspect first
-- recommended next reviewer actions
-- evidence and provenance
-- explicit limitations when analysis is partial
-
-## Core product ideas
-
-### Deterministic scoring
-
-Reviewer is not trying to sound smart. It is trying to be useful.
-
-The score is driven by concrete signals such as:
-
-- sensitive paths changed
-- shared or high-impact code touched
-- migrations and config changes
-- dependency updates
-- broad or large PRs
-- implementation changed without nearby tests
-- patch visibility gaps from GitHub
-
-### Honest coverage
-
-If GitHub does not return full patch hunks, if analysis is partial, or if the app is serving a fallback result, Reviewer says so directly in the output.
-
-### Review-first UX
-
-The frontend is built around a simple developer question:
-
-> "What should I open first, and why?"
-
-That is why the product emphasizes:
-
-- check these first
-- selected file context
-- why attention
-- recommended next step
-- deeper evidence only when needed
 
 ## Architecture
 
@@ -125,9 +107,10 @@ flowchart TD
   PIPE --> CLASS["File Classification"]
   PIPE --> SIGNAL["Signal Detection"]
   PIPE --> SCORE["Deterministic Scoring"]
+  PIPE --> RECO["Recommendation Engine"]
   PIPE --> RESULT["Result Builder"]
   RESULT --> API
-  API --> CACHE["Cache / Fallback / Stats State"]
+  API --> CACHE["Cache, fallback, throttling, tracing"]
 ```
 
 ### Analysis pipeline
@@ -158,7 +141,7 @@ backend/
     models/
     routes/
     services/
-  requirements.txt
+  tests/
 frontend/
   public/
   src/
@@ -167,8 +150,6 @@ frontend/
     pages/
     styles/
     types/
-  package.json
-  vite.config.ts
 docs/
   readme/
 README.md
@@ -199,7 +180,7 @@ README.md
 - Frontend: React, Vite, TypeScript, React Router
 - Backend: FastAPI, Pydantic, HTTPX
 - Analysis: deterministic heuristics plus patch-structure hints
-- Optional signal enhancement: tree-sitter
+- Runtime hardening: caching, fallback storage, throttling, request tracing
 - Testing: Pytest, Vitest
 
 ## Local setup
@@ -254,6 +235,8 @@ Frontend runs on `http://localhost:5173` by default.
 - `BACKEND_PORT`
 - `CACHE_TTL_SECONDS`
 - `CORS_ALLOW_ORIGINS`
+- `CORS_ALLOW_ORIGIN_REGEX`
+- `LOG_LEVEL`
 
 `backend/data/` is runtime-generated local state and is ignored by Git.
 
@@ -276,12 +259,12 @@ pnpm build
 
 ## Current direction
 
-Reviewer is being built as a credible developer tool:
+Reviewer is being built to feel credible the moment a developer opens it:
 
-- technical enough for engineers
-- clear enough for founders and hiring managers
-- fast enough for real review workflows
-- honest enough to build trust over time
+- fast enough to use in a real review workflow
+- direct enough to be useful in under a minute
+- transparent enough to earn trust
+- polished enough to represent the product well to developers, founders, and hiring teams
 
 ## Builder
 
