@@ -5,7 +5,8 @@
 </p>
 
 <p align="center">
-  <strong>Fast, explainable pull request review for public GitHub PRs.</strong>
+  <strong>Reviewer</strong><br/>
+  Deterministic PR review for public GitHub pull requests
 </p>
 
 <p align="center">
@@ -17,8 +18,6 @@
   |
   <a href="#local-setup">Run locally</a>
 </p>
-
-![Reviewer banner](./docs/readme/reviewer-banner.svg)
 
 ## What Reviewer does
 
@@ -50,15 +49,7 @@ Reviewer takes a different approach:
 - signal evidence, provenance, and limitations shown directly
 - focused result page that helps a developer decide where to start
 
-## Product preview
-
-### Review workspace
-
-The result page is designed to feel like a reviewer workspace, not a generic analytics board.
-
-![Reviewer result workspace](./docs/readme/reviewer-banner.svg)
-
-### Pipeline overview
+## Review flow
 
 The backend is intentionally structured as a deterministic review pipeline.
 
