@@ -12,44 +12,32 @@ const LottiePlayer = "lottie-player" as ElementType;
 const feature_items = [
   {
     icon: ShieldCheck,
-    title: "Merge Confidence Score",
+    title: "Clear merge verdict",
     detail:
-      "A 0-100 score with a clear verdict, derived from deterministic signals like sensitive paths, diff size, missing tests, migrations, and blast radius.",
+      "Get a deterministic score, a plain-language verdict, and an honest signal of how much review confidence the diff deserves.",
     tag: "Scored",
   },
   {
-    icon: Activity,
-    title: "Risk Breakdown",
-    detail:
-      "See exactly which review dimensions are driving risk: sensitive code, dependencies, migrations, config changes, tests, and blast radius.",
-    tag: "Explained",
-  },
-  {
     icon: Eye,
-    title: "Top Files To Inspect",
+    title: "Start with the right files",
     detail:
-      "Reviewer ranks the files most likely to deserve focused review first, with reasons tied to diff shape, sensitivity, and impact.",
+      "Reviewer ranks the files most worth opening first so you can begin with the highest-impact parts of the pull request.",
     tag: "Prioritized",
   },
   {
-    icon: Sparkles,
-    title: "Evidence + Provenance",
+    icon: Activity,
+    title: "Understand the risk shape",
     detail:
-      "Every report shows the signals that fired, the evidence behind them, and which data sources were actually used so the output feels trustworthy.",
+      "See which review dimensions are driving risk: sensitive code, dependencies, config, migrations, tests, and blast radius.",
+    tag: "Explained",
+  },
+  {
+    icon: Sparkles,
+    title: "See what the analysis used",
+    detail:
+      "Every report shows where the result came from and when the review is partial, cached, or missing fresh GitHub context.",
     tag: "Honest",
   },
-];
-
-const hero_points = [
-  "Bring a PR you actually care about",
-  "Get a review path before you open GitHub tabs",
-  "See what makes the diff feel risky",
-];
-
-const proof_items = [
-  "Find the three files reviewers should inspect first.",
-  "Turn broad diffs into a focused review plan.",
-  "Understand why a PR feels safe, risky, or incomplete.",
 ];
 
 function format_avg_time(value: number | null) {
@@ -154,7 +142,7 @@ export function HomePage() {
         <div className="home-hero">
           <div className="hero-eyebrow">
             <span className="hero-dot" />
-            <span>Deterministic merge review</span>
+            <span>Deterministic pull request review</span>
           </div>
 
           <div className="hero-lottie-shell" aria-hidden="true">
@@ -169,35 +157,16 @@ export function HomePage() {
           </div>
 
           <h1 className="hero-h1">
-            Bring your real PR. <br />
-            Find what deserves <span className="hl">review first</span>.
+            Paste a PR. <br />
+            Start the review faster.
           </h1>
           <p className="hero-sub">
-            Reviewer is built for the pull request you are already thinking about right now. Paste any <b>public GitHub PR</b>
-            and get a focused review path: the risky files, the signals behind them, and a clear sense of whether the diff
-            looks routine or deserves deeper attention.
+            Reviewer reads a <b>public GitHub pull request</b> and shows you what to inspect first, what raised risk,
+            and how much confidence to place in the score.
           </p>
 
-          <div className="hero-points hero-points-centered">
-            {hero_points.map((hero_point) => (
-              <div key={hero_point} className="hero-point">
-                <span className="hero-point-dot" />
-                <span>{hero_point}</span>
-              </div>
-            ))}
-          </div>
-
-          <div className="hero-proof-grid">
-            {proof_items.map((proof_item, index) => (
-              <div key={proof_item} className="hero-proof-card">
-                <div className="hero-proof-index">0{index + 1}</div>
-                <div className="hero-proof-copy">{proof_item}</div>
-              </div>
-            ))}
-          </div>
-
           <div className="hero-input-shell">
-            <div className="hero-panel-label">Start with one pull request URL you actually want to inspect</div>
+            <div className="hero-panel-label">Paste a public GitHub pull request</div>
             <PrInputBar />
           </div>
 
@@ -251,7 +220,7 @@ export function HomePage() {
           <div>
             <div className="section-label">Recent analyses</div>
             <div className="recent-analyses-copy">
-              Reopen saved reviews inside Reviewer, compare the score, or jump out to GitHub when you need the raw PR.
+              Reopen saved reviews inside Reviewer or jump to GitHub when you need the raw pull request.
             </div>
           </div>
           <Link to="/history" className="recent-analyses-link">Open full history</Link>
@@ -280,7 +249,7 @@ export function HomePage() {
             </div>
           )) : (
             <div className="recent-analysis-empty">
-              Recent PR analyses will show up here after people start using the product with real GitHub pull requests.
+              Recent PR analyses will appear here after people start using Reviewer with real pull requests.
             </div>
           )}
         </div>
