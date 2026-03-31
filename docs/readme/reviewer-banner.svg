@@ -1,0 +1,60 @@
+<svg width="1600" height="900" viewBox="0 0 1600 900" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1600" height="900" fill="#090B11"/>
+  <rect x="48" y="48" width="1504" height="804" rx="32" fill="url(#bg)"/>
+  <rect x="88" y="92" width="504" height="716" rx="28" fill="#0F1420" stroke="#1D2738"/>
+  <rect x="628" y="92" width="884" height="220" rx="28" fill="#0F1420" stroke="#1D2738"/>
+  <rect x="628" y="336" width="430" height="472" rx="28" fill="#0F1420" stroke="#1D2738"/>
+  <rect x="1082" y="336" width="430" height="472" rx="28" fill="#0F1420" stroke="#1D2738"/>
+
+  <circle cx="180" cy="180" r="74" stroke="#283245" stroke-width="10" stroke-linecap="round" stroke-dasharray="410 70" transform="rotate(-90 180 180)"/>
+  <path d="M180 106A74 74 0 0 1 247 152" stroke="#22D3EE" stroke-width="10" stroke-linecap="round"/>
+  <path d="M160 138V220" stroke="#E9EEF7" stroke-width="10" stroke-linecap="round"/>
+  <path d="M160 138H198C214 138 225 149 225 165C225 181 214 192 198 192H176" stroke="#E9EEF7" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M176 192L225 236" stroke="#E9EEF7" stroke-width="10" stroke-linecap="round"/>
+
+  <text x="88" y="308" fill="#E9EEF7" font-family="Inter, Arial, sans-serif" font-size="54" font-weight="700">Reviewer</text>
+  <text x="88" y="358" fill="#8F9BB2" font-family="Inter, Arial, sans-serif" font-size="24">Fast, explainable pull request review for public GitHub PRs.</text>
+  <text x="88" y="430" fill="#22D3EE" font-family="JetBrains Mono, monospace" font-size="18" letter-spacing="1.4">WHAT IT DOES</text>
+  <text x="88" y="478" fill="#E9EEF7" font-family="Inter, Arial, sans-serif" font-size="24">• Makes a merge call</text>
+  <text x="88" y="520" fill="#E9EEF7" font-family="Inter, Arial, sans-serif" font-size="24">• Explains the risk signals</text>
+  <text x="88" y="562" fill="#E9EEF7" font-family="Inter, Arial, sans-serif" font-size="24">• Ranks the files to inspect first</text>
+  <text x="88" y="604" fill="#E9EEF7" font-family="Inter, Arial, sans-serif" font-size="24">• Shows limitations honestly</text>
+  <rect x="88" y="674" width="220" height="54" rx="16" fill="#22D3EE" fill-opacity="0.14" stroke="#22D3EE" stroke-opacity="0.5"/>
+  <text x="114" y="708" fill="#D9F7FF" font-family="JetBrains Mono, monospace" font-size="18">deterministic review</text>
+
+  <text x="668" y="150" fill="#7DD3FC" font-family="JetBrains Mono, monospace" font-size="18" letter-spacing="1.2">RESULT WORKSPACE</text>
+  <text x="668" y="206" fill="#E9EEF7" font-family="Inter, Arial, sans-serif" font-size="42" font-weight="700">Merge with focused review</text>
+  <text x="668" y="248" fill="#8F9BB2" font-family="Inter, Arial, sans-serif" font-size="22">Built from live GitHub metadata, changed files, commits, and deterministic scoring rules.</text>
+  <rect x="1284" y="140" width="180" height="120" rx="24" fill="#111B29"/>
+  <text x="1332" y="188" fill="#E9EEF7" font-family="Plus Jakarta Sans, Inter, sans-serif" font-size="42" font-weight="700">86</text>
+  <text x="1318" y="222" fill="#8F9BB2" font-family="JetBrains Mono, monospace" font-size="16">confidence</text>
+
+  <text x="668" y="394" fill="#7DD3FC" font-family="JetBrains Mono, monospace" font-size="18" letter-spacing="1.2">REVIEW QUEUE</text>
+  <rect x="668" y="430" width="350" height="72" rx="20" fill="#121D2B" stroke="#1F334A"/>
+  <rect x="668" y="518" width="350" height="72" rx="20" fill="#101722" stroke="#1A2637"/>
+  <rect x="668" y="606" width="350" height="72" rx="20" fill="#101722" stroke="#1A2637"/>
+  <text x="694" y="472" fill="#E9EEF7" font-family="Inter, Arial, sans-serif" font-size="22" font-weight="600">decode-arbitrary-value.ts</text>
+  <text x="694" y="555" fill="#D8E2F0" font-family="Inter, Arial, sans-serif" font-size="21">math-operators.ts</text>
+  <text x="694" y="643" fill="#D8E2F0" font-family="Inter, Arial, sans-serif" font-size="21">candidate.test.ts</text>
+  <text x="932" y="472" fill="#FCA5A5" font-family="JetBrains Mono, monospace" font-size="18">HIGH</text>
+  <text x="940" y="555" fill="#FCD34D" font-family="JetBrains Mono, monospace" font-size="18">MED</text>
+  <text x="940" y="643" fill="#FCD34D" font-family="JetBrains Mono, monospace" font-size="18">MED</text>
+
+  <text x="1122" y="394" fill="#7DD3FC" font-family="JetBrains Mono, monospace" font-size="18" letter-spacing="1.2">WHY ATTENTION</text>
+  <rect x="1122" y="430" width="350" height="110" rx="22" fill="#111A27"/>
+  <rect x="1122" y="556" width="350" height="110" rx="22" fill="#111A27"/>
+  <rect x="1122" y="682" width="350" height="86" rx="22" fill="#111A27"/>
+  <text x="1150" y="472" fill="#E9EEF7" font-family="Inter, Arial, sans-serif" font-size="23" font-weight="600">Sensitive paths changed</text>
+  <text x="1150" y="504" fill="#8F9BB2" font-family="Inter, Arial, sans-serif" font-size="18">Shared code and execution paths need closer review.</text>
+  <text x="1150" y="598" fill="#E9EEF7" font-family="Inter, Arial, sans-serif" font-size="23" font-weight="600">Patch structure hints detected</text>
+  <text x="1150" y="630" fill="#8F9BB2" font-family="Inter, Arial, sans-serif" font-size="18">Imports and structural changes suggest wider impact.</text>
+  <text x="1150" y="724" fill="#E9EEF7" font-family="Inter, Arial, sans-serif" font-size="23" font-weight="600">Check these first</text>
+  <text x="1150" y="754" fill="#8F9BB2" font-family="Inter, Arial, sans-serif" font-size="18">Open the top-ranked files before scanning the full PR.</text>
+
+  <defs>
+    <linearGradient id="bg" x1="48" y1="48" x2="1552" y2="852" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0B1018"/>
+      <stop offset="1" stop-color="#111827"/>
+    </linearGradient>
+  </defs>
+</svg>

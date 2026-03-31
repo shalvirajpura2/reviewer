@@ -1,0 +1,36 @@
+<svg width="1200" height="420" viewBox="0 0 1200 420" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1200" height="420" rx="28" fill="#0B1018"/>
+  <text x="56" y="68" fill="#E9EEF7" font-family="Inter, Arial, sans-serif" font-size="34" font-weight="700">How Reviewer works</text>
+  <text x="56" y="104" fill="#8F9BB2" font-family="Inter, Arial, sans-serif" font-size="18">A deterministic review pipeline from PR URL to ranked review queue.</text>
+
+  <rect x="56" y="154" width="192" height="180" rx="22" fill="#111827" stroke="#1E293B"/>
+  <rect x="290" y="154" width="192" height="180" rx="22" fill="#111827" stroke="#1E293B"/>
+  <rect x="524" y="154" width="192" height="180" rx="22" fill="#111827" stroke="#1E293B"/>
+  <rect x="758" y="154" width="192" height="180" rx="22" fill="#111827" stroke="#1E293B"/>
+  <rect x="992" y="154" width="152" height="180" rx="22" fill="#111827" stroke="#1E293B"/>
+
+  <text x="80" y="196" fill="#22D3EE" font-family="JetBrains Mono, monospace" font-size="16">01</text>
+  <text x="80" y="230" fill="#E9EEF7" font-family="Inter, Arial, sans-serif" font-size="24" font-weight="600">Paste PR</text>
+  <text x="80" y="270" fill="#94A3B8" font-family="Inter, Arial, sans-serif" font-size="17">Preview a public GitHub pull request and start the review.</text>
+
+  <text x="314" y="196" fill="#22D3EE" font-family="JetBrains Mono, monospace" font-size="16">02</text>
+  <text x="314" y="230" fill="#E9EEF7" font-family="Inter, Arial, sans-serif" font-size="24" font-weight="600">Fetch data</text>
+  <text x="314" y="270" fill="#94A3B8" font-family="Inter, Arial, sans-serif" font-size="17">GitHub metadata, changed files, commits, and patch hunks where available.</text>
+
+  <text x="548" y="196" fill="#22D3EE" font-family="JetBrains Mono, monospace" font-size="16">03</text>
+  <text x="548" y="230" fill="#E9EEF7" font-family="Inter, Arial, sans-serif" font-size="24" font-weight="600">Classify diff</text>
+  <text x="548" y="270" fill="#94A3B8" font-family="Inter, Arial, sans-serif" font-size="17">Map files into shared code, config, tests, migrations, dependencies, and risk areas.</text>
+
+  <text x="782" y="196" fill="#22D3EE" font-family="JetBrains Mono, monospace" font-size="16">04</text>
+  <text x="782" y="230" fill="#E9EEF7" font-family="Inter, Arial, sans-serif" font-size="24" font-weight="600">Score risk</text>
+  <text x="782" y="270" fill="#94A3B8" font-family="Inter, Arial, sans-serif" font-size="17">Deterministic signals rank the PR and produce actions, evidence, and limitations.</text>
+
+  <text x="1016" y="196" fill="#22D3EE" font-family="JetBrains Mono, monospace" font-size="16">05</text>
+  <text x="1016" y="230" fill="#E9EEF7" font-family="Inter, Arial, sans-serif" font-size="24" font-weight="600">Review</text>
+  <text x="1016" y="270" fill="#94A3B8" font-family="Inter, Arial, sans-serif" font-size="17">A focused result page tells the reviewer where to start and why.</text>
+
+  <path d="M248 244H290" stroke="#22D3EE" stroke-width="3" stroke-linecap="round"/>
+  <path d="M482 244H524" stroke="#22D3EE" stroke-width="3" stroke-linecap="round"/>
+  <path d="M716 244H758" stroke="#22D3EE" stroke-width="3" stroke-linecap="round"/>
+  <path d="M950 244H992" stroke="#22D3EE" stroke-width="3" stroke-linecap="round"/>
+</svg>
