@@ -1,6 +1,7 @@
 import type { CSSProperties } from "react";
 import { AlertCircle, ArrowRight, ExternalLink, GitBranch, Link2, X } from "lucide-react";
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 
 import { preview_pr, type PrPreview } from "../lib/api";
@@ -186,7 +187,7 @@ export function PrInputBar({ mode = "hero" }: PrInputBarProps) {
         </div>
       </div>
 
-      {is_preview_open && preview_metadata ? (
+      {is_preview_open && preview_metadata ? createPortal(
         <div className="pr-preview-modal" role="dialog" aria-modal="true" aria-label="Pull request preview">
           <button type="button" className="pr-preview-backdrop" aria-label="Close preview" onClick={close_preview} />
           <div className="pr-preview-dialog">
@@ -258,7 +259,8 @@ export function PrInputBar({ mode = "hero" }: PrInputBarProps) {
               </div>
             )}
           </div>
-        </div>
+        </div>,
+        document.body
       ) : null}
     </>
   );
