@@ -30,6 +30,7 @@ function verdict_tone(verdict: ReviewResult["verdict"]) {
 function verdict_copy(result: ReviewResult) {
   return result.verdict_text;
 }
+
 function severity_class(severity: ReviewRiskItem["severity"] | ReviewTopRiskFile["risk_level"]) {
   if (severity === "high") return "rp-sev rp-sev-h";
   if (severity === "medium") return "rp-sev rp-sev-m";
@@ -181,6 +182,21 @@ function build_share_summary(result: ReviewResult) {
   ].join("\n");
 }
 
+function build_backend_snapshot(result: ReviewResult) {
+  const items = [
+    `${result.stats.files_analyzed}/${result.stats.files_changed} files analyzed`,
+    `${result.stats.commits} commits reviewed`,
+    `${result.stats.additions} additions`,
+    `${result.stats.deletions} deletions`,
+  ];
+
+  if (result.stats.patchless_files > 0) {
+    items.push(`${result.stats.patchless_files} files without patch hunks`);
+  }
+
+  return items;
+}
+
 async function copy_text(value: string) {
   if (navigator.clipboard?.writeText) {
     await navigator.clipboard.writeText(value);
@@ -191,11 +207,19 @@ async function copy_text(value: string) {
 }
 
 function FocusPanel({ file, next_actions }: { file: ReviewTopRiskFile; next_actions: string[] }) {
-
   return (
-    <>
-      <div className="rp-focus-filename">{file.filename}</div>
-      <div className="rp-focus-lines">{file.changes} lines changed</div>
+    <div className="rp-focus-stack">
+      <div className="rp-focus-topline">
+        <div>
+          <div className="rp-focus-filename">{file.filename}</div>
+          <div className="rp-focus-lines">{file.changes} lines changed</div>
+        </div>
+        {file.blob_url ? (
+          <a className="rp-focus-link" href={file.blob_url} target="_blank" rel="noreferrer">
+            Open on GitHub
+          </a>
+        ) : null}
+      </div>
 
       <div className="rp-focus-chips">
         <span className={severity_class(file.risk_level)}>{severity_label(file.risk_level)}</span>
@@ -205,41 +229,63 @@ function FocusPanel({ file, next_actions }: { file: ReviewTopRiskFile; next_acti
         ))}
       </div>
 
-      <div className="rp-focus-section">
-        <div className="rp-focus-section-title">Backend file facts</div>
-        <div className="rp-focus-text">{`${file.changes} changed lines. Risk level: ${severity_label(file.risk_level)}. Areas: ${file.areas.join(", ") || "not classified"}.`}</div>
-      </div>
-
-      <div className="rp-focus-section">
-        <div className="rp-focus-section-title">Why it was pulled forward</div>
-        {file.reasons.map((reason, index) => (
-          <div key={reason} className="rp-bullet" style={{ "--rp-delay": `${index * 45}ms` } as CSSProperties}>
-            {reason}
-          </div>
-        ))}
-      </div>
-
-      {file.blob_url ? (
-        <div className="rp-focus-link-row">
-          <a className="rp-focus-link" href={file.blob_url} target="_blank" rel="noreferrer">
-            Open this file on GitHub
-          </a>
+      <div className="rp-focus-grid">
+        <div className="rp-focus-section">
+          <div className="rp-focus-section-title">Why it is in the queue</div>
+          {file.reasons.map((reason, index) => (
+            <div key={reason} className="rp-bullet" style={{ "--rp-delay": `${index * 45}ms` } as CSSProperties}>
+              {reason}
+            </div>
+          ))}
         </div>
-      ) : null}
 
-      <div className="rp-focus-section">
-        <div className="rp-focus-section-title">Backend review actions</div>
-        {(next_actions.length > 0 ? next_actions.slice(0, 3) : ["No additional backend review actions were generated."]).map((item, index) => (
-          <div
-            key={item}
-            className="rp-bullet"
-            style={{ "--rp-delay": `${(index + file.reasons.length) * 45}ms` } as CSSProperties}
-          >
-            {item}
+        <div className="rp-focus-section">
+          <div className="rp-focus-section-title">What to verify next</div>
+          {(next_actions.length > 0 ? next_actions.slice(0, 3) : ["No additional backend review actions were generated."]).map((item, index) => (
+            <div
+              key={item}
+              className="rp-bullet"
+              style={{ "--rp-delay": `${(index + file.reasons.length) * 45}ms` } as CSSProperties}
+            >
+              {item}
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ReviewSignalsPanel({ result }: { result: ReviewResult }) {
+  return (
+    <div className="rp-guide-panel">
+      <div className="rp-panel-header">
+        <div className="rp-card-label">What the backend saw</div>
+        <div className="rp-panel-hint">The clearest signals behind this review</div>
+      </div>
+
+      <div className="rp-guide-copy">
+        {result.signal_evidence.length > 0
+          ? "These signals explain why the backend pushed this PR toward a closer look."
+          : "No strong review signals were returned for this PR."}
+      </div>
+
+      <div className="rp-signal-stack">
+        {result.signal_evidence.slice(0, 3).map((signal) => (
+          <div key={signal.label} className="rp-signal-card">
+            <div className="rp-signal-head">
+              <span className={severity_class(signal.severity)}>{severity_label(signal.severity)}</span>
+              <span className="rp-signal-title">{signal.label}</span>
+            </div>
+            <div className="rp-signal-evidence">
+              {signal.evidence.slice(0, 2).map((item) => (
+                <div key={item} className="rp-bullet">{item}</div>
+              ))}
+            </div>
           </div>
         ))}
       </div>
-    </>
+    </div>
   );
 }
 
@@ -247,12 +293,12 @@ function ReviewNotesPanel({ result }: { result: ReviewResult }) {
   return (
     <div className="rp-guide-panel">
       <div className="rp-panel-header">
-        <div className="rp-card-label">review notes</div>
-        <div className="rp-panel-hint">Generated from the backend recommendation engine</div>
+        <div className="rp-card-label">Suggested review flow</div>
+        <div className="rp-panel-hint">Backend recommendations in the order they matter</div>
       </div>
 
       <div className="rp-guide-copy">
-        {result.review_plan.length > 0 ? "Generated from the current deterministic backend rules and signals." : "The backend did not return extra review steps for this PR."}
+        {result.review_plan.length > 0 ? "Use this as the shortest path through the PR after the first file." : "The backend did not return extra review steps for this PR."}
       </div>
 
       <div className="rp-plan-list">
@@ -277,8 +323,8 @@ function ReviewLimitsPanel({ result }: { result: ReviewResult }) {
   return (
     <div className="rp-guide-panel">
       <div className="rp-panel-header">
-        <div className="rp-card-label">keep in mind</div>
-        <div className="rp-panel-hint">Backend coverage, source, and current limits</div>
+        <div className="rp-card-label">Coverage and limits</div>
+        <div className="rp-panel-hint">How much of this review came directly from backend evidence</div>
       </div>
 
       <div className="rp-certainty-grid">
@@ -586,6 +632,7 @@ export function ResultPage() {
   const top_files = result?.top_risk_files ?? [];
   const next_actions = result?.next_actions ?? [];
   const focused = top_files.find((file) => file.filename === selected_file) ?? top_files[0] ?? null;
+  const backend_snapshot = result ? build_backend_snapshot(result) : [];
 
   return (
     <div className="rp-page">
@@ -643,6 +690,14 @@ export function ResultPage() {
               <div className="rp-verdict-eyebrow">review call</div>
               <div className={`rp-verdict-text ${verdict_tone(result.verdict)}`}>{verdict_copy(result)}</div>
               <div className="rp-verdict-summary">{result.summary}</div>
+              <div className="rp-signal-row">
+                {result.top_risks.slice(0, 3).map((item) => (
+                  <div key={item.label} className="rp-signal-pill">
+                    <span className={severity_class(item.severity)}>{severity_label(item.severity)}</span>
+                    <span>{item.label}</span>
+                  </div>
+                ))}
+              </div>
               <div className="rp-share-row">
                 <button type="button" className="rp-secondary-btn" onClick={() => void handle_copy_summary()}>
                   Copy summary
@@ -660,30 +715,29 @@ export function ResultPage() {
               {share_feedback ? <div className="rp-share-feedback">{share_feedback}</div> : null}
             </div>
 
-            <div className="rp-hero-dial">
-              <div
-                ref={dial_ref}
-                className="rp-dial-ring"
-                style={{
-                  "--rp-progress": "0%",
-                  "--rp-tone": confidence_color(result.merge_confidence),
-                } as CSSProperties}
-              >
-                <div className="rp-dial-inner">
-                  <div className="rp-dial-num">0</div>
-                  <div className="rp-dial-label">confidence</div>
+            <div className="rp-hero-rail">
+              <div className="rp-score-card">
+                <div
+                  ref={dial_ref}
+                  className="rp-dial-ring"
+                  style={{
+                    "--rp-progress": "0%",
+                    "--rp-tone": confidence_color(result.merge_confidence),
+                  } as CSSProperties}
+                >
+                  <div className="rp-dial-inner">
+                    <div className="rp-dial-num">0</div>
+                    <div className="rp-dial-label">confidence</div>
+                  </div>
                 </div>
               </div>
 
-              <div className="rp-mini-stats">
-                <div className="rp-mini-stat">
-                  <span className="rp-mini-stat-val">{result.stats.files_analyzed}/{result.stats.files_changed}</span>
-                  <span className="rp-mini-stat-key">files analyzed</span>
-                </div>
-                <div className="rp-mini-stat">
-                  <span className="rp-mini-stat-val">{result.stats.commits}</span>
-                  <span className="rp-mini-stat-key">commits</span>
-                </div>
+              <div className="rp-mini-stats rp-mini-stats-stack">
+                {backend_snapshot.map((item) => (
+                  <div key={item} className="rp-mini-stat rp-mini-stat-wide">
+                    <span className="rp-mini-stat-val">{item}</span>
+                  </div>
+                ))}
                 <div className="rp-mini-stat rp-mini-stat-source">
                   <span className="rp-mini-stat-val">{source_badge_short(result)}</span>
                   <span className="rp-mini-stat-key">source</span>
@@ -694,18 +748,18 @@ export function ResultPage() {
 
           <div className="rp-sequence-shell rp-anim" style={{ "--rp-delay": "120ms" } as CSSProperties}>
             <div className="rp-sequence-intro">
-              <div className="rp-card-label">step 1</div>
-              <div className="rp-sequence-title">Start where reviewer attention matters most</div>
+              <div className="rp-card-label">Start here</div>
+              <div className="rp-sequence-title">Open one file first, then decide if the PR needs a wider pass</div>
               <div className="rp-sequence-copy">
-                The queue is ordered so you can review the most important file first and only go wider when needed.
+                The queue is already ranked by the backend. You do not need to scan the whole PR before making progress.
               </div>
             </div>
 
             <div className="rp-main-grid">
               <div className="rp-queue-panel">
                 <div className="rp-panel-header">
-                  <div className="rp-card-label">review queue</div>
-                  <div className="rp-panel-hint">Open the first file, then move down the queue.</div>
+                  <div className="rp-card-label">Review queue</div>
+                  <div className="rp-panel-hint">The backend-ranked order of files to inspect</div>
                 </div>
                 {top_files.length > 0 ? (
                   top_files.map((file, index) => (
@@ -730,8 +784,8 @@ export function ResultPage() {
 
               <div className="rp-focus-panel">
                 <div className="rp-panel-header">
-                  <div className="rp-card-label">why this file is first</div>
-                  <div className="rp-panel-hint">Directly from the current backend analysis.</div>
+                  <div className="rp-card-label">Selected file</div>
+                  <div className="rp-panel-hint">The current best starting point from the backend analysis</div>
                 </div>
                 {focused ? <FocusPanel key={focused.filename} file={focused} next_actions={next_actions} /> : <div className="rp-empty-state">No prioritized file available.</div>}
               </div>
@@ -739,6 +793,7 @@ export function ResultPage() {
           </div>
 
           <div className="rp-guide-grid rp-anim" style={{ "--rp-delay": "150ms" } as CSSProperties}>
+            <ReviewSignalsPanel result={result} />
             <ReviewNotesPanel result={result} />
             <ReviewLimitsPanel result={result} />
           </div>
@@ -761,4 +816,3 @@ export function ResultPage() {
     </div>
   );
 }
-
