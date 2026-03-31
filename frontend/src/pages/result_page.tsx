@@ -197,6 +197,10 @@ function build_backend_snapshot(result: ReviewResult) {
   return items;
 }
 
+function primary_next_step(result: ReviewResult) {
+  return result.next_actions.slice(0, 2);
+}
+
 async function copy_text(value: string) {
   if (navigator.clipboard?.writeText) {
     await navigator.clipboard.writeText(value);
@@ -260,8 +264,8 @@ function ReviewSignalsPanel({ result }: { result: ReviewResult }) {
   return (
     <div className="rp-guide-panel">
       <div className="rp-panel-header">
-        <div className="rp-card-label">What the backend saw</div>
-        <div className="rp-panel-hint">The clearest signals behind this review</div>
+        <div className="rp-card-label">why attention</div>
+        <div className="rp-panel-hint">The strongest signals behind this review</div>
       </div>
 
       <div className="rp-guide-copy">
@@ -293,12 +297,12 @@ function ReviewNotesPanel({ result }: { result: ReviewResult }) {
   return (
     <div className="rp-guide-panel">
       <div className="rp-panel-header">
-        <div className="rp-card-label">Suggested review flow</div>
-        <div className="rp-panel-hint">Backend recommendations in the order they matter</div>
+        <div className="rp-card-label">review notes</div>
+        <div className="rp-panel-hint">Backend recommendations after the first pass</div>
       </div>
 
       <div className="rp-guide-copy">
-        {result.review_plan.length > 0 ? "Use this as the shortest path through the PR after the first file." : "The backend did not return extra review steps for this PR."}
+        {result.review_plan.length > 0 ? "Follow these backend recommendations after opening the first file." : "The backend did not return extra review steps for this PR."}
       </div>
 
       <div className="rp-plan-list">
@@ -687,17 +691,9 @@ export function ResultPage() {
 
           <div className="rp-hero rp-anim" style={{ "--rp-delay": "60ms" } as CSSProperties}>
             <div className="rp-hero-copy">
-              <div className="rp-verdict-eyebrow">review call</div>
+              <div className="rp-verdict-eyebrow">decision</div>
               <div className={`rp-verdict-text ${verdict_tone(result.verdict)}`}>{verdict_copy(result)}</div>
               <div className="rp-verdict-summary">{result.summary}</div>
-              <div className="rp-signal-row">
-                {result.top_risks.slice(0, 3).map((item) => (
-                  <div key={item.label} className="rp-signal-pill">
-                    <span className={severity_class(item.severity)}>{severity_label(item.severity)}</span>
-                    <span>{item.label}</span>
-                  </div>
-                ))}
-              </div>
               <div className="rp-share-row">
                 <button type="button" className="rp-secondary-btn" onClick={() => void handle_copy_summary()}>
                   Copy summary
@@ -746,9 +742,43 @@ export function ResultPage() {
             </div>
           </div>
 
+          <div className="rp-guide-grid rp-anim" style={{ "--rp-delay": "100ms" } as CSSProperties}>
+            <ReviewSignalsPanel result={result} />
+            <div className="rp-guide-panel">
+              <div className="rp-panel-header">
+                <div className="rp-card-label">check these first</div>
+                <div className="rp-panel-hint">Open these files before going wider</div>
+              </div>
+              <div className="rp-priority-list">
+                {top_files.slice(0, 3).map((file) => (
+                  <button
+                    key={file.filename}
+                    type="button"
+                    className={`rp-priority-item ${focused?.filename === file.filename ? "rp-active" : ""}`}
+                    onClick={() => set_selected_file(file.filename)}
+                  >
+                    <span className="rp-priority-name">{file.filename}</span>
+                    <span className="rp-priority-chevron">&gt;</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="rp-guide-panel">
+              <div className="rp-panel-header">
+                <div className="rp-card-label">recommended next step</div>
+                <div className="rp-panel-hint">The quickest useful review path</div>
+              </div>
+              <div className="rp-priority-list">
+                {primary_next_step(result).length > 0 ? primary_next_step(result).map((item) => (
+                  <div key={item} className="rp-bullet">{item}</div>
+                )) : <div className="rp-empty-state">No immediate backend next steps were generated.</div>}
+              </div>
+            </div>
+          </div>
+
           <div className="rp-sequence-shell rp-anim" style={{ "--rp-delay": "120ms" } as CSSProperties}>
             <div className="rp-sequence-intro">
-              <div className="rp-card-label">Start here</div>
+              <div className="rp-card-label">review queue</div>
               <div className="rp-sequence-title">Open one file first, then decide if the PR needs a wider pass</div>
               <div className="rp-sequence-copy">
                 The queue is already ranked by the backend. You do not need to scan the whole PR before making progress.
@@ -758,8 +788,8 @@ export function ResultPage() {
             <div className="rp-main-grid">
               <div className="rp-queue-panel">
                 <div className="rp-panel-header">
-                  <div className="rp-card-label">Review queue</div>
-                  <div className="rp-panel-hint">The backend-ranked order of files to inspect</div>
+                  <div className="rp-card-label">review queue</div>
+                  <div className="rp-panel-hint">Click a file to inspect it in detail</div>
                 </div>
                 {top_files.length > 0 ? (
                   top_files.map((file, index) => (
@@ -784,8 +814,8 @@ export function ResultPage() {
 
               <div className="rp-focus-panel">
                 <div className="rp-panel-header">
-                  <div className="rp-card-label">Selected file</div>
-                  <div className="rp-panel-hint">The current best starting point from the backend analysis</div>
+                  <div className="rp-card-label">selected file</div>
+                  <div className="rp-panel-hint">Context updates when you switch files</div>
                 </div>
                 {focused ? <FocusPanel key={focused.filename} file={focused} next_actions={next_actions} /> : <div className="rp-empty-state">No prioritized file available.</div>}
               </div>
@@ -793,7 +823,6 @@ export function ResultPage() {
           </div>
 
           <div className="rp-guide-grid rp-anim" style={{ "--rp-delay": "150ms" } as CSSProperties}>
-            <ReviewSignalsPanel result={result} />
             <ReviewNotesPanel result={result} />
             <ReviewLimitsPanel result={result} />
           </div>
