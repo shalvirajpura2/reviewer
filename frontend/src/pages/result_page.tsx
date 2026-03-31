@@ -775,43 +775,49 @@ export function ResultPage() {
             </div>
           </div>
 
-          <div className="rp-action-strip rp-anim" style={{ "--rp-delay": "120ms" } as CSSProperties}>
-            <div className="rp-action-card">
-              <div className="rp-card-label">what drove the score</div>
-              {result.top_risks.slice(0, 3).map((risk) => (
-                <div key={risk.label} className="rp-risk-row">
-                  <span className={severity_class(risk.severity)}>{severity_label(risk.severity)}</span>
-                  <span>{risk.label}</span>
-                </div>
-              ))}
-            </div>
-
-            <div className="rp-action-card">
-              <div className="rp-card-label">start here</div>
-              {top_files.slice(0, 3).map((file) => (
-                <div key={file.filename} className="rp-file-btn-row">
-                  <button type="button" className="rp-file-btn" onClick={() => set_selected_file(file.filename)}>
-                    <span>{file.filename}</span>
-                    <span className="rp-file-btn-arrow">&gt;</span>
-                  </button>
-                  {file.blob_url ? (
-                    <a className="rp-inline-link" href={file.blob_url} target="_blank" rel="noreferrer">
-                      Open file
-                    </a>
-                  ) : null}
-                </div>
-              ))}
-            </div>
-
-            <div className="rp-action-card rp-action-card-highlight">
-              <div className="rp-card-label">next best move</div>
-              <div className="rp-action-card-title">{result.review_plan[0]?.title ?? "Run one focused reviewer pass before merge"}</div>
-              <div className="rp-action-card-copy">
-                {result.review_plan[0]?.detail ?? "Start with the highest-risk file, then validate the reviewer path before merge."}
+          <div className="rp-sequence-shell rp-anim" style={{ "--rp-delay": "120ms" } as CSSProperties}>
+            <div className="rp-sequence-intro">
+              <div className="rp-card-label">step 1</div>
+              <div className="rp-sequence-title">Start with the files most likely to matter</div>
+              <div className="rp-sequence-copy">
+                Open the first file, understand why it was pulled forward, then move through the queue in order.
               </div>
-              {(next_actions.length > 0 ? next_actions.slice(0, 2) : ["Run one focused reviewer pass before merge"]).map((item) => (
-                <div key={item} className="rp-next-item">{item}</div>
-              ))}
+            </div>
+
+            <div className="rp-main-grid">
+              <div className="rp-queue-panel">
+                <div className="rp-panel-header">
+                  <div className="rp-card-label">review queue</div>
+                  <div className="rp-panel-hint">Begin with 01, then open GitHub for the full diff when needed</div>
+                </div>
+                {top_files.length > 0 ? (
+                  top_files.map((file, index) => (
+                    <button
+                      key={file.filename}
+                      type="button"
+                      className={`rp-file-row ${focused?.filename === file.filename ? "rp-active" : ""}`}
+                      onClick={() => set_selected_file(file.filename)}
+                    >
+                      <span className="rp-file-rank">{String(index + 1).padStart(2, "0")}</span>
+                      <span>
+                        <span className="rp-file-name">{file.filename}</span>
+                        <span className="rp-file-reason">{file.reasons[0] ?? "Review this file first."}</span>
+                      </span>
+                      <span className={severity_class(file.risk_level)}>{severity_label(file.risk_level)}</span>
+                    </button>
+                  ))
+                ) : (
+                  <div className="rp-empty-state">No prioritized files identified.</div>
+                )}
+              </div>
+
+              <div className="rp-focus-panel">
+                <div className="rp-panel-header">
+                  <div className="rp-card-label">selected file</div>
+                  <div className="rp-panel-hint">Why it matters and what to verify before approval</div>
+                </div>
+                {focused ? <FocusPanel key={focused.filename} file={focused} next_actions={next_actions} /> : <div className="rp-empty-state">No prioritized file available.</div>}
+              </div>
             </div>
           </div>
 
@@ -820,39 +826,26 @@ export function ResultPage() {
             <CertaintyPanel result={result} />
           </div>
 
-          <div className="rp-main-grid rp-anim" style={{ "--rp-delay": "180ms" } as CSSProperties}>
-            <div className="rp-queue-panel">
-              <div className="rp-panel-header">
-                <div className="rp-card-label">review queue</div>
-                <div className="rp-panel-hint">Begin with 01, then open GitHub for the full diff when needed</div>
+          <div className="rp-action-strip rp-anim" style={{ "--rp-delay": "180ms" } as CSSProperties}>
+            <div className="rp-action-card rp-action-card-highlight">
+              <div className="rp-card-label">step 2</div>
+              <div className="rp-action-card-title">{result.review_plan[0]?.title ?? "Run one focused reviewer pass before merge"}</div>
+              <div className="rp-action-card-copy">
+                {result.review_plan[0]?.detail ?? "Start with the highest-risk file, then validate the reviewer path before merge."}
               </div>
-              {top_files.length > 0 ? (
-                top_files.map((file, index) => (
-                  <button
-                    key={file.filename}
-                    type="button"
-                    className={`rp-file-row ${focused?.filename === file.filename ? "rp-active" : ""}`}
-                    onClick={() => set_selected_file(file.filename)}
-                  >
-                    <span className="rp-file-rank">{String(index + 1).padStart(2, "0")}</span>
-                    <span>
-                      <span className="rp-file-name">{file.filename}</span>
-                      <span className="rp-file-reason">{file.reasons[0] ?? "Review this file first."}</span>
-                    </span>
-                    <span className={severity_class(file.risk_level)}>{severity_label(file.risk_level)}</span>
-                  </button>
-                ))
-              ) : (
-                <div className="rp-empty-state">No prioritized files identified.</div>
-              )}
+              {(next_actions.length > 0 ? next_actions.slice(0, 2) : ["Run one focused reviewer pass before merge"]).map((item) => (
+                <div key={item} className="rp-next-item">{item}</div>
+              ))}
             </div>
 
-            <div className="rp-focus-panel">
-              <div className="rp-panel-header">
-                <div className="rp-card-label">selected file</div>
-                <div className="rp-panel-hint">Why it matters and what to verify before approval</div>
-              </div>
-              {focused ? <FocusPanel key={focused.filename} file={focused} next_actions={next_actions} /> : <div className="rp-empty-state">No prioritized file available.</div>}
+            <div className="rp-action-card">
+              <div className="rp-card-label">what drove the score</div>
+              {result.top_risks.slice(0, 3).map((risk) => (
+                <div key={risk.label} className="rp-risk-row">
+                  <span className={severity_class(risk.severity)}>{severity_label(risk.severity)}</span>
+                  <span>{risk.label}</span>
+                </div>
+              ))}
             </div>
           </div>
 

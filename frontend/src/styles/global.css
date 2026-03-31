@@ -8104,3 +8104,49 @@ nav {
     grid-template-columns: minmax(0, 1fr) minmax(220px, 1.15fr) minmax(0, 1fr);
   }
 }
+
+.rp-sequence-shell {
+  display: grid;
+  gap: 1px;
+  margin-bottom: 1px;
+}
+
+.rp-sequence-intro {
+  padding: 22px;
+  border: 1px solid rgba(var(--border2), 0.18);
+  background: rgba(12, 18, 29, 0.86);
+}
+
+.rp-sequence-title {
+  margin-top: 10px;
+  font-family: "Plus Jakarta Sans", sans-serif;
+  font-size: 24px;
+  font-weight: 650;
+  line-height: 1.18;
+  letter-spacing: -0.02em;
+  color: var(--rp-text);
+}
+
+.rp-sequence-copy {
+  max-width: 60ch;
+  margin-top: 10px;
+  font-size: 14px;
+  line-height: 1.72;
+  color: var(--rp-text-2);
+}
+
+@media (max-width: 900px) {
+  .rp-sequence-intro {
+    padding: 20px;
+  }
+
+  .rp-sequence-title {
+    font-size: 22px;
+  }
+}
+
+@media (max-width: 640px) {
+  .rp-sequence-title {
+    font-size: 20px;
+  }
+}
