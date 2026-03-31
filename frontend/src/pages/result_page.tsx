@@ -139,74 +139,6 @@ function priority_copy(priority: ReviewRecommendation["priority"]) {
   return "Nice to have";
 }
 
-function review_note_title(result: ReviewResult) {
-  if (result.report_status === "fallback") return "Fresh live data was unavailable";
-  if (result.provenance?.coverage.is_partial) return "Some of this review is incomplete";
-  if ((result.provenance?.confidence_in_score ?? "medium") === "high") return "The review surface looks well covered";
-  if ((result.provenance?.confidence_in_score ?? "medium") === "low") return "Use this score for triage, not final approval";
-  return "This is a strong first-pass review";
-}
-
-function review_note_copy(result: ReviewResult) {
-  if (result.report_status === "fallback") {
-    return "Reviewer fell back to the last saved successful analysis, so validate the current diff directly on GitHub before relying on the verdict.";
-  }
-
-  if (result.provenance?.coverage.is_partial) {
-    return "GitHub did not return full review context for every file, so use the queue to start strong and then inspect the remaining surfaces directly.";
-  }
-
-  if ((result.provenance?.confidence_in_score ?? "medium") === "low") {
-    return "The PR is broad enough that the score should help you prioritize reviewer time more than decide the final merge on its own.";
-  }
-
-  return "The current review has enough diff context to guide where a developer should start, what to validate, and which files deserve the first pass.";
-}
-
-function file_summary(file: ReviewTopRiskFile) {
-  const area = file.areas[0] ?? "review-relevant";
-
-  if (file.is_sensitive) {
-    return `This file sits in a sensitive area and carries ${file.changes} changed lines across ${area} code.`;
-  }
-
-  if (file.risk_level === "high") {
-    return `This file has the highest risk signature in the pull request and carries ${file.changes} changed lines.`;
-  }
-
-  return "This file stands out because its diff shape and affected areas make it worth reviewing early.";
-}
-
-function reviewer_checks(file: ReviewTopRiskFile, next_actions: string[]) {
-  const checks = new Set<string>();
-
-  if (file.is_sensitive) {
-    checks.add("Verify downstream behavior and shared call sites still behave as expected.");
-  }
-
-  if (file.areas.some((area) => area.toLowerCase().includes("test"))) {
-    checks.add("Confirm the updated tests still cover the logic that changed.");
-  }
-
-  if (file.reasons.some((reason) => reason.toLowerCase().includes("shared"))) {
-    checks.add("Check whether shared paths now affect more surfaces than intended.");
-  }
-
-  if (file.reasons.some((reason) => reason.toLowerCase().includes("logic"))) {
-    checks.add("Read the changed branches carefully and validate happy path and edge cases.");
-  }
-
-  next_actions.slice(0, 2).forEach((action) => {
-    checks.add(action.endsWith(".") ? action : `${action}.`);
-  });
-
-  if (checks.size === 0) {
-    checks.add("Review the changed logic and confirm surrounding behavior still holds.");
-  }
-
-  return Array.from(checks).slice(0, 4);
-}
-
 function animate_dial(element: HTMLElement, target: number, duration = 1100) {
   const start = performance.now();
 
@@ -259,7 +191,6 @@ async function copy_text(value: string) {
 }
 
 function FocusPanel({ file, next_actions }: { file: ReviewTopRiskFile; next_actions: string[] }) {
-  const checks = reviewer_checks(file, next_actions);
 
   return (
     <>
@@ -275,8 +206,8 @@ function FocusPanel({ file, next_actions }: { file: ReviewTopRiskFile; next_acti
       </div>
 
       <div className="rp-focus-section">
-        <div className="rp-focus-section-title">Why prioritized</div>
-        <div className="rp-focus-text">{file_summary(file)}</div>
+        <div className="rp-focus-section-title">Backend file facts</div>
+        <div className="rp-focus-text">{`${file.changes} changed lines. Risk level: ${severity_label(file.risk_level)}. Areas: ${file.areas.join(", ") || "not classified"}.`}</div>
       </div>
 
       <div className="rp-focus-section">
@@ -297,8 +228,8 @@ function FocusPanel({ file, next_actions }: { file: ReviewTopRiskFile; next_acti
       ) : null}
 
       <div className="rp-focus-section">
-        <div className="rp-focus-section-title">Related backend review actions</div>
-        {checks.map((item, index) => (
+        <div className="rp-focus-section-title">Backend review actions</div>
+        {(next_actions.length > 0 ? next_actions.slice(0, 3) : ["No additional backend review actions were generated."]).map((item, index) => (
           <div
             key={item}
             className="rp-bullet"
@@ -317,15 +248,15 @@ function ReviewNotesPanel({ result }: { result: ReviewResult }) {
     <div className="rp-guide-panel">
       <div className="rp-panel-header">
         <div className="rp-card-label">review notes</div>
-        <div className="rp-panel-hint">A short pass after the first file</div>
+        <div className="rp-panel-hint">Generated from the backend recommendation engine</div>
       </div>
 
       <div className="rp-guide-copy">
-        Use these notes to guide the rest of the review without opening every file at once.
+        {result.review_plan.length > 0 ? "Generated from the current deterministic backend rules and signals." : "The backend did not return extra review steps for this PR."}
       </div>
 
       <div className="rp-plan-list">
-        {result.review_plan.slice(0, 3).map((item, index) => (
+        {result.review_plan.length > 0 ? result.review_plan.slice(0, 3).map((item, index) => (
           <div key={item.id} className="rp-plan-item">
             <div className="rp-plan-head">
               <div className="rp-plan-index">0{index + 1}</div>
@@ -336,7 +267,7 @@ function ReviewNotesPanel({ result }: { result: ReviewResult }) {
               <span className={priority_class(item.priority)}>{priority_copy(item.priority)}</span>
             </div>
           </div>
-        ))}
+        )) : <div className="rp-empty-state">No extra backend review notes were generated.</div>}
       </div>
     </div>
   );
@@ -347,11 +278,8 @@ function ReviewLimitsPanel({ result }: { result: ReviewResult }) {
     <div className="rp-guide-panel">
       <div className="rp-panel-header">
         <div className="rp-card-label">keep in mind</div>
-        <div className="rp-panel-hint">What the backend could and could not verify</div>
+        <div className="rp-panel-hint">Backend coverage, source, and current limits</div>
       </div>
-
-      <div className="rp-certainty-title">{review_note_title(result)}</div>
-      <div className="rp-guide-copy">{review_note_copy(result)}</div>
 
       <div className="rp-certainty-grid">
         <div className="rp-certainty-stat">
@@ -803,7 +731,7 @@ export function ResultPage() {
               <div className="rp-focus-panel">
                 <div className="rp-panel-header">
                   <div className="rp-card-label">why this file is first</div>
-                  <div className="rp-panel-hint">The shortest useful explanation for this pick.</div>
+                  <div className="rp-panel-hint">Directly from the current backend analysis.</div>
                 </div>
                 {focused ? <FocusPanel key={focused.filename} file={focused} next_actions={next_actions} /> : <div className="rp-empty-state">No prioritized file available.</div>}
               </div>

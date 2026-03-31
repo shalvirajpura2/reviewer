@@ -8,39 +8,8 @@ import type {
   ReviewSignalEvidence
 } from "../types/review";
 
-function map_verdict(label: BackendAnalysisResult["label"]): ReviewResult["verdict"] {
-  if (label === "high confidence") {
-    return "mergeable";
-  }
-
-  if (label === "moderate confidence" || label === "low confidence") {
-    return "focused review";
-  }
-
-  return "review needed";
-}
-
 function build_summary(result: BackendAnalysisResult) {
-  const coverage = result.analysis_context.coverage;
-
-  if (result.analysis_context.cache_status === "fallback") {
-    return result.analysis_context.summary;
-  }
-
-  if (coverage.is_partial && coverage.partial_reasons.length > 0) {
-    return `Partial analysis: ${coverage.partial_reasons[0]}`;
-  }
-
-  if (result.analysis_context.summary) {
-    return result.analysis_context.summary;
-  }
-
-  if (result.triggered_signals.length === 0) {
-    return "The pull request looks contained enough to merge with routine review.";
-  }
-
-  const primary_signal = result.triggered_signals[0].label.toLowerCase();
-  return `${result.verdict}. ${primary_signal} is the main review driver.`;
+  return result.analysis_context.summary || result.verdict;
 }
 
 function build_changed_areas(result: BackendAnalysisResult) {
@@ -63,26 +32,14 @@ function build_top_risks(result: BackendAnalysisResult): ReviewRiskItem[] {
 
   return [
     {
-      label: "no material risk signals were detected",
+      label: "No material risk signals were detected",
       severity: "low"
     }
   ];
 }
 
 function build_next_actions(result: BackendAnalysisResult) {
-  const next_actions = result.recommendations.length > 0
-    ? result.recommendations.slice(0, 5).map((item) => item.title)
-    : ["Run a final reviewer pass before merge"];
-
-  if (result.analysis_context.cache_status === "fallback") {
-    return ["Retry for a fresh live analysis in a few minutes", ...next_actions].slice(0, 5);
-  }
-
-  if (result.analysis_context.coverage.is_partial) {
-    return ["Review the remaining files directly on GitHub", ...next_actions].slice(0, 5);
-  }
-
-  return next_actions;
+  return result.recommendations.slice(0, 5).map((item) => item.title);
 }
 
 function map_breakdown_level(score: number): ReviewRiskBreakdownItem["level"] {
@@ -125,23 +82,12 @@ function build_recent_commits(result: BackendAnalysisResult): ReviewScoreMovemen
 }
 
 function build_review_plan(result: BackendAnalysisResult): ReviewRecommendation[] {
-  if (result.recommendations.length > 0) {
-    return result.recommendations.slice(0, 5).map((item) => ({
-      id: item.id,
-      title: item.title,
-      detail: item.detail,
-      priority: item.priority
-    }));
-  }
-
-  return [
-    {
-      id: "standard_review",
-      title: "Run a standard merge review",
-      detail: "The current analysis looks contained, so a normal reviewer pass should be enough before merge.",
-      priority: "nice_to_have"
-    }
-  ];
+  return result.recommendations.slice(0, 5).map((item) => ({
+    id: item.id,
+    title: item.title,
+    detail: item.detail,
+    priority: item.priority
+  }));
 }
 
 function build_signal_evidence(result: BackendAnalysisResult): ReviewSignalEvidence[] {
@@ -212,7 +158,7 @@ export function map_analysis_to_review(result: BackendAnalysisResult): ReviewRes
     updated_at: result.metadata.updated_at,
     report_status: result.analysis_context.cache_status,
     merge_confidence: result.score,
-    verdict: map_verdict(result.label),
+    verdict: result.label === "high confidence" ? "mergeable" : result.label === "risky to merge" ? "review needed" : "focused review",
     verdict_text: result.verdict,
     confidence_label: result.label,
     summary: build_summary(result),
