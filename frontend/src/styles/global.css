@@ -7884,3 +7884,205 @@ nav {
     height: 36px;
   }
 }
+
+.hero-input-shell {
+  min-width: 0;
+}
+
+.input-zone {
+  min-width: 0;
+}
+
+.pr-preview-heading {
+  min-width: 0;
+}
+
+.pr-preview-copy,
+.pr-preview-repo,
+.pr-preview-branch,
+.pr-preview-stat-value,
+.rp-verdict-summary,
+.rp-review-focus,
+.rp-focus-text,
+.rp-bullet,
+.rp-next-item,
+.rp-prov-item,
+.rp-ev-line,
+.rp-ev-title,
+.rp-card-label,
+.rp-panel-hint,
+.rp-mini-stat-key,
+.rp-mini-stat-val,
+.rp-certainty-title,
+.rp-certainty-stat-value {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.pr-preview-modal {
+  align-items: center;
+}
+
+.pr-preview-dialog {
+  margin-inline: auto;
+}
+
+.pr-preview-dialog-top,
+.pr-preview-copy,
+.pr-preview-branches,
+.pr-preview-actions,
+.pr-preview-loading-shell {
+  width: 100%;
+}
+
+.pr-preview-copy,
+.pr-preview-loading-shell {
+  text-align: center;
+}
+
+.pr-preview-dialog-top {
+  align-items: center;
+}
+
+.pr-preview-actions {
+  justify-content: center;
+  align-items: center;
+}
+
+.pr-preview-btn,
+.pr-preview-link {
+  justify-content: center;
+  text-align: center;
+  flex: 1 1 180px;
+}
+
+.pr-preview-loading-shell .pr-preview-title,
+.pr-preview-loading-shell .pr-preview-copy,
+.pr-preview-loading-shell .pr-preview-eyebrow {
+  text-align: center;
+}
+
+.rp-loading-quiet {
+  display: grid;
+  gap: 10px;
+}
+
+.rp-loading-quiet .rp-loading-copy {
+  margin-bottom: 0;
+}
+
+.rp-topbar,
+.rp-hero,
+.rp-action-card,
+.rp-guide-panel,
+.rp-queue-panel,
+.rp-focus-panel,
+.rp-dp-panel,
+.rp-sec-panel,
+.rp-risk-card,
+.rp-file-row,
+.rp-plan-item,
+.rp-certainty-stat,
+.rp-mini-stat,
+.rp-pill,
+.rp-pill-link,
+.rp-file-btn,
+.rp-risk-row,
+.rp-risk-card-head,
+.rp-focus-chips,
+.rp-share-row,
+.rp-topbar-pills {
+  min-width: 0;
+}
+
+.rp-topbar-pills {
+  align-items: flex-start;
+}
+
+.rp-pill,
+.rp-pill-link {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+.rp-file-row {
+  grid-template-columns: 44px minmax(0, 1fr) auto;
+}
+
+.rp-file-row > span:nth-child(2) {
+  min-width: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.rp-file-btn {
+  width: 100%;
+  min-width: 0;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.rp-file-btn > span:first-child {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.rp-risk-row {
+  min-width: 0;
+}
+
+.rp-risk-row > span:last-child {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.rp-focus-chips {
+  flex-wrap: wrap;
+}
+
+.rp-pr-title,
+.rp-focus-filename {
+  max-width: 100%;
+}
+
+@media (max-width: 900px) {
+  .pr-preview-dialog-top {
+    align-items: flex-start;
+  }
+
+  .pr-preview-actions {
+    justify-content: stretch;
+  }
+
+  .rp-topbar-pills {
+    gap: 10px;
+  }
+}
+
+@media (max-width: 640px) {
+  .pr-preview-copy,
+  .pr-preview-loading-shell {
+    text-align: left;
+  }
+
+  .pr-preview-loading-shell .pr-preview-title,
+  .pr-preview-loading-shell .pr-preview-copy,
+  .pr-preview-loading-shell .pr-preview-eyebrow {
+    text-align: left;
+  }
+
+  .pr-preview-btn,
+  .pr-preview-link,
+  .rp-pill,
+  .rp-pill-link {
+    width: 100%;
+  }
+
+  .rp-file-row {
+    grid-template-columns: 1fr;
+  }
+
+  .rp-file-row > span:nth-child(2) {
+    order: 2;
+  }
+}

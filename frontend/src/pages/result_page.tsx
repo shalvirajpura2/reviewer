@@ -1,6 +1,6 @@
 import type { CSSProperties } from "react";
 import { useEffect, useRef, useState } from "react";
-import { Link, Navigate, useSearchParams } from "react-router-dom";
+import { Link, Navigate, useLocation, useSearchParams } from "react-router-dom";
 
 import { SiteFooter } from "../components/site_footer";
 import { analyze_pr } from "../lib/api";
@@ -528,9 +528,11 @@ function DeepPanels({ result }: { result: ReviewResult }) {
 }
 
 export function ResultPage() {
+  const location = useLocation();
   const [search_params] = useSearchParams();
   const raw_pr_url = search_params.get("pr_url");
   const pr_url = normalize_pr_url(raw_pr_url ?? "");
+  const skip_loading_screen = Boolean((location.state as { skip_loading_screen?: boolean } | null)?.skip_loading_screen);
 
   const [result, set_result] = useState<ReviewResult | null>(null);
   const [is_loading, set_is_loading] = useState(true);
@@ -671,19 +673,26 @@ export function ResultPage() {
   return (
     <div className="rp-page">
       {is_loading ? (
-        <div className="rp-loading rp-anim" style={{ "--rp-delay": "0ms" } as CSSProperties}>
-          <div className="rp-loading-title">building your review</div>
-          <div className="rp-loading-copy">Reviewer is pulling the PR context, ranking risk, and preparing the files worth reading first.</div>
-          <div className="rp-shimmer-bar" />
-          <div className="rp-loading-steps">
-            {loading_steps.map((step, index) => (
-              <div key={step} className="rp-loading-step" style={{ "--rp-delay": `${index * 90}ms` } as CSSProperties}>
-                <span className="rp-loading-step-index">0{index + 1}</span>
-                <span>{step}</span>
-              </div>
-            ))}
+        skip_loading_screen ? (
+          <div className="rp-loading rp-loading-quiet rp-anim" style={{ "--rp-delay": "0ms" } as CSSProperties}>
+            <div className="rp-loading-title">opening your review</div>
+            <div className="rp-loading-copy">Reviewer is finishing the handoff from the preview and loading the result page.</div>
           </div>
-        </div>
+        ) : (
+          <div className="rp-loading rp-anim" style={{ "--rp-delay": "0ms" } as CSSProperties}>
+            <div className="rp-loading-title">building your review</div>
+            <div className="rp-loading-copy">Reviewer is pulling the PR context, ranking risk, and preparing the files worth reading first.</div>
+            <div className="rp-shimmer-bar" />
+            <div className="rp-loading-steps">
+              {loading_steps.map((step, index) => (
+                <div key={step} className="rp-loading-step" style={{ "--rp-delay": `${index * 90}ms` } as CSSProperties}>
+                  <span className="rp-loading-step-index">0{index + 1}</span>
+                  <span>{step}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )
       ) : error_message || !result ? (
         <div className="rp-error rp-anim" style={{ "--rp-delay": "0ms" } as CSSProperties}>
           <div className="rp-error-title">analysis unavailable</div>

@@ -166,7 +166,6 @@ export function HomePage() {
           </p>
 
           <div className="hero-input-shell">
-            <div className="hero-panel-label">Paste a public GitHub pull request</div>
             <PrInputBar />
           </div>
 

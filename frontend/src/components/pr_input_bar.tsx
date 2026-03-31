@@ -13,7 +13,7 @@ type PrInputBarProps = {
 const review_loading_steps = [
   "Checking pull request context",
   "Reading changed files and commits",
-  "Preparing your review workspace",
+  "Opening your review workspace",
 ];
 
 function format_date(value: string) {
@@ -42,8 +42,12 @@ export function PrInputBar({ mode = "hero" }: PrInputBarProps) {
 
   useEffect(() => {
     if (!is_preview_open) {
+      document.body.style.removeProperty("overflow");
       return;
     }
+
+    const previous_overflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
 
     function handle_key_down(event: KeyboardEvent) {
       if (event.key === "Escape" && !is_starting_review) {
@@ -53,6 +57,7 @@ export function PrInputBar({ mode = "hero" }: PrInputBarProps) {
 
     window.addEventListener("keydown", handle_key_down);
     return () => {
+      document.body.style.overflow = previous_overflow;
       window.removeEventListener("keydown", handle_key_down);
     };
   }, [is_preview_open, is_starting_review]);
@@ -105,8 +110,10 @@ export function PrInputBar({ mode = "hero" }: PrInputBarProps) {
     set_is_starting_review(true);
 
     window.setTimeout(() => {
-      navigate(`/result?pr_url=${encodeURIComponent(normalized_pr_url)}`);
-    }, 1150);
+      navigate(`/result?pr_url=${encodeURIComponent(normalized_pr_url)}`, {
+        state: { skip_loading_screen: true },
+      });
+    }, 1050);
   }
 
   const preview_metadata = preview?.metadata;
@@ -114,7 +121,7 @@ export function PrInputBar({ mode = "hero" }: PrInputBarProps) {
   return (
     <>
       <div className={`input-zone ${is_compact ? "input-zone-compact" : ""}`}>
-        <div className="input-label">{is_compact ? "// Analyze a public pull request" : "// Paste a public GitHub pull request URL"}</div>
+        {is_compact ? <div className="input-label">// Analyze a public pull request</div> : null}
         <div className="input-frame">
           <div className="input-prefix">
             <Link2 className="h-4 w-4 shrink-0" />
@@ -186,7 +193,7 @@ export function PrInputBar({ mode = "hero" }: PrInputBarProps) {
             {!is_starting_review ? (
               <>
                 <div className="pr-preview-dialog-top">
-                  <div>
+                  <div className="pr-preview-heading">
                     <div className="pr-preview-eyebrow">Pull request preview</div>
                     <div className="pr-preview-title">{preview_metadata.title}</div>
                     <div className="pr-preview-repo">{preview_metadata.repo_full_name} #{preview_metadata.pull_number}</div>
@@ -237,7 +244,7 @@ export function PrInputBar({ mode = "hero" }: PrInputBarProps) {
                 <div className="pr-preview-eyebrow">Starting review</div>
                 <div className="pr-preview-title">{preview_metadata.title}</div>
                 <div className="pr-preview-copy">
-                  Reviewer is building the result page now and will open it as soon as the review workspace is ready.
+                  Reviewer is opening the review now.
                 </div>
                 <div className="rp-shimmer-bar" />
                 <div className="rp-loading-steps pr-preview-loading-steps">
