@@ -819,29 +819,6 @@ export function ResultPage() {
             <ReviewLimitsPanel result={result} />
           </div>
 
-          <div className="rp-action-strip rp-anim" style={{ "--rp-delay": "180ms" } as CSSProperties}>
-            <div className="rp-action-card rp-action-card-highlight">
-              <div className="rp-card-label">before approval</div>
-              <div className="rp-action-card-title">{focused ? `Finish ${focused.filename} first` : "Finish one focused reviewer pass before merge"}</div>
-              <div className="rp-action-card-copy">
-                {focused ? "Finish the selected file, then use the notes on the left to decide what to validate next." : "Start with the highest-risk file, then validate the most important review notes before merge."}
-              </div>
-              {(next_actions.length > 0 ? next_actions.slice(0, 2) : ["Run one focused reviewer pass before merge"]).map((item) => (
-                <div key={item} className="rp-next-item">{item}</div>
-              ))}
-            </div>
-
-            <div className="rp-action-card">
-              <div className="rp-card-label">what drove the score</div>
-              {result.top_risks.slice(0, 3).map((risk) => (
-                <div key={risk.label} className="rp-risk-row">
-                  <span className={severity_class(risk.severity)}>{severity_label(risk.severity)}</span>
-                  <span>{risk.label}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-
           <button
             type="button"
             className={`rp-deep-toggle rp-anim ${deep_open ? "rp-open" : ""}`}
@@ -860,6 +837,4 @@ export function ResultPage() {
     </div>
   );
 }
-
-
 
