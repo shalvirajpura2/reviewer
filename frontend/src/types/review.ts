@@ -75,6 +75,8 @@ export interface ReviewResult {
   merge_confidence: number;
   verdict: "mergeable" | "focused review" | "review needed";
   summary: string;
+  verdict_text: string;
+  confidence_label: BackendAnalysisResult["label"];
   top_risks: ReviewRiskItem[];
   next_actions: string[];
   changed_areas: string[];
@@ -209,3 +211,4 @@ export interface BackendAnalysisResult {
   };
   analysis_context: BackendAnalysisContext;
 }
+

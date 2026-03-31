@@ -56,7 +56,7 @@ function build_changed_areas(result: BackendAnalysisResult) {
 function build_top_risks(result: BackendAnalysisResult): ReviewRiskItem[] {
   if (result.triggered_signals.length > 0) {
     return result.triggered_signals.slice(0, 4).map((item) => ({
-      label: item.label.toLowerCase(),
+      label: item.label,
       severity: item.severity
     }));
   }
@@ -185,9 +185,21 @@ function build_review_focus(result: BackendAnalysisResult) {
 
 function build_limitations(result: BackendAnalysisResult) {
   const partial_reasons = result.analysis_context.coverage.partial_reasons;
-  return [...partial_reasons, ...result.analysis_context.limitations];
-}
+  const seen = new Set<string>();
+  const items = [...partial_reasons, ...result.analysis_context.limitations];
 
+  return items.filter((item) => {
+    const normalized_item = item.trim().toLowerCase();
+
+    if (!normalized_item || seen.has(normalized_item)) {
+      return false;
+    }
+
+    seen.add(normalized_item);
+    return true;
+  });
+
+}
 export function map_analysis_to_review(result: BackendAnalysisResult): ReviewResult {
   return {
     pr_title: result.metadata.title,
@@ -201,6 +213,8 @@ export function map_analysis_to_review(result: BackendAnalysisResult): ReviewRes
     report_status: result.analysis_context.cache_status,
     merge_confidence: result.score,
     verdict: map_verdict(result.label),
+    verdict_text: result.verdict,
+    confidence_label: result.label,
     summary: build_summary(result),
     top_risks: build_top_risks(result),
     next_actions: build_next_actions(result),
@@ -239,3 +253,4 @@ export function map_analysis_to_review(result: BackendAnalysisResult): ReviewRes
     }
   };
 }
+

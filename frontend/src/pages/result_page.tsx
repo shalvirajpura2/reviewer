@@ -27,12 +27,9 @@ function verdict_tone(verdict: ReviewResult["verdict"]) {
   return "danger";
 }
 
-function verdict_copy(verdict: ReviewResult["verdict"]) {
-  if (verdict === "mergeable") return "Safe to merge";
-  if (verdict === "focused review") return "Merge with focused review";
-  return "Needs deeper review";
+function verdict_copy(result: ReviewResult) {
+  return result.verdict_text;
 }
-
 function severity_class(severity: ReviewRiskItem["severity"] | ReviewTopRiskFile["risk_level"]) {
   if (severity === "high") return "rp-sev rp-sev-h";
   if (severity === "medium") return "rp-sev rp-sev-m";
@@ -121,8 +118,7 @@ function coverage_pill_copy(result: ReviewResult) {
 }
 
 function confidence_pill_copy(result: ReviewResult) {
-  const confidence = result.provenance?.confidence_in_score ?? "unknown";
-  return `${confidence} confidence`;
+  return result.confidence_label;
 }
 
 function risk_level(score: number) {
@@ -246,7 +242,7 @@ function build_share_summary(result: ReviewResult) {
   const first_focus = result.top_risk_files[0]?.filename ?? "No single file highlighted";
   return [
     `${result.repo_name}`,
-    `Verdict: ${verdict_copy(result.verdict)}`,
+    `Verdict: ${verdict_copy(result)}`,
     `Confidence: ${result.merge_confidence}/100`,
     `Start with: ${first_focus}`,
     `Source: ${report_badge(result)}`,
@@ -301,7 +297,7 @@ function FocusPanel({ file, next_actions }: { file: ReviewTopRiskFile; next_acti
       ) : null}
 
       <div className="rp-focus-section">
-        <div className="rp-focus-section-title">What to check</div>
+        <div className="rp-focus-section-title">Related backend review actions</div>
         {checks.map((item, index) => (
           <div
             key={item}
@@ -351,7 +347,7 @@ function ReviewLimitsPanel({ result }: { result: ReviewResult }) {
     <div className="rp-guide-panel">
       <div className="rp-panel-header">
         <div className="rp-card-label">keep in mind</div>
-        <div className="rp-panel-hint">Context that changes how much to trust the result</div>
+        <div className="rp-panel-hint">What the backend could and could not verify</div>
       </div>
 
       <div className="rp-certainty-title">{review_note_title(result)}</div>
@@ -359,20 +355,20 @@ function ReviewLimitsPanel({ result }: { result: ReviewResult }) {
 
       <div className="rp-certainty-grid">
         <div className="rp-certainty-stat">
-          <span className="rp-certainty-stat-value">{result.base_branch ?? "base"}</span>
-          <span className="rp-certainty-stat-label">base branch</span>
+          <span className="rp-certainty-stat-value">{result.provenance?.confidence_in_score ?? "unknown"}</span>
+          <span className="rp-certainty-stat-label">score confidence</span>
         </div>
         <div className="rp-certainty-stat">
-          <span className="rp-certainty-stat-value">{result.head_branch ?? "head"}</span>
-          <span className="rp-certainty-stat-label">head branch</span>
+          <span className="rp-certainty-stat-value">{result.stats.files_analyzed}/{result.stats.files_changed}</span>
+          <span className="rp-certainty-stat-label">files analyzed</span>
         </div>
         <div className="rp-certainty-stat">
-          <span className="rp-certainty-stat-value">{result.stats.additions}</span>
-          <span className="rp-certainty-stat-label">additions</span>
+          <span className="rp-certainty-stat-value">{result.stats.patchless_files}</span>
+          <span className="rp-certainty-stat-label">patchless files</span>
         </div>
         <div className="rp-certainty-stat">
-          <span className="rp-certainty-stat-value">{result.stats.deletions}</span>
-          <span className="rp-certainty-stat-label">deletions</span>
+          <span className="rp-certainty-stat-value">{result.stats.commits}</span>
+          <span className="rp-certainty-stat-label">commits analyzed</span>
         </div>
       </div>
 
@@ -717,7 +713,7 @@ export function ResultPage() {
           <div className="rp-hero rp-anim" style={{ "--rp-delay": "60ms" } as CSSProperties}>
             <div className="rp-hero-copy">
               <div className="rp-verdict-eyebrow">review call</div>
-              <div className={`rp-verdict-text ${verdict_tone(result.verdict)}`}>{verdict_copy(result.verdict)}</div>
+              <div className={`rp-verdict-text ${verdict_tone(result.verdict)}`}>{verdict_copy(result)}</div>
               <div className="rp-verdict-summary">{result.summary}</div>
               <div className="rp-share-row">
                 <button type="button" className="rp-secondary-btn" onClick={() => void handle_copy_summary()}>
