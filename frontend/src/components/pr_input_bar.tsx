@@ -229,11 +229,11 @@ export function PrInputBar({ mode = "hero" }: PrInputBarProps) {
                   <span className="pr-preview-branch"><ArrowRight className="h-3.5 w-3.5" /> {preview_metadata.head_branch}</span>
                 </div>
                 <div className="pr-preview-actions">
-                  <button type="button" className="pr-preview-btn pr-preview-btn-primary" onClick={continue_to_review}>
-                    Analyze this PR
-                  </button>
                   <button type="button" className="pr-preview-btn" onClick={close_preview}>
                     Change URL
+                  </button>
+                  <button type="button" className="pr-preview-btn pr-preview-btn-primary pr-preview-btn-main" onClick={continue_to_review}>
+                    Analyze this PR
                   </button>
                   <a href={preview_metadata.html_url} target="_blank" rel="noreferrer" className="pr-preview-btn pr-preview-link">
                     Open on GitHub <ExternalLink className="h-3.5 w-3.5" />

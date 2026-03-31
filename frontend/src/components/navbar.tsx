@@ -8,7 +8,6 @@ import { BrandLogo } from "./brand_logo";
 
 const nav_items = [
   { to: "/", label: "Home" },
-  { to: "/history", label: "History" },
   { to: "/about", label: "How it works" },
 ] as const;
 

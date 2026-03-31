@@ -8088,3 +8088,19 @@ nav {
     order: 2;
   }
 }
+
+.pr-preview-btn-main {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 28px rgba(34, 211, 238, 0.16);
+}
+
+.pr-preview-btn-main:hover {
+  transform: translateY(-3px);
+}
+
+@media (min-width: 641px) {
+  .pr-preview-actions {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(220px, 1.15fr) minmax(0, 1fr);
+  }
+}

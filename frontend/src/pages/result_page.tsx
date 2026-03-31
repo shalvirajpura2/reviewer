@@ -397,7 +397,7 @@ function DeepPanels({ result }: { result: ReviewResult }) {
         <div className="rp-dp-panel rp-dp-panel-wide">
           <div className="rp-card-label">risk breakdown</div>
           <div className="rp-section-intro">
-            Read this as the shape of review risk: higher values need more reviewer attention, not necessarily merge blocking.
+            Read this as the shape of review risk: higher values deserve more attention, not necessarily an immediate block.
           </div>
 
           <div className="rp-risk-breakdown-grid">
@@ -723,7 +723,7 @@ export function ResultPage() {
 
           <div className="rp-hero rp-anim" style={{ "--rp-delay": "60ms" } as CSSProperties}>
             <div className="rp-hero-copy">
-              <div className="rp-verdict-eyebrow">decision</div>
+              <div className="rp-verdict-eyebrow">review call</div>
               <div className={`rp-verdict-text ${verdict_tone(result.verdict)}`}>{verdict_copy(result.verdict)}</div>
               <div className="rp-verdict-summary">{result.summary}</div>
               <div className="rp-share-row">
@@ -777,7 +777,7 @@ export function ResultPage() {
 
           <div className="rp-action-strip rp-anim" style={{ "--rp-delay": "120ms" } as CSSProperties}>
             <div className="rp-action-card">
-              <div className="rp-card-label">why attention</div>
+              <div className="rp-card-label">what drove the score</div>
               {result.top_risks.slice(0, 3).map((risk) => (
                 <div key={risk.label} className="rp-risk-row">
                   <span className={severity_class(risk.severity)}>{severity_label(risk.severity)}</span>
@@ -787,7 +787,7 @@ export function ResultPage() {
             </div>
 
             <div className="rp-action-card">
-              <div className="rp-card-label">check these first</div>
+              <div className="rp-card-label">start here</div>
               {top_files.slice(0, 3).map((file) => (
                 <div key={file.filename} className="rp-file-btn-row">
                   <button type="button" className="rp-file-btn" onClick={() => set_selected_file(file.filename)}>
@@ -804,7 +804,7 @@ export function ResultPage() {
             </div>
 
             <div className="rp-action-card rp-action-card-highlight">
-              <div className="rp-card-label">first move</div>
+              <div className="rp-card-label">next best move</div>
               <div className="rp-action-card-title">{result.review_plan[0]?.title ?? "Run one focused reviewer pass before merge"}</div>
               <div className="rp-action-card-copy">
                 {result.review_plan[0]?.detail ?? "Start with the highest-risk file, then validate the reviewer path before merge."}
@@ -824,7 +824,7 @@ export function ResultPage() {
             <div className="rp-queue-panel">
               <div className="rp-panel-header">
                 <div className="rp-card-label">review queue</div>
-                <div className="rp-panel-hint">Start at 01, then open GitHub when you want full diff context</div>
+                <div className="rp-panel-hint">Begin with 01, then open GitHub for the full diff when needed</div>
               </div>
               {top_files.length > 0 ? (
                 top_files.map((file, index) => (
@@ -850,7 +850,7 @@ export function ResultPage() {
             <div className="rp-focus-panel">
               <div className="rp-panel-header">
                 <div className="rp-card-label">selected file</div>
-                <div className="rp-panel-hint">Why this file matters and what the reviewer should verify</div>
+                <div className="rp-panel-hint">Why it matters and what to verify before approval</div>
               </div>
               {focused ? <FocusPanel key={focused.filename} file={focused} next_actions={next_actions} /> : <div className="rp-empty-state">No prioritized file available.</div>}
             </div>
@@ -862,7 +862,7 @@ export function ResultPage() {
             style={{ "--rp-delay": "240ms" } as CSSProperties}
             onClick={() => set_deep_open((current) => !current)}
           >
-            <span className="rp-deep-toggle-copy">View full analysis</span>
+            <span className="rp-deep-toggle-copy">See full evidence</span>
             <span className="rp-toggle-icon">+</span>
           </button>
 

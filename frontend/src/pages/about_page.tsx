@@ -7,7 +7,7 @@ const pipeline_steps = [
   {
     number: "01",
     icon: Github,
-    title: "Paste a public GitHub pull request",
+    title: "Read the pull request from GitHub",
     description:
       "Reviewer validates the PR URL, resolves the repository, and fetches the pull request, changed files, and commit history directly from GitHub.",
     points: [
@@ -24,7 +24,7 @@ GET /repos/{owner}/{repo}/pulls/{number}/commits`,
     icon: Database,
     title: "Build structured review context",
     description:
-      "The backend turns raw diff data into a concrete review model: sensitive paths, blast radius, churn, migrations, config changes, and test presence.",
+      "The backend turns raw diff data into a review model: sensitive paths, blast radius, migrations, config changes, patch visibility, and test presence.",
     points: [
       "Path sensitivity and area classification",
       "Diff shape and review surface extraction",
@@ -37,9 +37,9 @@ review_context -> blast_radius + coverage_signals`,
   {
     number: "03",
     icon: ShieldCheck,
-    title: "Run deterministic merge analysis",
+    title: "Run deterministic review scoring",
     description:
-      "Reviewer applies explainable scoring rules to rank risk signals, compute merge confidence, and generate next reviewer actions without pretending to understand what it does not know.",
+      "Reviewer applies explainable rules to rank risk signals, compute merge confidence, and generate reviewer actions without pretending to know what it cannot verify.",
     points: [
       "Verdict and merge confidence score",
       "Top risks with evidence",
@@ -52,13 +52,13 @@ actions = reviewer_actions(score, risks)`,
   {
     number: "04",
     icon: FileSearch,
-    title: "Return a focused merge report",
+    title: "Return a guided review workspace",
     description:
-      "The result page is built for speed: verdict first, then what changed, what matters, which files deserve attention, and why.",
+      "The result page is built for speed: verdict first, then what matters, which files deserve attention, and what still needs human judgment.",
     points: [
       "Top files to inspect first",
       "Signal evidence and provenance",
-      "Fast merge decision summary",
+      "A focused review path",
     ],
     code: `result -> verdict
 result -> top_risk_files
@@ -104,9 +104,9 @@ export function AboutPage() {
             <span className="hero-dot" />
             <span>How Reviewer works</span>
           </div>
-          <h1 className="how-h1">A fast merge review system built around real PR signals.</h1>
+          <h1 className="how-h1">A fast review system built around real pull request signals.</h1>
           <p className="how-sub">
-            Reviewer turns a public GitHub pull request into a structured, explainable merge report so engineers know where to look before they approve.
+            Reviewer turns a public GitHub pull request into a structured, explainable review workspace so engineers know where to look before they approve.
           </p>
           <div className="how-trust-row">
             {trust_points.map((trust_point) => (
@@ -123,7 +123,7 @@ export function AboutPage() {
               <span>GitHub data</span>
               <span>Review context</span>
               <span>Scoring</span>
-              <span>Merge report</span>
+              <span>Review workspace</span>
             </div>
           </div>
           <div className="how-overview-card how-overview-output-card">
@@ -188,7 +188,6 @@ export function AboutPage() {
 
           <div className="how-footer-actions">
             <Link to="/" className="history-action history-action-primary">Analyze a PR</Link>
-            <Link to="/history" className="history-action">Open saved reviews</Link>
           </div>
         </div>
       </div>
