@@ -13,7 +13,7 @@ const feature_items = [
     icon: ShieldCheck,
     title: "Clear merge verdict",
     detail:
-      "Get a deterministic score, a plain-language verdict, and an honest signal of how much confidence to place in the review.",
+      "Get a deterministic score, a plain-language verdict, and a clear read on how much confidence to place in the review.",
     tag: "Scored",
   },
   {
@@ -27,14 +27,14 @@ const feature_items = [
     icon: Activity,
     title: "Understand the risk shape",
     detail:
-      "See which review dimensions are driving attention: sensitive code, dependencies, config, migrations, tests, and blast radius.",
+      "See what is driving attention: sensitive code, dependencies, config, migrations, tests, and blast radius.",
     tag: "Explained",
   },
   {
     icon: Sparkles,
     title: "Know what the result used",
     detail:
-      "Every report shows when the analysis is partial, cached, or live so the output stays useful without pretending to know more than it does.",
+      "Every report shows when the analysis is partial, cached, or live so the output stays useful without overclaiming.",
     tag: "Honest",
   },
 ];
@@ -104,8 +104,8 @@ export function HomePage() {
             Start the review <span className="hl">faster</span>.
           </h1>
           <p className="hero-sub">
-            Reviewer reads a <b>public GitHub pull request</b> and shows you what to inspect first, what raised risk,
-            and how much confidence to place in the result.
+            Paste a <b>public GitHub pull request</b> to see where review should start, what raised risk, and
+            how much confidence to place in the result.
           </p>
 
           <div className="hero-input-shell">
@@ -161,3 +161,4 @@ export function HomePage() {
     </div>
   );
 }
+

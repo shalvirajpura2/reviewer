@@ -165,9 +165,9 @@ export function PrInputBar({ mode = "hero" }: PrInputBarProps) {
           </div>
         ) : null}
         <div className="input-hint">
-          <span className="input-hint-item input-hint-item-primary">Public GitHub PRs only</span>
+          <span className="input-hint-item input-hint-item-primary">Works with live PRs</span>
           <span className="input-hint-item">No signup</span>
-          <span className="input-hint-item">Preview before analysis</span>
+          <span className="input-hint-item">Preview first</span>
         </div>
         <div className="input-sample-row">
           <span className="input-sample-label">Need a quick demo?</span>
@@ -245,7 +245,7 @@ export function PrInputBar({ mode = "hero" }: PrInputBarProps) {
                 <div className="pr-preview-eyebrow">Starting review</div>
                 <div className="pr-preview-title">{preview_metadata.title}</div>
                 <div className="pr-preview-copy">
-                  Reviewer is opening the review now.
+                  Reviewer is preparing the review now.
                 </div>
                 <div className="rp-shimmer-bar" />
                 <div className="rp-loading-steps pr-preview-loading-steps">
@@ -265,3 +265,4 @@ export function PrInputBar({ mode = "hero" }: PrInputBarProps) {
     </>
   );
 }
+

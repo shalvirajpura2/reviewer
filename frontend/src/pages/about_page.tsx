@@ -104,9 +104,9 @@ export function AboutPage() {
             <span className="hero-dot" />
             <span>How Reviewer works</span>
           </div>
-          <h1 className="how-h1">A fast review system built around real pull request signals.</h1>
+          <h1 className="how-h1">A faster review flow built around real pull request signals.</h1>
           <p className="how-sub">
-            Reviewer turns a public GitHub pull request into a structured, explainable review workspace so engineers know where to look before they approve.
+            Reviewer turns a public GitHub pull request into a structured review workspace so engineers know where to look before they approve.
           </p>
           <div className="how-trust-row">
             {trust_points.map((trust_point) => (
@@ -196,3 +196,4 @@ export function AboutPage() {
     </div>
   );
 }
+

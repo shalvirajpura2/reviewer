@@ -325,7 +325,7 @@ function ReviewPlanPanel({ result }: { result: ReviewResult }) {
       </div>
 
       <div className="rp-guide-copy">
-        Reviewer suggests a reading order so the diff feels like a guided review instead of a flat dashboard.
+        Reviewer suggests a reading order so the diff feels easier to review, one step at a time.
       </div>
 
       <div className="rp-plan-list">
@@ -351,7 +351,7 @@ function CertaintyPanel({ result }: { result: ReviewResult }) {
     <div className="rp-guide-panel">
       <div className="rp-panel-header">
         <div className="rp-card-label">certainty and limits</div>
-        <div className="rp-panel-hint">Know what this score can and cannot tell you</div>
+        <div className="rp-panel-hint">Know what this review can and cannot tell you</div>
       </div>
 
       <div className="rp-certainty-title">{certainty_title(result)}</div>
@@ -676,7 +676,7 @@ export function ResultPage() {
         skip_loading_screen ? (
           <div className="rp-loading rp-loading-quiet rp-anim" style={{ "--rp-delay": "0ms" } as CSSProperties}>
             <div className="rp-loading-title">opening your review</div>
-            <div className="rp-loading-copy">Reviewer is finishing the handoff from the preview and loading the result page.</div>
+            <div className="rp-loading-copy">Reviewer is finishing the handoff from the preview.</div>
           </div>
         ) : (
           <div className="rp-loading rp-anim" style={{ "--rp-delay": "0ms" } as CSSProperties}>
@@ -788,7 +788,7 @@ export function ResultPage() {
               <div className="rp-queue-panel">
                 <div className="rp-panel-header">
                   <div className="rp-card-label">review queue</div>
-                  <div className="rp-panel-hint">Begin with 01, then open GitHub for the full diff when needed</div>
+                  <div className="rp-panel-hint">Start with 01, then open GitHub for the full diff when needed</div>
                 </div>
                 {top_files.length > 0 ? (
                   top_files.map((file, index) => (
@@ -867,3 +867,4 @@ export function ResultPage() {
     </div>
   );
 }
+
