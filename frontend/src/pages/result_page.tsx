@@ -186,8 +186,7 @@ function build_backend_snapshot(result: ReviewResult) {
   const items = [
     `${result.stats.files_analyzed}/${result.stats.files_changed} files analyzed`,
     `${result.stats.commits} commits reviewed`,
-    `${result.stats.additions} additions`,
-    `${result.stats.deletions} deletions`,
+    `${result.stats.additions} additions, ${result.stats.deletions} deletions`,
   ];
 
   if (result.stats.patchless_files > 0) {
@@ -235,7 +234,7 @@ function FocusPanel({ file, next_actions }: { file: ReviewTopRiskFile; next_acti
 
       <div className="rp-focus-grid">
         <div className="rp-focus-section">
-          <div className="rp-focus-section-title">Why it is in the queue</div>
+          <div className="rp-focus-section-title">Why this file</div>
           {file.reasons.map((reason, index) => (
             <div key={reason} className="rp-bullet" style={{ "--rp-delay": `${index * 45}ms` } as CSSProperties}>
               {reason}
@@ -244,7 +243,7 @@ function FocusPanel({ file, next_actions }: { file: ReviewTopRiskFile; next_acti
         </div>
 
         <div className="rp-focus-section">
-          <div className="rp-focus-section-title">What to verify next</div>
+          <div className="rp-focus-section-title">Check next</div>
           {(next_actions.length > 0 ? next_actions.slice(0, 3) : ["No additional backend review actions were generated."]).map((item, index) => (
             <div
               key={item}
@@ -297,8 +296,8 @@ function ReviewNotesPanel({ result }: { result: ReviewResult }) {
   return (
     <div className="rp-guide-panel">
       <div className="rp-panel-header">
-        <div className="rp-card-label">review notes</div>
-        <div className="rp-panel-hint">Backend recommendations after the first pass</div>
+        <div className="rp-card-label">review flow</div>
+        <div className="rp-panel-hint">The broader pass after the first file</div>
       </div>
 
       <div className="rp-guide-copy">
@@ -327,8 +326,8 @@ function ReviewLimitsPanel({ result }: { result: ReviewResult }) {
   return (
     <div className="rp-guide-panel">
       <div className="rp-panel-header">
-        <div className="rp-card-label">Coverage and limits</div>
-        <div className="rp-panel-hint">How much of this review came directly from backend evidence</div>
+        <div className="rp-card-label">coverage and limits</div>
+        <div className="rp-panel-hint">What this analysis could and could not verify</div>
       </div>
 
       <div className="rp-certainty-grid">
@@ -742,12 +741,12 @@ export function ResultPage() {
             </div>
           </div>
 
-          <div className="rp-guide-grid rp-anim" style={{ "--rp-delay": "100ms" } as CSSProperties}>
+          <div className="rp-summary-grid rp-anim" style={{ "--rp-delay": "100ms" } as CSSProperties}>
             <ReviewSignalsPanel result={result} />
             <div className="rp-guide-panel">
               <div className="rp-panel-header">
                 <div className="rp-card-label">check these first</div>
-                <div className="rp-panel-hint">Open these files before going wider</div>
+                <div className="rp-panel-hint">The fastest way into the PR</div>
               </div>
               <div className="rp-priority-list">
                 {top_files.slice(0, 3).map((file) => (
@@ -766,7 +765,7 @@ export function ResultPage() {
             <div className="rp-guide-panel">
               <div className="rp-panel-header">
                 <div className="rp-card-label">recommended next step</div>
-                <div className="rp-panel-hint">The quickest useful review path</div>
+                <div className="rp-panel-hint">The first backend actions to take</div>
               </div>
               <div className="rp-priority-list">
                 {primary_next_step(result).length > 0 ? primary_next_step(result).map((item) => (
@@ -778,7 +777,7 @@ export function ResultPage() {
 
           <div className="rp-sequence-shell rp-anim" style={{ "--rp-delay": "120ms" } as CSSProperties}>
             <div className="rp-sequence-intro">
-              <div className="rp-card-label">review queue</div>
+              <div className="rp-card-label">start here</div>
               <div className="rp-sequence-title">Open one file first, then decide if the PR needs a wider pass</div>
               <div className="rp-sequence-copy">
                 The queue is already ranked by the backend. You do not need to scan the whole PR before making progress.
@@ -822,7 +821,7 @@ export function ResultPage() {
             </div>
           </div>
 
-          <div className="rp-guide-grid rp-anim" style={{ "--rp-delay": "150ms" } as CSSProperties}>
+          <div className="rp-support-grid rp-anim" style={{ "--rp-delay": "150ms" } as CSSProperties}>
             <ReviewNotesPanel result={result} />
             <ReviewLimitsPanel result={result} />
           </div>
