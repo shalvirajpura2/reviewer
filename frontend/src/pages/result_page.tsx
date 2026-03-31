@@ -143,7 +143,7 @@ function priority_copy(priority: ReviewRecommendation["priority"]) {
   return "Nice to have";
 }
 
-function certainty_title(result: ReviewResult) {
+function review_note_title(result: ReviewResult) {
   if (result.report_status === "fallback") return "Fresh live data was unavailable";
   if (result.provenance?.coverage.is_partial) return "Some of this review is incomplete";
   if ((result.provenance?.confidence_in_score ?? "medium") === "high") return "The review surface looks well covered";
@@ -151,7 +151,7 @@ function certainty_title(result: ReviewResult) {
   return "This is a strong first-pass review";
 }
 
-function certainty_copy(result: ReviewResult) {
+function review_note_copy(result: ReviewResult) {
   if (result.report_status === "fallback") {
     return "Reviewer fell back to the last saved successful analysis, so validate the current diff directly on GitHub before relying on the verdict.";
   }
@@ -284,7 +284,7 @@ function FocusPanel({ file, next_actions }: { file: ReviewTopRiskFile; next_acti
       </div>
 
       <div className="rp-focus-section">
-        <div className="rp-focus-section-title">Signals</div>
+        <div className="rp-focus-section-title">Why it was pulled forward</div>
         {file.reasons.map((reason, index) => (
           <div key={reason} className="rp-bullet" style={{ "--rp-delay": `${index * 45}ms` } as CSSProperties}>
             {reason}
@@ -301,7 +301,7 @@ function FocusPanel({ file, next_actions }: { file: ReviewTopRiskFile; next_acti
       ) : null}
 
       <div className="rp-focus-section">
-        <div className="rp-focus-section-title">Reviewer should verify</div>
+        <div className="rp-focus-section-title">What to check</div>
         {checks.map((item, index) => (
           <div
             key={item}
@@ -316,16 +316,16 @@ function FocusPanel({ file, next_actions }: { file: ReviewTopRiskFile; next_acti
   );
 }
 
-function ReviewPlanPanel({ result }: { result: ReviewResult }) {
+function ReviewNotesPanel({ result }: { result: ReviewResult }) {
   return (
     <div className="rp-guide-panel">
       <div className="rp-panel-header">
-        <div className="rp-card-label">review path</div>
-        <div className="rp-panel-hint">Use this as your first reviewer pass</div>
+        <div className="rp-card-label">review notes</div>
+        <div className="rp-panel-hint">A short pass after the first file</div>
       </div>
 
       <div className="rp-guide-copy">
-        Reviewer suggests a reading order so the diff feels easier to review, one step at a time.
+        Use these notes to guide the rest of the review without opening every file at once.
       </div>
 
       <div className="rp-plan-list">
@@ -346,16 +346,16 @@ function ReviewPlanPanel({ result }: { result: ReviewResult }) {
   );
 }
 
-function CertaintyPanel({ result }: { result: ReviewResult }) {
+function ReviewLimitsPanel({ result }: { result: ReviewResult }) {
   return (
     <div className="rp-guide-panel">
       <div className="rp-panel-header">
-        <div className="rp-card-label">certainty and limits</div>
-        <div className="rp-panel-hint">Know what this review can and cannot tell you</div>
+        <div className="rp-card-label">keep in mind</div>
+        <div className="rp-panel-hint">Context that changes how much to trust the result</div>
       </div>
 
-      <div className="rp-certainty-title">{certainty_title(result)}</div>
-      <div className="rp-guide-copy">{certainty_copy(result)}</div>
+      <div className="rp-certainty-title">{review_note_title(result)}</div>
+      <div className="rp-guide-copy">{review_note_copy(result)}</div>
 
       <div className="rp-certainty-grid">
         <div className="rp-certainty-stat">
@@ -513,13 +513,6 @@ function DeepPanels({ result }: { result: ReviewResult }) {
             ...(result.provenance?.data_sources ?? []).map((source) => `data: ${source}`),
           ].filter(Boolean).map((item) => (
             <div key={String(item)} className="rp-prov-item">{item}</div>
-          ))}
-        </div>
-
-        <div className="rp-sec-panel">
-          <div className="rp-card-label">limitations</div>
-          {result.limitations.map((item) => (
-            <div key={item} className="rp-prov-item">{item}</div>
           ))}
         </div>
       </div>
@@ -778,9 +771,9 @@ export function ResultPage() {
           <div className="rp-sequence-shell rp-anim" style={{ "--rp-delay": "120ms" } as CSSProperties}>
             <div className="rp-sequence-intro">
               <div className="rp-card-label">step 1</div>
-              <div className="rp-sequence-title">Start with the files most likely to matter</div>
+              <div className="rp-sequence-title">Start where reviewer attention matters most</div>
               <div className="rp-sequence-copy">
-                Open the first file, understand why it was pulled forward, then move through the queue in order.
+                The queue is ordered so you can review the most important file first and only go wider when needed.
               </div>
             </div>
 
@@ -788,7 +781,7 @@ export function ResultPage() {
               <div className="rp-queue-panel">
                 <div className="rp-panel-header">
                   <div className="rp-card-label">review queue</div>
-                  <div className="rp-panel-hint">Start with 01, then open GitHub for the full diff when needed</div>
+                  <div className="rp-panel-hint">Open the first file, then move down the queue.</div>
                 </div>
                 {top_files.length > 0 ? (
                   top_files.map((file, index) => (
@@ -813,8 +806,8 @@ export function ResultPage() {
 
               <div className="rp-focus-panel">
                 <div className="rp-panel-header">
-                  <div className="rp-card-label">selected file</div>
-                  <div className="rp-panel-hint">Why it matters and what to verify before approval</div>
+                  <div className="rp-card-label">why this file is first</div>
+                  <div className="rp-panel-hint">The shortest useful explanation for this pick.</div>
                 </div>
                 {focused ? <FocusPanel key={focused.filename} file={focused} next_actions={next_actions} /> : <div className="rp-empty-state">No prioritized file available.</div>}
               </div>
@@ -822,16 +815,16 @@ export function ResultPage() {
           </div>
 
           <div className="rp-guide-grid rp-anim" style={{ "--rp-delay": "150ms" } as CSSProperties}>
-            <ReviewPlanPanel result={result} />
-            <CertaintyPanel result={result} />
+            <ReviewNotesPanel result={result} />
+            <ReviewLimitsPanel result={result} />
           </div>
 
           <div className="rp-action-strip rp-anim" style={{ "--rp-delay": "180ms" } as CSSProperties}>
             <div className="rp-action-card rp-action-card-highlight">
-              <div className="rp-card-label">step 2</div>
-              <div className="rp-action-card-title">{result.review_plan[0]?.title ?? "Run one focused reviewer pass before merge"}</div>
+              <div className="rp-card-label">before approval</div>
+              <div className="rp-action-card-title">{focused ? `Finish ${focused.filename} first` : "Finish one focused reviewer pass before merge"}</div>
               <div className="rp-action-card-copy">
-                {result.review_plan[0]?.detail ?? "Start with the highest-risk file, then validate the reviewer path before merge."}
+                {focused ? "Finish the selected file, then use the notes on the left to decide what to validate next." : "Start with the highest-risk file, then validate the most important review notes before merge."}
               </div>
               {(next_actions.length > 0 ? next_actions.slice(0, 2) : ["Run one focused reviewer pass before merge"]).map((item) => (
                 <div key={item} className="rp-next-item">{item}</div>
@@ -855,7 +848,7 @@ export function ResultPage() {
             style={{ "--rp-delay": "240ms" } as CSSProperties}
             onClick={() => set_deep_open((current) => !current)}
           >
-            <span className="rp-deep-toggle-copy">See full evidence</span>
+            <span className="rp-deep-toggle-copy">See deeper evidence</span>
             <span className="rp-toggle-icon">+</span>
           </button>
 
@@ -867,4 +860,6 @@ export function ResultPage() {
     </div>
   );
 }
+
+
 
