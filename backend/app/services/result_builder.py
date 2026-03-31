@@ -1,5 +1,6 @@
 from app.models.analysis import (
     AnalysisContext,
+    AnalysisCoverage,
     ChangedFilePreviewGroup,
     ClassifiedFile,
     GithubCommitSummary,
@@ -30,6 +31,8 @@ TOP_FILE_REASON_LABELS = {
     "frontend": "user-facing behavior may shift",
     "backend": "server-side behavior changed",
     "test": "tests changed alongside implementation",
+    "generated": "generated output changed",
+    "lockfile": "lockfile or dependency pin changed",
 }
 
 
@@ -50,18 +53,74 @@ def build_review_focus(signals: list[RiskSignal]) -> list[str]:
     return [signal.label for signal in ranked_signals[:3]]
 
 
-def build_confidence_in_score(files: list[ClassifiedFile], signals: list[RiskSignal]) -> str:
-    if len(files) <= 8 and len(signals) <= 4:
+def build_analysis_coverage(
+    files: list[ClassifiedFile],
+    total_files: int,
+    partial_reasons: list[str],
+) -> AnalysisCoverage:
+    patchless_files = sum(1 for file in files if not file.patch)
+    files_analyzed = len(files)
+    normalized_total_files = max(total_files, files_analyzed)
+    coverage_partial_reasons = list(partial_reasons)
+
+    if patchless_files > 0:
+        coverage_partial_reasons.append(
+            f"GitHub did not provide patch hunks for {patchless_files} changed files, so structure hints are limited there."
+        )
+
+    return AnalysisCoverage(
+        files_analyzed=files_analyzed,
+        total_files=normalized_total_files,
+        patchless_files=patchless_files,
+        is_partial=bool(coverage_partial_reasons),
+        partial_reasons=coverage_partial_reasons,
+    )
+
+
+def build_confidence_in_score(
+    files: list[ClassifiedFile],
+    signals: list[RiskSignal],
+    commits: list[GithubCommitSummary],
+    coverage: AnalysisCoverage,
+    cache_status: str,
+) -> str:
+    if cache_status == "fallback" or coverage.is_partial:
+        return "low"
+
+    if len(files) >= 35 or len(commits) >= 20:
+        return "low"
+
+    if len(files) <= 8 and len(signals) <= 4 and coverage.patchless_files == 0:
         return "high"
+
     return "medium"
 
 
 def build_confidence_summary(
-    files: list[ClassifiedFile], commits: list[GithubCommitSummary], signals: list[RiskSignal], cache_status: str
+    files: list[ClassifiedFile],
+    commits: list[GithubCommitSummary],
+    cache_status: str,
+    coverage: AnalysisCoverage,
 ) -> str:
+    scope_summary = f"{coverage.files_analyzed} of {coverage.total_files} changed files analyzed"
+    patch_summary = f"{coverage.patchless_files} files without patch hunks" if coverage.patchless_files else "full patch hints where available"
+
+    if cache_status == "fallback":
+        return (
+            f"Showing the latest saved analysis because GitHub could not serve a fresh review right now. "
+            f"Saved context covers {scope_summary} and {len(commits)} commits. Patch coverage note: {patch_summary}."
+        )
+
+    if len(files) >= 35 or len(commits) >= 20:
+        return (
+            f"Built from GitHub metadata, {scope_summary}, {len(commits)} commits, deterministic scoring rules, "
+            f"and patch-level structure hints. The review surface is broad enough that this score should guide triage more than final approval. "
+            f"Patch coverage note: {patch_summary}. Response source: {cache_status}."
+        )
+
     return (
-        f"Built from GitHub metadata, {len(files)} changed files, {len(commits)} commits, deterministic scoring rules, "
-        f"and patch-level structure hints. Response source: {cache_status}."
+        f"Built from GitHub metadata, {scope_summary}, {len(commits)} commits, deterministic scoring rules, "
+        f"and patch-level structure hints. Patch coverage note: {patch_summary}. Response source: {cache_status}."
     )
 
 
@@ -110,6 +169,9 @@ def build_file_reasons(file: ClassifiedFile, test_files_present: bool) -> list[s
     elif file.blast_radius_weight >= 3:
         reasons.append("moderate blast radius")
 
+    if file.status == "renamed" and file.previous_filename:
+        reasons.append(f"renamed from {file.previous_filename}")
+
     for area in file.areas:
         label = TOP_FILE_REASON_LABELS.get(area)
         if label and label not in reasons:
@@ -120,6 +182,9 @@ def build_file_reasons(file: ClassifiedFile, test_files_present: bool) -> list[s
 
     if not test_files_present and (file.is_sensitive or file.blast_radius_weight >= 4):
         reasons.append("no test changes detected for this risk area")
+
+    if not file.patch:
+        reasons.append("patch hunk unavailable from GitHub")
 
     if file.changes >= 120:
         reasons.append(f"large diff footprint ({file.changes} lines)")
@@ -147,8 +212,14 @@ def compute_top_file_score(file: ClassifiedFile, test_files_present: bool) -> in
     if file.symbol_hints:
         score += 8
 
+    if file.status == "renamed" and file.previous_filename:
+        score += 6
+
     if not test_files_present and (file.is_sensitive or file.blast_radius_weight >= 4):
         score += 12
+
+    if "generated" in file.areas or "asset" in file.areas:
+        score -= 10
 
     return score
 
@@ -180,6 +251,7 @@ def build_top_risk_files(files: list[ClassifiedFile]) -> list[TopRiskFile]:
                 changes=file.changes,
                 areas=file.areas,
                 is_sensitive=file.is_sensitive,
+                blob_url=file.blob_url,
             )
         )
 
@@ -192,8 +264,11 @@ def build_result(
     commits: list[GithubCommitSummary],
     signals: list[RiskSignal],
     cache_status: str = "live",
+    total_files: int | None = None,
+    partial_reasons: list[str] | None = None,
 ) -> PrAnalysisResult:
     score_payload = compute_score(signals)
+    coverage = build_analysis_coverage(files, total_files or len(files), partial_reasons or [])
 
     return PrAnalysisResult(
         metadata=metadata,
@@ -210,10 +285,11 @@ def build_result(
         commits=commits,
         score_summary=ScoreSummary(**score_payload["score_summary"]),
         analysis_context=AnalysisContext(
-            confidence_in_score=build_confidence_in_score(files, signals),
-            summary=build_confidence_summary(files, commits, signals, cache_status),
+            confidence_in_score=build_confidence_in_score(files, signals, commits, coverage, cache_status),
+            summary=build_confidence_summary(files, commits, cache_status, coverage),
             limitations=analysis_limitations,
             data_sources=["GitHub PR metadata", "GitHub changed files", "GitHub commits", "deterministic rules engine"],
             cache_status=cache_status,
+            coverage=coverage,
         ),
     )

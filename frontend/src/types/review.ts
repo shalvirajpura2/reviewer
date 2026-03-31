@@ -28,6 +28,13 @@ export interface ReviewSignalEvidence {
   evidence: string[];
 }
 
+export interface ReviewRecommendation {
+  id: string;
+  title: string;
+  detail: string;
+  priority: "now" | "soon" | "nice_to_have";
+}
+
 export interface ReviewTopRiskFile {
   filename: string;
   risk_level: "low" | "medium" | "high";
@@ -35,13 +42,24 @@ export interface ReviewTopRiskFile {
   changes: number;
   areas: string[];
   is_sensitive: boolean;
+  blob_url?: string | null;
+}
+
+export interface ReviewCoverage {
+  files_analyzed: number;
+  total_files: number;
+  patchless_files: number;
+  is_partial: boolean;
+  partial_reasons: string[];
 }
 
 export interface ReviewProvenance {
-  cache_status: "live" | "cached";
-  confidence_in_score: "high" | "medium";
+  cache_status: "live" | "cached" | "fallback";
+  confidence_in_score: "high" | "medium" | "low";
   data_sources: string[];
   score_version: string;
+  coverage: ReviewCoverage;
+  source_updated_at?: string;
 }
 
 export interface ReviewResult {
@@ -52,25 +70,31 @@ export interface ReviewResult {
   base_branch?: string;
   head_branch?: string;
   created_at?: string;
+  updated_at?: string;
   report_status?: "demo" | "live" | "cached" | "fallback";
   merge_confidence: number;
   verdict: "mergeable" | "focused review" | "review needed";
   summary: string;
+  verdict_text: string;
+  confidence_label: BackendAnalysisResult["label"];
   top_risks: ReviewRiskItem[];
   next_actions: string[];
   changed_areas: string[];
   limitations: string[];
   stats: {
     files_changed: number;
+    files_analyzed: number;
     additions: number;
     deletions: number;
     commits: number;
+    patchless_files: number;
   };
   risk_breakdown: ReviewRiskBreakdownItem[];
   score_movement: ReviewScoreMovementItem[];
   file_groups: ReviewFileGroup[];
   review_focus: string[];
   signal_evidence: ReviewSignalEvidence[];
+  review_plan: ReviewRecommendation[];
   top_risk_files: ReviewTopRiskFile[];
   provenance?: ReviewProvenance;
 }
@@ -138,6 +162,7 @@ export interface BackendTopRiskFile {
   changes: number;
   areas: string[];
   is_sensitive: boolean;
+  blob_url?: string | null;
 }
 
 export interface BackendCommitSummary {
@@ -148,12 +173,21 @@ export interface BackendCommitSummary {
   html_url?: string | null;
 }
 
+export interface BackendAnalysisCoverage {
+  files_analyzed: number;
+  total_files: number;
+  patchless_files: number;
+  is_partial: boolean;
+  partial_reasons: string[];
+}
+
 export interface BackendAnalysisContext {
-  confidence_in_score: "high" | "medium";
+  confidence_in_score: "high" | "medium" | "low";
   summary: string;
   limitations: string[];
   data_sources: string[];
-  cache_status: "live" | "cached";
+  cache_status: "live" | "cached" | "fallback";
+  coverage: BackendAnalysisCoverage;
 }
 
 export interface BackendAnalysisResult {
@@ -177,3 +211,4 @@ export interface BackendAnalysisResult {
   };
   analysis_context: BackendAnalysisContext;
 }
+

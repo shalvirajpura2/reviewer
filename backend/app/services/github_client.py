@@ -1,9 +1,12 @@
-﻿from typing import Any
+from typing import Any
 
 import httpx
 
 from app.core.settings import settings
 from app.models.analysis import ChangedFile, GithubCommitSummary, GithubPrMetadata
+
+max_pr_file_pages = 30
+
 
 
 def build_headers() -> dict[str, str]:
@@ -70,10 +73,15 @@ async def fetch_pr_metadata(parsed_pr: dict[str, str | int]) -> GithubPrMetadata
     )
 
 
-async def fetch_pr_files(parsed_pr: dict[str, str | int]) -> list[ChangedFile]:
+async def fetch_pr_files(
+    parsed_pr: dict[str, str | int],
+    expected_file_count: int | None = None,
+) -> tuple[list[ChangedFile], list[str]]:
     collected_files: list[ChangedFile] = []
+    partial_reasons: list[str] = []
+    page = 1
 
-    for page in range(1, 6):
+    while page <= max_pr_file_pages:
         payload = await github_fetch(
             f"/repos/{parsed_pr['owner']}/{parsed_pr['repo']}/pulls/{parsed_pr['pull_number']}/files?per_page=100&page={page}"
         )
@@ -98,31 +106,68 @@ async def fetch_pr_files(parsed_pr: dict[str, str | int]) -> list[ChangedFile]:
         if len(payload) < 100:
             break
 
-    return collected_files
+        page += 1
 
-
-async def fetch_pr_commits(parsed_pr: dict[str, str | int]) -> list[GithubCommitSummary]:
-    payload = await github_fetch(
-        f"/repos/{parsed_pr['owner']}/{parsed_pr['repo']}/pulls/{parsed_pr['pull_number']}/commits?per_page=100"
-    )
-
-    commits: list[GithubCommitSummary] = []
-    for item in payload[:100]:
-        message = item.get("commit", {}).get("message", "")
-        first_line = message.splitlines()[0] if message else "Commit"
-        commits.append(
-            GithubCommitSummary(
-                sha=item["sha"][:7],
-                message=first_line,
-                author=item.get("author", {}).get("login")
-                or item.get("commit", {}).get("author", {}).get("name")
-                or "unknown",
-                authored_at=item.get("commit", {}).get("author", {}).get("date"),
-                html_url=item.get("html_url"),
-            )
+    if page > max_pr_file_pages:
+        partial_reasons.append(
+            f"GitHub file pagination was capped after {max_pr_file_pages * 100} files to protect service reliability."
         )
 
-    return commits
+    if expected_file_count is not None and len(collected_files) < expected_file_count:
+        partial_reasons.append(
+            f"Reviewer analyzed {len(collected_files)} of {expected_file_count} changed files returned by GitHub."
+        )
+
+    return collected_files, partial_reasons
+
+
+async def fetch_pr_commits(
+    parsed_pr: dict[str, str | int],
+    expected_commit_count: int | None = None,
+) -> tuple[list[GithubCommitSummary], list[str]]:
+    commits: list[GithubCommitSummary] = []
+    partial_reasons: list[str] = []
+    page = 1
+
+    while page <= settings.max_pr_commit_pages:
+        payload = await github_fetch(
+            f"/repos/{parsed_pr['owner']}/{parsed_pr['repo']}/pulls/{parsed_pr['pull_number']}/commits?per_page=100&page={page}"
+        )
+
+        if not payload:
+            break
+
+        for item in payload:
+            message = item.get("commit", {}).get("message", "")
+            first_line = message.splitlines()[0] if message else "Commit"
+            commits.append(
+                GithubCommitSummary(
+                    sha=item["sha"][:7],
+                    message=first_line,
+                    author=item.get("author", {}).get("login")
+                    or item.get("commit", {}).get("author", {}).get("name")
+                    or "unknown",
+                    authored_at=item.get("commit", {}).get("author", {}).get("date"),
+                    html_url=item.get("html_url"),
+                )
+            )
+
+        if len(payload) < 100:
+            break
+
+        page += 1
+
+    if page > settings.max_pr_commit_pages:
+        partial_reasons.append(
+            f"GitHub commit pagination was capped after {settings.max_pr_commit_pages * 100} commits to protect service reliability."
+        )
+
+    if expected_commit_count is not None and len(commits) < expected_commit_count:
+        partial_reasons.append(
+            f"Reviewer analyzed {len(commits)} of {expected_commit_count} commits returned by GitHub."
+        )
+
+    return commits, partial_reasons
 
 
 async def fetch_repo_stars(owner: str, repo: str) -> int:

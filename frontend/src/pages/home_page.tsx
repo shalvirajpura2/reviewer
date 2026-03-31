@@ -6,44 +6,37 @@ import { PrInputBar } from "../components/pr_input_bar";
 import { SiteFooter } from "../components/site_footer";
 import { get_site_stats, type SiteStats } from "../lib/api";
 
-
 const LottiePlayer = "lottie-player" as ElementType;
 
 const feature_items = [
   {
     icon: ShieldCheck,
-    title: "Merge Confidence Score",
+    title: "Clear merge verdict",
     detail:
-      "A 0-100 score with a clear verdict, derived from deterministic signals like sensitive paths, diff size, missing tests, migrations, and blast radius.",
+      "Get a deterministic score, a plain-language verdict, and a clear read on how much confidence to place in the review.",
     tag: "Scored",
   },
   {
-    icon: Activity,
-    title: "Risk Breakdown",
-    detail:
-      "See exactly which review dimensions are driving risk: sensitive code, dependencies, migrations, config changes, tests, and blast radius.",
-    tag: "Explained",
-  },
-  {
     icon: Eye,
-    title: "Top Files To Inspect",
+    title: "Start with the right files",
     detail:
-      "Reviewer ranks the files most likely to deserve focused review first, with reasons tied to diff shape, sensitivity, and impact.",
+      "Reviewer ranks the files most worth opening first so you can begin with the highest-impact parts of the pull request.",
     tag: "Prioritized",
   },
   {
-    icon: Sparkles,
-    title: "Evidence + Provenance",
+    icon: Activity,
+    title: "Understand the risk shape",
     detail:
-      "Every report shows the signals that fired, the evidence behind them, and which data sources were actually used so the output feels trustworthy.",
+      "See what is driving attention: sensitive code, dependencies, config, migrations, tests, and blast radius.",
+    tag: "Explained",
+  },
+  {
+    icon: Sparkles,
+    title: "Know what the result used",
+    detail:
+      "Every report shows when the analysis is partial, cached, or live so the output stays useful without overclaiming.",
     tag: "Honest",
   },
-];
-
-const hero_points = [
-  "Live GitHub pull request data",
-  "Deterministic scoring, not AI guesswork",
-  "Top files to inspect first",
 ];
 
 function format_avg_time(value: number | null) {
@@ -64,7 +57,7 @@ export function HomePage() {
   useEffect(() => {
     let is_active = true;
 
-    async function load_site_stats() {
+    async function load_home_data() {
       try {
         const next_site_stats = await get_site_stats();
 
@@ -78,7 +71,7 @@ export function HomePage() {
       }
     }
 
-    void load_site_stats();
+    void load_home_data();
 
     return () => {
       is_active = false;
@@ -92,7 +85,7 @@ export function HomePage() {
         <div className="home-hero">
           <div className="hero-eyebrow">
             <span className="hero-dot" />
-            <span>Deterministic merge review</span>
+            <span>Deterministic pull request review</span>
           </div>
 
           <div className="hero-lottie-shell" aria-hidden="true">
@@ -107,25 +100,15 @@ export function HomePage() {
           </div>
 
           <h1 className="hero-h1">
-            Review the right files <br />
-            before you <span className="hl">merge</span>.
+            Paste a PR. <br />
+            Start the review <span className="hl">faster</span>.
           </h1>
           <p className="hero-sub">
-            Paste any <b>public GitHub pull request</b> and get a structured merge report in seconds: a confidence score,
-            the top files to inspect, evidence-backed risks, and clear next reviewer actions.
+            Paste a <b>public GitHub pull request</b> to see where review should start, what raised risk, and
+            how much confidence to place in the result.
           </p>
 
-          <div className="hero-points hero-points-centered">
-            {hero_points.map((hero_point) => (
-              <div key={hero_point} className="hero-point">
-                <span className="hero-point-dot" />
-                <span>{hero_point}</span>
-              </div>
-            ))}
-          </div>
-
           <div className="hero-input-shell">
-            <div className="hero-panel-label">Start with one pull request URL</div>
             <PrInputBar />
           </div>
 
@@ -178,3 +161,4 @@ export function HomePage() {
     </div>
   );
 }
+

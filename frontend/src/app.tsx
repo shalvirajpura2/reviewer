@@ -1,5 +1,5 @@
 import { Analytics } from "@vercel/analytics/react";
-import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 
 import { AppErrorBoundary } from "./components/app_error_boundary";
 import { FirstVisitIntro } from "./components/first_visit_intro";
@@ -19,6 +19,7 @@ export function App() {
           <Routes>
             <Route path="/" element={<HomePage />} />
             <Route path="/about" element={<AboutPage />} />
+            <Route path="/history" element={<Navigate to="/" replace />} />
             <Route path="/result" element={<ResultPage />} />
             <Route path="*" element={<NotFoundPage />} />
           </Routes>

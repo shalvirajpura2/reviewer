@@ -1,35 +1,15 @@
 import type {
   BackendAnalysisResult,
   ReviewResult,
+  ReviewRecommendation,
   ReviewRiskBreakdownItem,
   ReviewRiskItem,
   ReviewScoreMovementItem,
   ReviewSignalEvidence
 } from "../types/review";
 
-function map_verdict(label: BackendAnalysisResult["label"]): ReviewResult["verdict"] {
-  if (label === "high confidence") {
-    return "mergeable";
-  }
-
-  if (label === "moderate confidence" || label === "low confidence") {
-    return "focused review";
-  }
-
-  return "review needed";
-}
-
 function build_summary(result: BackendAnalysisResult) {
-  if (result.analysis_context.summary) {
-    return result.analysis_context.summary;
-  }
-
-  if (result.triggered_signals.length === 0) {
-    return "The pull request looks contained enough to merge with routine review.";
-  }
-
-  const primary_signal = result.triggered_signals[0].label.toLowerCase();
-  return `${result.verdict}. ${primary_signal} is the main review driver.`;
+  return result.analysis_context.summary || result.verdict;
 }
 
 function build_changed_areas(result: BackendAnalysisResult) {
@@ -45,33 +25,29 @@ function build_changed_areas(result: BackendAnalysisResult) {
 function build_top_risks(result: BackendAnalysisResult): ReviewRiskItem[] {
   if (result.triggered_signals.length > 0) {
     return result.triggered_signals.slice(0, 4).map((item) => ({
-      label: item.label.toLowerCase(),
+      label: item.label,
       severity: item.severity
     }));
   }
 
   return [
     {
-      label: "no material risk signals were detected",
+      label: "No material risk signals were detected",
       severity: "low"
     }
   ];
 }
 
 function build_next_actions(result: BackendAnalysisResult) {
-  if (result.recommendations.length > 0) {
-    return result.recommendations.slice(0, 5).map((item) => item.title);
-  }
-
-  return ["Run a final reviewer pass before merge"];
+  return result.recommendations.slice(0, 5).map((item) => item.title);
 }
 
 function map_breakdown_level(score: number): ReviewRiskBreakdownItem["level"] {
-  if (score >= 70) {
+  if (score >= 20) {
     return "high";
   }
 
-  if (score >= 40) {
+  if (score >= 10) {
     return "medium";
   }
 
@@ -103,6 +79,15 @@ function build_recent_commits(result: BackendAnalysisResult): ReviewScoreMovemen
       delta: 0
     }
   ];
+}
+
+function build_review_plan(result: BackendAnalysisResult): ReviewRecommendation[] {
+  return result.recommendations.slice(0, 5).map((item) => ({
+    id: item.id,
+    title: item.title,
+    detail: item.detail,
+    priority: item.priority
+  }));
 }
 
 function build_signal_evidence(result: BackendAnalysisResult): ReviewSignalEvidence[] {
@@ -144,6 +129,23 @@ function build_review_focus(result: BackendAnalysisResult) {
   return build_changed_areas(result).slice(0, 4).map((item) => `Review ${item}`);
 }
 
+function build_limitations(result: BackendAnalysisResult) {
+  const partial_reasons = result.analysis_context.coverage.partial_reasons;
+  const seen = new Set<string>();
+  const items = [...partial_reasons, ...result.analysis_context.limitations];
+
+  return items.filter((item) => {
+    const normalized_item = item.trim().toLowerCase();
+
+    if (!normalized_item || seen.has(normalized_item)) {
+      return false;
+    }
+
+    seen.add(normalized_item);
+    return true;
+  });
+
+}
 export function map_analysis_to_review(result: BackendAnalysisResult): ReviewResult {
   return {
     pr_title: result.metadata.title,
@@ -153,38 +155,47 @@ export function map_analysis_to_review(result: BackendAnalysisResult): ReviewRes
     base_branch: result.metadata.base_branch,
     head_branch: result.metadata.head_branch,
     created_at: result.metadata.created_at,
+    updated_at: result.metadata.updated_at,
     report_status: result.analysis_context.cache_status,
     merge_confidence: result.score,
-    verdict: map_verdict(result.label),
+    verdict: result.label === "high confidence" ? "mergeable" : result.label === "risky to merge" ? "review needed" : "focused review",
+    verdict_text: result.verdict,
+    confidence_label: result.label,
     summary: build_summary(result),
     top_risks: build_top_risks(result),
     next_actions: build_next_actions(result),
     changed_areas: build_changed_areas(result),
-    limitations: result.analysis_context.limitations,
+    limitations: build_limitations(result),
     stats: {
       files_changed: result.metadata.changed_files,
+      files_analyzed: result.analysis_context.coverage.files_analyzed,
       additions: result.metadata.additions,
       deletions: result.metadata.deletions,
-      commits: result.metadata.commits
+      commits: result.metadata.commits,
+      patchless_files: result.analysis_context.coverage.patchless_files
     },
     risk_breakdown: build_risk_breakdown(result),
     score_movement: build_recent_commits(result),
     file_groups: build_file_groups(result),
     review_focus: build_review_focus(result),
     signal_evidence: build_signal_evidence(result),
+    review_plan: build_review_plan(result),
     top_risk_files: result.top_risk_files.slice(0, 5).map((item) => ({
       filename: item.filename,
       risk_level: item.risk_level,
       reasons: item.reasons,
       changes: item.changes,
       areas: item.areas,
-      is_sensitive: item.is_sensitive
+      is_sensitive: item.is_sensitive,
+      blob_url: item.blob_url
     })),
     provenance: {
       cache_status: result.analysis_context.cache_status,
       confidence_in_score: result.analysis_context.confidence_in_score,
       data_sources: result.analysis_context.data_sources,
-      score_version: result.score_summary.score_version
+      score_version: result.score_summary.score_version,
+      coverage: result.analysis_context.coverage,
+      source_updated_at: result.metadata.updated_at
     }
   };
 }

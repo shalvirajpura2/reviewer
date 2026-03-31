@@ -1,4 +1,4 @@
-﻿from app.models.analysis import RecommendationItem, RiskSignal
+from app.models.analysis import RecommendationItem, RiskSignal
 
 
 recommendation_map = {
@@ -20,6 +20,18 @@ recommendation_map = {
         detail="Check release notes, lockfile changes, and transitive risk before merging.",
         priority="now",
     ),
+    "dependencies_without_tests": RecommendationItem(
+        id="exercise_dependency_paths",
+        title="Exercise dependency-affected paths",
+        detail="When dependencies change without test updates, run the flows most exposed to version and lockfile drift.",
+        priority="soon",
+    ),
+    "lockfile_only_dependency_refresh": RecommendationItem(
+        id="scan_lockfile_refresh",
+        title="Scan the dependency refresh scope",
+        detail="This looks closer to a lockfile refresh, so confirm whether package manifests or runtime behavior changed alongside it.",
+        priority="nice_to_have",
+    ),
     "migration_detected": RecommendationItem(
         id="validate_migration_rollout",
         title="Validate migration rollout and rollback",
@@ -31,6 +43,12 @@ recommendation_map = {
         title="Verify config changes in staging",
         detail="Exercise the changed environment or workflow path before approving merge.",
         priority="soon",
+    ),
+    "runtime_and_config_changed": RecommendationItem(
+        id="trace_runtime_with_config",
+        title="Trace the runtime path behind config edits",
+        detail="When code and configuration move together, confirm the changed settings still match the new runtime behavior.",
+        priority="now",
     ),
     "shared_core_module_touched": RecommendationItem(
         id="request_owner_review",
@@ -44,11 +62,53 @@ recommendation_map = {
         detail="Check routing, guards, and request interception paths that may affect multiple flows.",
         priority="soon",
     ),
+    "cross_stack_change": RecommendationItem(
+        id="walk_the_full_user_flow",
+        title="Walk the full user flow across layers",
+        detail="When frontend and backend change together, test the end-to-end path instead of reviewing each layer in isolation.",
+        priority="now",
+    ),
+    "patchless_code_changes": RecommendationItem(
+        id="open_hidden_diff_context",
+        title="Open files with limited diff visibility",
+        detail="Some changed code came back without patch hunks, so inspect the full file view in GitHub before trusting the score completely.",
+        priority="now",
+    ),
+    "rename_heavy_refactor": RecommendationItem(
+        id="verify_refactor_mappings",
+        title="Verify rename and move intent",
+        detail="A rename-heavy PR can hide behavior changes, so confirm each moved file still maps to the same runtime responsibility.",
+        priority="soon",
+    ),
+    "broad_shallow_change": RecommendationItem(
+        id="review_by_surface_area",
+        title="Review by surface area, not commit order",
+        detail="A wide but shallow PR is easy to skim past, so group the review by risk area and ownership instead of scanning linearly.",
+        priority="soon",
+    ),
+    "high_commit_count": RecommendationItem(
+        id="check_final_state_over_commit_story",
+        title="Check the final state, not just the commit story",
+        detail="A long commit train can obscure the final behavior, so review the merged diff and key files directly.",
+        priority="soon",
+    ),
+    "generated_output_changed": RecommendationItem(
+        id="confirm_generated_artifacts",
+        title="Confirm generated artifacts are intentional",
+        detail="Generated output changed with implementation, so verify whether those files are expected build artifacts or accidental noise.",
+        priority="nice_to_have",
+    ),
     "no_tests_for_sensitive_change": RecommendationItem(
         id="add_regression_tests",
         title="Add tests for risky paths",
         detail="Sensitive logic changed without test coverage updates, so ask for targeted regression tests.",
         priority="now",
+    ),
+    "implementation_without_tests": RecommendationItem(
+        id="ask_for_behavior_checks",
+        title="Ask for behavior checks or targeted tests",
+        detail="Implementation changed across several files without test updates, so confirm how the team validated the behavior.",
+        priority="soon",
     ),
     "no_tests_changed": RecommendationItem(
         id="confirm_test_strategy",
@@ -89,4 +149,3 @@ def generate_recommendations(signals: list[RiskSignal]) -> list[RecommendationIt
 
     priority_order = {"now": 0, "soon": 1, "nice_to_have": 2}
     return sorted(collected.values(), key=lambda item: priority_order[item.priority])
-

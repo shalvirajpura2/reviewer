@@ -5,6 +5,11 @@ from pydantic import BaseModel, Field
 
 class AnalyzeRequest(BaseModel):
     pr_url: str = Field(min_length=1)
+    force_refresh: bool = False
+
+
+class PreviewRequest(BaseModel):
+    pr_url: str = Field(min_length=1)
 
 
 class GithubPrMetadata(BaseModel):
@@ -102,6 +107,7 @@ class TopRiskFile(BaseModel):
     changes: int
     areas: list[str]
     is_sensitive: bool
+    blob_url: str | None = None
 
 
 class ScoreSummary(BaseModel):
@@ -111,12 +117,25 @@ class ScoreSummary(BaseModel):
     score_version: str
 
 
+class AnalysisCoverage(BaseModel):
+    files_analyzed: int
+    total_files: int
+    patchless_files: int
+    is_partial: bool
+    partial_reasons: list[str]
+
+
 class AnalysisContext(BaseModel):
-    confidence_in_score: Literal["high", "medium"]
+    confidence_in_score: Literal["high", "medium", "low"]
     summary: str
     limitations: list[str]
     data_sources: list[str]
-    cache_status: Literal["live", "cached"]
+    cache_status: Literal["live", "cached", "fallback"]
+    coverage: AnalysisCoverage
+
+
+class PrPreviewResult(BaseModel):
+    metadata: GithubPrMetadata
 
 
 class PrAnalysisResult(BaseModel):

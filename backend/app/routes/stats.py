@@ -1,8 +1,8 @@
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 
-from app.models.stats import PublicStatsResponse, RecordVisitRequest, RepoStarsResponse
-from app.services.stats_service import get_cached_repo_stars, get_public_stats, record_visit
+from app.models.stats import PublicStatsResponse, RecentAnalysesResponse, RecordVisitRequest, RepoStarsResponse
+from app.services.stats_service import get_cached_repo_stars, get_public_stats, get_recent_analyses, record_visit
 
 router = APIRouter(prefix="/api/stats", tags=["stats"])
 
@@ -15,6 +15,17 @@ async def get_stats_route() -> PublicStatsResponse:
         return JSONResponse(
             status_code=503,
             content={"error_code": "stats_unavailable", "message": "Reviewer stats are temporarily unavailable."},
+        )
+
+
+@router.get("/recent-analyses", response_model=RecentAnalysesResponse)
+async def get_recent_analyses_route() -> RecentAnalysesResponse:
+    try:
+        return RecentAnalysesResponse(items=get_recent_analyses())
+    except Exception:
+        return JSONResponse(
+            status_code=503,
+            content={"error_code": "recent_analyses_unavailable", "message": "Reviewer could not load recent analyses right now."},
         )
 
 

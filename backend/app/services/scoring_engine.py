@@ -67,6 +67,6 @@ def compute_score(signals: list[RiskSignal]) -> dict[str, object]:
             "base_score": base_score,
             "total_penalty": total_penalty,
             "total_relief": total_relief,
-            "score_version": "v1.1-deterministic",
+            "score_version": "v1.2-deterministic",
         },
     }

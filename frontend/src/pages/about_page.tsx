@@ -1,13 +1,13 @@
 import { Database, FileSearch, Github, ShieldCheck } from "lucide-react";
+import { Link } from "react-router-dom";
 
 import { SiteFooter } from "../components/site_footer";
-
 
 const pipeline_steps = [
   {
     number: "01",
     icon: Github,
-    title: "Paste a public GitHub pull request",
+    title: "Read the pull request from GitHub",
     description:
       "Reviewer validates the PR URL, resolves the repository, and fetches the pull request, changed files, and commit history directly from GitHub.",
     points: [
@@ -24,7 +24,7 @@ GET /repos/{owner}/{repo}/pulls/{number}/commits`,
     icon: Database,
     title: "Build structured review context",
     description:
-      "The backend turns raw diff data into a concrete review model: sensitive paths, blast radius, churn, migrations, config changes, and test presence.",
+      "The backend turns raw diff data into a review model: sensitive paths, blast radius, migrations, config changes, patch visibility, and test presence.",
     points: [
       "Path sensitivity and area classification",
       "Diff shape and review surface extraction",
@@ -37,9 +37,9 @@ review_context -> blast_radius + coverage_signals`,
   {
     number: "03",
     icon: ShieldCheck,
-    title: "Run deterministic merge analysis",
+    title: "Run deterministic review scoring",
     description:
-      "Reviewer applies explainable scoring rules to rank risk signals, compute merge confidence, and generate next reviewer actions without pretending to understand what it does not know.",
+      "Reviewer applies explainable rules to rank risk signals, compute merge confidence, and generate reviewer actions without pretending to know what it cannot verify.",
     points: [
       "Verdict and merge confidence score",
       "Top risks with evidence",
@@ -52,13 +52,13 @@ actions = reviewer_actions(score, risks)`,
   {
     number: "04",
     icon: FileSearch,
-    title: "Return a focused merge report",
+    title: "Return a guided review workspace",
     description:
-      "The result page is built for speed: verdict first, then what changed, what matters, which files deserve attention, and why.",
+      "The result page is built for speed: verdict first, then what matters, which files deserve attention, and what still needs human judgment.",
     points: [
       "Top files to inspect first",
       "Signal evidence and provenance",
-      "Fast merge decision summary",
+      "A focused review path",
     ],
     code: `result -> verdict
 result -> top_risk_files
@@ -82,6 +82,19 @@ const trust_points = [
   "Built for fast review",
 ];
 
+const reliability_points = [
+  "Shows when analysis is cached, partial, or using a saved fallback.",
+  "Uses GitHub metadata, changed files, commits, and patch hints instead of invented context.",
+  "Ranks files and signals before asking for reviewer attention.",
+];
+
+const guardrail_points = [
+  "Static analysis only",
+  "No secrets scanning",
+  "Public repos only",
+  "Interprets diffs, does not execute code",
+];
+
 export function AboutPage() {
   return (
     <div className="page active">
@@ -91,9 +104,9 @@ export function AboutPage() {
             <span className="hero-dot" />
             <span>How Reviewer works</span>
           </div>
-          <h1 className="how-h1">A fast merge review system built around real PR signals.</h1>
+          <h1 className="how-h1">A faster review flow built around real pull request signals.</h1>
           <p className="how-sub">
-            Reviewer does one job well: turn a public GitHub pull request into a structured, explainable merge report that helps engineers know where to look before they approve.
+            Reviewer turns a public GitHub pull request into a structured review workspace so engineers know where to look before they approve.
           </p>
           <div className="how-trust-row">
             {trust_points.map((trust_point) => (
@@ -110,7 +123,7 @@ export function AboutPage() {
               <span>GitHub data</span>
               <span>Review context</span>
               <span>Scoring</span>
-              <span>Merge report</span>
+              <span>Review workspace</span>
             </div>
           </div>
           <div className="how-overview-card how-overview-output-card">
@@ -157,29 +170,24 @@ export function AboutPage() {
             })}
           </div>
 
-          <div className="how-bottom-grid">
-            <div className="output-preview how-preview-panel">
-              <div className="output-title">sample output fields</div>
-              <div className="output-fields output-fields-compact how-preview-output-grid">
-                {output_fields.map((output_field) => (
-                  <div key={output_field.label} className="output-field how-output-field">
-                    <div className="of-label">{output_field.label}</div>
-                    <div className={`of-val how-of-val ${output_field.tone ?? ""}`.trim()}>
-                      {output_field.value}
-                      {output_field.suffix ? <span className="of-suffix">{output_field.suffix}</span> : null}
-                    </div>
-                  </div>
-                ))}
-              </div>
+          <div className="how-bottom-grid how-bottom-grid-balanced">
+            <div className="how-limit-panel">
+              <div className="a-panel-title">why this feels trustworthy</div>
+              {reliability_points.map((point) => (
+                <div key={point} className="limit-item">{point}</div>
+              ))}
             </div>
 
             <div className="how-limit-panel">
               <div className="a-panel-title">guardrails</div>
-              <div className="limit-item">Static analysis only</div>
-              <div className="limit-item">No secrets scanning</div>
-              <div className="limit-item">Public repos only</div>
-              <div className="limit-item">Interprets diffs, does not execute code</div>
+              {guardrail_points.map((point) => (
+                <div key={point} className="limit-item">{point}</div>
+              ))}
             </div>
+          </div>
+
+          <div className="how-footer-actions">
+            <Link to="/" className="history-action history-action-primary">Analyze a PR</Link>
           </div>
         </div>
       </div>
@@ -188,3 +196,4 @@ export function AboutPage() {
     </div>
   );
 }
+
