@@ -1,15 +1,136 @@
 # Reviewer
 
-Reviewer is a deterministic pull-request analysis tool for public GitHub repositories. Paste a PR URL and it returns a structured merge-confidence report: verdict, score, top risks, top files to inspect, signal evidence, and next actions.
+<p align="center">
+  <img src="./frontend/public/favicon.svg" alt="Reviewer logo" width="96" />
+</p>
 
-The product is designed to feel useful to a real reviewer, not like a demo. It fetches live PR data from GitHub, applies explainable scoring rules, and shows where review attention should go first.
+<p align="center">
+  <strong>Deterministic PR review for public GitHub pull requests.</strong>
+</p>
 
-## Stack
+<p align="center">
+  Reviewer helps developers decide where to start, what deserves attention, and how much to trust the current review surface.
+</p>
 
-- Frontend: Vite, React, TypeScript, React Router
-- Backend: FastAPI, Pydantic, HTTPX
-- Analysis: deterministic heuristics plus patch-structure hints
-- Optional signal enhancement: tree-sitter
+<p align="center">
+  <img src="https://img.shields.io/badge/FastAPI-Backend-0F766E?style=for-the-badge&logo=fastapi&logoColor=white" alt="FastAPI" />
+  <img src="https://img.shields.io/badge/React-Frontend-0F172A?style=for-the-badge&logo=react&logoColor=61DAFB" alt="React" />
+  <img src="https://img.shields.io/badge/TypeScript-App-1D4ED8?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript" />
+  <img src="https://img.shields.io/badge/Python-Analysis-1E3A8A?style=for-the-badge&logo=python&logoColor=white" alt="Python" />
+  <img src="https://img.shields.io/badge/Pytest%20%2B%20Vitest-Tested-111827?style=for-the-badge" alt="Tested" />
+</p>
+
+## Table of contents
+
+- [What Reviewer is](#what-reviewer-is)
+- [Why it feels different](#why-it-feels-different)
+- [What the product returns](#what-the-product-returns)
+- [How it works](#how-it-works)
+- [Architecture](#architecture)
+- [Repository layout](#repository-layout)
+- [Important product files](#important-product-files)
+- [Tech stack](#tech-stack)
+- [Local setup](#local-setup)
+- [Environment](#environment)
+- [Quality checks](#quality-checks)
+- [Current direction](#current-direction)
+
+## What Reviewer is
+
+Reviewer is a product-first pull request review tool for public GitHub PRs.
+
+Paste a PR URL and Reviewer will:
+
+1. fetch live GitHub PR metadata, changed files, and commits
+2. classify the files and detect deterministic review signals
+3. score merge risk without pretending to know more than it does
+4. show the files a reviewer should inspect first
+5. surface evidence, provenance, and limitations clearly
+
+The goal is not to generate fluffy AI commentary. The goal is to help a developer review a PR faster and with better focus.
+
+## Why it feels different
+
+Most review tools lean too hard in one of two directions:
+
+- they dump raw information and make the reviewer do the sorting
+- they produce confident language without enough evidence
+
+Reviewer is intentionally different:
+
+- deterministic scoring instead of opaque model confidence
+- review-first UX instead of dashboard-first UX
+- explicit limitations when the analysis is partial
+- ranked files and review notes instead of generic summaries
+- backend truth shown directly in the frontend
+
+## What the product returns
+
+Reviewer is designed to answer the practical questions a developer actually has:
+
+- what is the review call
+- what is driving that call
+- which files should be opened first
+- what should be verified next
+- how trustworthy is this result
+
+The result page is built around:
+
+- decision
+- why attention
+- check these first
+- selected file context
+- recommended next step
+- deeper evidence only when needed
+
+## How it works
+
+```mermaid
+flowchart LR
+  A["Paste Public GitHub PR URL"] --> B["Fetch PR Metadata, Files, and Commits"]
+  B --> C["Classify Files and Extract Diff Signals"]
+  C --> D["Compute Deterministic Score and Review Signals"]
+  D --> E["Rank Top Files and Build Recommendations"]
+  E --> F["Render Review Workspace with Evidence and Limits"]
+```
+
+## Architecture
+
+### High-level system
+
+```mermaid
+flowchart TD
+  UI["Frontend
+  React + Vite + TypeScript"] --> API["FastAPI Backend"]
+  API --> GH["GitHub REST API"]
+  API --> PIPE["Analysis Pipeline"]
+  PIPE --> CLASS["File Classification"]
+  PIPE --> SIGNAL["Signal Detection"]
+  PIPE --> SCORE["Deterministic Scoring"]
+  PIPE --> RECO["Recommendation Engine"]
+  PIPE --> RESULT["Result Builder"]
+  RESULT --> API
+  API --> CACHE["Cache, fallback, throttling, tracing"]
+```
+
+### Analysis pipeline
+
+```mermaid
+flowchart LR
+  A["PR URL"] --> B["URL Parser"]
+  B --> C["GitHub Client"]
+  C --> D["Changed Files"]
+  C --> E["Commits"]
+  D --> F["File Classifier"]
+  F --> G["Signal Detector"]
+  G --> H["Scoring Engine"]
+  G --> I["Recommendation Engine"]
+  F --> J["Result Builder"]
+  H --> J
+  I --> J
+  E --> J
+  J --> K["Frontend Review Workspace"]
+```
 
 ## Repository layout
 
@@ -20,7 +141,7 @@ backend/
     models/
     routes/
     services/
-  requirements.txt
+  tests/
 frontend/
   public/
   src/
@@ -29,40 +150,38 @@ frontend/
     pages/
     styles/
     types/
-  index.html
-  package.json
-  tsconfig.json
-  vite.config.ts
-.env.example
-.gitattributes
-.gitignore
+docs/
+  readme/
 README.md
 ```
 
-## Environment variables
+## Important product files
 
-Shared:
-- `GITHUB_TOKEN`
+### Frontend
 
-Frontend:
-- `VITE_BACKEND_URL`
-  - example: `http://localhost:8000`
+- `frontend/src/pages/home_page.tsx`
+- `frontend/src/pages/result_page.tsx`
+- `frontend/src/components/pr_input_bar.tsx`
+- `frontend/src/lib/review_mapper.ts`
+- `frontend/src/styles/global.css`
 
-Backend:
-- `GITHUB_API_BASE`
-  - optional
-  - defaults to `https://api.github.com`
-- `BACKEND_PORT`
-  - optional
-  - defaults to `8000`
-- `CACHE_TTL_SECONDS`
-  - optional
-  - defaults to `300`
-- `CORS_ALLOW_ORIGINS`
-  - optional
-  - defaults to local Vite and localhost origins
+### Backend
 
-`backend/data/` is runtime-generated local state and is ignored by Git.
+- `backend/app/routes/analyze.py`
+- `backend/app/services/analysis_service.py`
+- `backend/app/services/file_classifier.py`
+- `backend/app/services/signal_detector.py`
+- `backend/app/services/scoring_engine.py`
+- `backend/app/services/recommendation_engine.py`
+- `backend/app/services/result_builder.py`
+
+## Tech stack
+
+- Frontend: React, Vite, TypeScript, React Router
+- Backend: FastAPI, Pydantic, HTTPX
+- Analysis: deterministic heuristics plus patch-structure hints
+- Runtime hardening: caching, fallback storage, throttling, request tracing
+- Testing: Pytest, Vitest
 
 ## Local setup
 
@@ -100,36 +219,53 @@ pnpm dev
 
 Frontend runs on `http://localhost:5173` by default.
 
-## Production checks
+## Environment
 
-Backend compile check:
+### Shared
+
+- `GITHUB_TOKEN`
+
+### Frontend
+
+- `VITE_BACKEND_URL`
+
+### Backend
+
+- `GITHUB_API_BASE`
+- `BACKEND_PORT`
+- `CACHE_TTL_SECONDS`
+- `CORS_ALLOW_ORIGINS`
+- `CORS_ALLOW_ORIGIN_REGEX`
+- `LOG_LEVEL`
+
+`backend/data/` is runtime-generated local state and is ignored by Git.
+
+## Quality checks
+
+### Backend
 
 ```bash
 python -m compileall backend/app
+python -m pytest backend/tests
 ```
 
-Frontend build check:
+### Frontend
 
 ```bash
 cd frontend
+pnpm test
 pnpm build
 ```
 
-## Important product paths
-
-- `frontend/src/pages/result_page.tsx`
-- `frontend/src/lib/review_mapper.ts`
-- `frontend/src/components/pr_input_bar.tsx`
-- `backend/app/routes/analyze.py`
-- `backend/app/services/analysis_service.py`
-- `backend/app/services/file_classifier.py`
-- `backend/app/services/signal_detector.py`
-- `backend/app/services/result_builder.py`
-
 ## Current direction
 
-Reviewer is being built as a trustworthy engineering tool:
-- deterministic scoring over invented AI claims
-- exact files to inspect first
-- explicit evidence and limitations
-- fast time-to-value from a single pasted PR URL
+Reviewer is being built to feel credible the moment a developer opens it:
+
+- fast enough to use in a real review workflow
+- direct enough to be useful in under a minute
+- transparent enough to earn trust
+- polished enough to represent the product well to developers, founders, and hiring teams
+
+## Builder
+
+Built by [Shalvi](https://shalvirajpura.xyz).
