@@ -77,6 +77,7 @@ function build_backend_result(overrides: Partial<BackendAnalysisResult> = {}): B
         filename: "backend/app/services/github_client.py",
         risk_level: "high",
         reasons: ["sensitive execution path touched", "shared or reused code touched"],
+        patch_excerpt: ["@@ -1,2 +1,3 @@", "-import httpx", "+import httpx"],
         changes: 12,
         areas: ["backend", "shared_core", "sensitive"],
         is_sensitive: true,
@@ -127,6 +128,7 @@ describe("map_analysis_to_review", () => {
     expect(mapped.summary).toContain("Built from GitHub metadata");
     expect(mapped.next_actions).toEqual(["Review sensitive logic carefully"]);
     expect(mapped.top_risk_files[0]?.filename).toBe("backend/app/services/github_client.py");
+    expect(mapped.top_risk_files[0]?.patch_excerpt).toEqual(["@@ -1,2 +1,3 @@", "-import httpx", "+import httpx"]);
   });
 
   it("dedupes limitations while keeping partial analysis reasons", () => {

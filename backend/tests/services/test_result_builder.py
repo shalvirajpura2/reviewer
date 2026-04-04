@@ -32,7 +32,10 @@ def build_file(filename: str, areas: list[str], **overrides):
         "additions": 35,
         "deletions": 5,
         "changes": 40,
-        "patch": "import auth from './auth'",
+        "patch": """@@ -1,2 +1,3 @@
+-import auth from './auth'
++import auth from './auth_service'
++export const is_enabled = true""",
         "blob_url": f"https://github.com/acme/reviewer/blob/main/{filename}",
         "previous_filename": None,
         "areas": areas,
@@ -69,4 +72,11 @@ def test_build_result_marks_partial_coverage_and_low_confidence():
     assert result.analysis_context.coverage.patchless_files == 1
     assert result.analysis_context.confidence_in_score == "low"
     assert result.top_risk_files[0].filename == "backend/app/services/github_client.py"
+    assert result.top_risk_files[0].patch_excerpt == [
+        "@@ -1,2 +1,3 @@",
+        "-import auth from './auth'",
+        "+import auth from './auth_service'",
+        "+export const is_enabled = true",
+    ]
+    assert result.top_risk_files[1].patch_excerpt == []
     assert any("patch hunks" in item for item in result.analysis_context.coverage.partial_reasons)

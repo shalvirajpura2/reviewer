@@ -209,6 +209,13 @@ async function copy_text(value: string) {
   throw new Error("Clipboard is unavailable in this browser.");
 }
 
+function patch_line_class(patch_line: string) {
+  if (patch_line.startsWith("@@")) return "rp-patch-line rp-patch-hunk";
+  if (patch_line.startsWith("+")) return "rp-patch-line rp-patch-add";
+  if (patch_line.startsWith("-")) return "rp-patch-line rp-patch-remove";
+  return "rp-patch-line";
+}
+
 function FocusPanel({ file, next_actions }: { file: ReviewTopRiskFile; next_actions: string[] }) {
   return (
     <div className="rp-focus-stack">
@@ -231,6 +238,19 @@ function FocusPanel({ file, next_actions }: { file: ReviewTopRiskFile; next_acti
           <span key={area} className="rp-chip">{area}</span>
         ))}
       </div>
+
+      {file.patch_excerpt.length > 0 ? (
+        <div className="rp-patch-box" aria-label={`Patch excerpt from ${file.filename}`}>
+          <div className="rp-patch-title">Patch evidence</div>
+          <pre className="rp-patch-pre">
+            {file.patch_excerpt.map((patch_line, index) => (
+              <code key={`${file.filename}-${index}-${patch_line}`} className={patch_line_class(patch_line)}>
+                {patch_line}
+              </code>
+            ))}
+          </pre>
+        </div>
+      ) : null}
 
       <div className="rp-focus-grid">
         <div className="rp-focus-section">
