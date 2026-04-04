@@ -1,6 +1,5 @@
 from datetime import datetime, timezone
 import json
-import os
 import time
 from typing import cast
 from pathlib import Path
@@ -9,6 +8,7 @@ from threading import Lock
 from app.core.settings import settings
 from app.models.analysis import PrAnalysisResult
 from app.services.github_client import fetch_repo_stars
+from app.services.json_file_store import read_json_object, write_json_object
 
 try:
     import psycopg
@@ -45,25 +45,9 @@ def _default_analysis_cache() -> dict[str, object]:
     return {"items": {}}
 
 
-def _read_json_file(path: Path, fallback: dict[str, object]) -> dict[str, object]:
-    if not path.exists():
-        return fallback
-
-    try:
-        payload = json.loads(path.read_text(encoding="utf-8"))
-    except (json.JSONDecodeError, OSError):
-        return fallback
-
-    if not isinstance(payload, dict):
-        return fallback
-
-    merged_payload = dict(fallback)
-    merged_payload.update(payload)
-    return merged_payload
-
 
 def _read_stats_file() -> dict[str, object]:
-    stats = _read_json_file(_stats_file, _default_stats())
+    stats = read_json_object(_stats_file, _default_stats())
 
     if not isinstance(stats.get("seen_pr_urls"), list):
         stats["seen_pr_urls"] = []
@@ -78,7 +62,7 @@ def _read_stats_file() -> dict[str, object]:
 
 
 def _read_analysis_cache_file() -> dict[str, object]:
-    analysis_cache = _read_json_file(_analysis_cache_file, _default_analysis_cache())
+    analysis_cache = read_json_object(_analysis_cache_file, _default_analysis_cache())
 
     if not isinstance(analysis_cache.get("items"), dict):
         analysis_cache["items"] = {}
@@ -86,16 +70,6 @@ def _read_analysis_cache_file() -> dict[str, object]:
     return analysis_cache
 
 
-def _write_json_file(path: Path, payload: dict[str, object]) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    temp_path = path.with_name(f"{path.name}.tmp")
-
-    with temp_path.open("w", encoding="utf-8") as temp_file:
-        json.dump(payload, temp_file, indent=2)
-        temp_file.flush()
-        os.fsync(temp_file.fileno())
-
-    os.replace(temp_path, path)
 
 def _normalize_database_url(database_url: str) -> str:
     if database_url.startswith("postgresql://"):
@@ -441,7 +415,7 @@ def _write_stats(stats: dict[str, object]) -> None:
             connection.commit()
         return
 
-    _write_json_file(_stats_file, stats)
+    write_json_object(_stats_file, stats)
 
 
 def _serialize_result(result: PrAnalysisResult) -> dict[str, object]:
@@ -541,7 +515,7 @@ def store_cached_analysis(pr_url: str, result: PrAnalysisResult) -> None:
             **metadata_entry,
         }
         analysis_cache_payload["items"] = items
-        _write_json_file(_analysis_cache_file, analysis_cache_payload)
+        write_json_object(_analysis_cache_file, analysis_cache_payload)
 
 
 def get_cached_analysis(pr_url: str, max_age_seconds: int | None = None) -> tuple[PrAnalysisResult, float] | None:
