@@ -105,6 +105,7 @@ class TopRiskFile(BaseModel):
     filename: str
     risk_level: Literal["low", "medium", "high"]
     reasons: list[str]
+    reviewer_hints: list[str] = []
     patch_excerpt: list[str] = []
     changes: int
     areas: list[str]

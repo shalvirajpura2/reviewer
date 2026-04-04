@@ -77,6 +77,7 @@ function build_backend_result(overrides: Partial<BackendAnalysisResult> = {}): B
         filename: "backend/app/services/github_client.py",
         risk_level: "high",
         reasons: ["sensitive execution path touched", "shared or reused code touched"],
+        reviewer_hints: ["backend reviewer", "core maintainer"],
         patch_excerpt: ["@@ -1,2 +1,3 @@", "-import httpx", "+import httpx"],
         changes: 12,
         areas: ["backend", "shared_core", "sensitive"],
@@ -101,12 +102,12 @@ function build_backend_result(overrides: Partial<BackendAnalysisResult> = {}): B
     },
     analysis_context: {
       confidence_in_score: "medium",
-      summary: "Built from GitHub metadata, 3 of 3 changed files analyzed, 2 commits, deterministic scoring rules, and patch-level structure hints. Patch coverage note: full patch hints where available. Response source: live.",
+      summary: "Built from GitHub metadata, 3 of 3 changed files analyzed, 2 commits, rule-based risk scoring, and patch-level structure hints. Patch coverage note: full patch hints where available. Response source: live.",
       limitations: [
         "This analysis does not inspect CI status or deployment health.",
         "Patch structure hints are based on changed hunks, not full repository semantics.",
       ],
-      data_sources: ["GitHub PR metadata", "GitHub changed files", "GitHub commits", "deterministic rules engine"],
+      data_sources: ["GitHub PR metadata", "GitHub changed files", "GitHub commits", "rule-based risk engine"],
       cache_status: "live",
       coverage: {
         files_analyzed: 3,
@@ -128,6 +129,7 @@ describe("map_analysis_to_review", () => {
     expect(mapped.summary).toContain("Built from GitHub metadata");
     expect(mapped.next_actions).toEqual(["Review sensitive logic carefully"]);
     expect(mapped.top_risk_files[0]?.filename).toBe("backend/app/services/github_client.py");
+    expect(mapped.top_risk_files[0]?.reviewer_hints).toEqual(["backend reviewer", "core maintainer"]);
     expect(mapped.top_risk_files[0]?.patch_excerpt).toEqual(["@@ -1,2 +1,3 @@", "-import httpx", "+import httpx"]);
   });
 

@@ -113,13 +113,13 @@ def build_confidence_summary(
 
     if len(files) >= 35 or len(commits) >= 20:
         return (
-            f"Built from GitHub metadata, {scope_summary}, {len(commits)} commits, deterministic scoring rules, "
+            f"Built from GitHub metadata, {scope_summary}, {len(commits)} commits, rule-based risk scoring, "
             f"and patch-level structure hints. The review surface is broad enough that this score should guide triage more than final approval. "
             f"Patch coverage note: {patch_summary}. Response source: {cache_status}."
         )
 
     return (
-        f"Built from GitHub metadata, {scope_summary}, {len(commits)} commits, deterministic scoring rules, "
+        f"Built from GitHub metadata, {scope_summary}, {len(commits)} commits, rule-based risk scoring, "
         f"and patch-level structure hints. Patch coverage note: {patch_summary}. Response source: {cache_status}."
     )
 
@@ -184,6 +184,29 @@ def build_patch_excerpt(file: ClassifiedFile, max_lines: int = 8) -> list[str]:
 
     return excerpt_lines
 
+
+def build_reviewer_hints(file: ClassifiedFile) -> list[str]:
+    reviewer_hints: list[str] = []
+
+    if "backend" in file.areas or "api" in file.areas or "middleware" in file.areas:
+        reviewer_hints.append("backend reviewer")
+
+    if "frontend" in file.areas:
+        reviewer_hints.append("frontend reviewer")
+
+    if "migration" in file.areas or "database" in file.symbol_hints:
+        reviewer_hints.append("data reviewer")
+
+    if "config" in file.areas or "infra" in file.areas or "dependency" in file.areas:
+        reviewer_hints.append("platform reviewer")
+
+    if "shared_core" in file.areas:
+        reviewer_hints.append("core maintainer")
+
+    if "test" in file.areas:
+        reviewer_hints.append("test owner")
+
+    return reviewer_hints[:3] or ["code owner"]
 
 def build_file_reasons(file: ClassifiedFile, test_files_present: bool) -> list[str]:
     reasons: list[str] = []
@@ -275,6 +298,7 @@ def build_top_risk_files(files: list[ClassifiedFile]) -> list[TopRiskFile]:
                 filename=file.filename,
                 risk_level=risk_level,
                 reasons=build_file_reasons(file, test_files_present),
+                reviewer_hints=build_reviewer_hints(file),
                 patch_excerpt=build_patch_excerpt(file),
                 changes=file.changes,
                 areas=file.areas,
@@ -316,7 +340,7 @@ def build_result(
             confidence_in_score=build_confidence_in_score(files, signals, commits, coverage, cache_status),
             summary=build_confidence_summary(files, commits, cache_status, coverage),
             limitations=analysis_limitations,
-            data_sources=["GitHub PR metadata", "GitHub changed files", "GitHub commits", "deterministic rules engine"],
+            data_sources=["GitHub PR metadata", "GitHub changed files", "GitHub commits", "rule-based risk engine"],
             cache_status=cache_status,
             coverage=coverage,
         ),

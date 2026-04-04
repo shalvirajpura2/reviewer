@@ -72,6 +72,7 @@ def test_build_result_marks_partial_coverage_and_low_confidence():
     assert result.analysis_context.coverage.patchless_files == 1
     assert result.analysis_context.confidence_in_score == "low"
     assert result.top_risk_files[0].filename == "backend/app/services/github_client.py"
+    assert "backend reviewer" in result.top_risk_files[0].reviewer_hints
     assert result.top_risk_files[0].patch_excerpt == [
         "@@ -1,2 +1,3 @@",
         "-import auth from './auth'",
