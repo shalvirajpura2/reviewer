@@ -124,3 +124,23 @@ def test_build_result_marks_passing_ci_with_test_changes():
     assert result.safeguards.checks_passed == 1
     assert result.safeguards.tests_changed is True
     assert result.analysis_context.confidence_in_score == "high"
+
+
+
+def test_build_result_marks_old_merged_pr_ci_as_unavailable():
+    metadata = build_metadata(
+        merged=True,
+        merged_at="2024-10-24T15:42:12Z",
+        updated_at="2024-10-24T15:42:12Z",
+    )
+    files = [
+        build_file("packages/tailwindcss/src/utils/decode-arbitrary-value.ts", ["frontend", "shared_core"]),
+        build_file("packages/tailwindcss/src/utils/decode-arbitrary-value.test.ts", ["frontend", "test"]),
+    ]
+    commits = [GithubCommitSummary(sha="75aa966", message="decode arbitrary value", author="adam")]
+
+    result = build_result(metadata, files, commits, [], check_runs=[])
+
+    assert result.safeguards.ci_state == "unavailable"
+    assert result.safeguards.summary == "GitHub no longer exposes CI checks for this historical merged PR."
+    assert result.analysis_context.confidence_in_score == "medium"

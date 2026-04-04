@@ -94,3 +94,22 @@ def test_detect_signals_captures_failed_ci_checks():
     signal_ids = {signal.id for signal in detect_signals(metadata, files, [], check_runs)}
 
     assert "ci_checks_failed" in signal_ids
+
+
+
+def test_detect_signals_skips_missing_ci_for_historical_merged_pr():
+    metadata = build_metadata(
+        merged=True,
+        merged_at="2024-10-24T15:42:12Z",
+        updated_at="2024-10-24T15:42:12Z",
+        changed_files=1,
+        additions=20,
+        deletions=4,
+    )
+    files = [
+        build_file("packages/tailwindcss/src/utils/decode-arbitrary-value.ts", ["frontend", "shared_core"]),
+    ]
+
+    signal_ids = {signal.id for signal in detect_signals(metadata, files, [], [])}
+
+    assert "ci_checks_missing" not in signal_ids

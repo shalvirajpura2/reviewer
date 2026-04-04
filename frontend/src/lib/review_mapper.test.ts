@@ -152,6 +152,26 @@ describe("map_analysis_to_review", () => {
     expect(mapped.safeguards.check_runs[0]?.name).toBe("frontend tests");
   });
 
+  it("maps unavailable CI state for historical PRs", () => {
+    const mapped = map_analysis_to_review(
+      build_backend_result({
+        safeguards: {
+          ci_state: "unavailable",
+          summary: "GitHub no longer exposes CI checks for this historical merged PR.",
+          checks_total: 0,
+          checks_passed: 0,
+          checks_failed: 0,
+          tests_changed: true,
+          missing_safeguards: [],
+          check_runs: [],
+        },
+      })
+    );
+
+    expect(mapped.safeguards.status_label).toBe("CI unavailable");
+    expect(mapped.safeguards.status_tone).toBe("idle");
+  });
+
   it("dedupes limitations while keeping partial analysis reasons", () => {
     const mapped = map_analysis_to_review(
       build_backend_result({

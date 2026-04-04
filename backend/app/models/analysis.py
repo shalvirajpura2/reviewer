@@ -23,6 +23,9 @@ class GithubPrMetadata(BaseModel):
     base_branch: str
     head_branch: str
     head_sha: str = ""
+    state: str = ""
+    merged: bool = False
+    merged_at: str | None = None
     commits: int
     additions: int
     deletions: int
@@ -136,7 +139,7 @@ class AnalysisCoverage(BaseModel):
 
 
 class SafeguardSummary(BaseModel):
-    ci_state: Literal["passing", "failing", "pending", "missing", "unknown"] = "unknown"
+    ci_state: Literal["passing", "failing", "pending", "missing", "unknown", "unavailable"] = "unknown"
     summary: str = "CI and test safeguards were not evaluated for this cached result."
     checks_total: int = 0
     checks_passed: int = 0

@@ -1,3 +1,5 @@
+from datetime import datetime, timedelta, timezone
+
 from app.models.analysis import (
     AnalysisContext,
     AnalysisCoverage,
@@ -22,6 +24,8 @@ analysis_limitations = [
     "Reviewer does not compute real coverage deltas or repository-wide dependency graphs yet.",
 ]
 
+
+historical_ci_cutoff_days = 30
 
 TOP_FILE_REASON_LABELS = {
     "migration": "schema or migration path changed",
@@ -79,7 +83,24 @@ def build_analysis_coverage(
     )
 
 
-def build_safeguards(files: list[ClassifiedFile], check_runs: list[CheckRunSummary]) -> SafeguardSummary:
+def is_historical_merged_pr(metadata: GithubPrMetadata) -> bool:
+    if not metadata.merged:
+        return False
+
+    timestamp = metadata.merged_at or metadata.updated_at
+    try:
+        parsed_at = datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
+    except ValueError:
+        return False
+
+    return datetime.now(timezone.utc) - parsed_at >= timedelta(days=historical_ci_cutoff_days)
+
+
+def build_safeguards(
+    metadata: GithubPrMetadata,
+    files: list[ClassifiedFile],
+    check_runs: list[CheckRunSummary],
+) -> SafeguardSummary:
     tests_changed = any("test" in file.areas for file in files)
     checks_passed = sum(
         1
@@ -96,6 +117,7 @@ def build_safeguards(files: list[ClassifiedFile], check_runs: list[CheckRunSumma
         for check_run in check_runs
     )
     missing_safeguards: list[str] = []
+    historical_merged_pr = is_historical_merged_pr(metadata)
 
     if checks_failed > 0:
         ci_state = "failing"
@@ -103,6 +125,8 @@ def build_safeguards(files: list[ClassifiedFile], check_runs: list[CheckRunSumma
     elif checks_pending:
         ci_state = "pending"
         missing_safeguards.append("Some CI checks are still running, so merge safety is not fully known yet.")
+    elif not check_runs and historical_merged_pr:
+        ci_state = "unavailable"
     elif not check_runs:
         ci_state = "missing"
         missing_safeguards.append("No GitHub check runs were reported for the PR head commit.")
@@ -125,6 +149,8 @@ def build_safeguards(files: list[ClassifiedFile], check_runs: list[CheckRunSumma
         summary = "CI checks are still running for the PR head commit."
     elif ci_state == "missing":
         summary = "No CI check runs were reported for the PR head commit."
+    elif ci_state == "unavailable":
+        summary = "GitHub no longer exposes CI checks for this historical merged PR."
     else:
         summary = "CI check status is unclear for the PR head commit."
 
@@ -151,10 +177,10 @@ def build_confidence_in_score(
     if cache_status == "fallback" or coverage.is_partial:
         return "low"
 
-    if safeguards.ci_state in {"failing", "missing", "unknown"}:
+    if safeguards.ci_state in {"failing", "missing"}:
         return "low"
 
-    if safeguards.ci_state == "pending":
+    if safeguards.ci_state in {"pending", "unknown", "unavailable"}:
         return "medium"
 
     if len(files) >= 35 or len(commits) >= 20:
@@ -392,7 +418,7 @@ def build_result(
 ) -> PrAnalysisResult:
     score_payload = compute_score(signals)
     coverage = build_analysis_coverage(files, total_files or len(files), partial_reasons or [])
-    safeguards = build_safeguards(files, check_runs or [])
+    safeguards = build_safeguards(metadata, files, check_runs or [])
 
     return PrAnalysisResult(
         metadata=metadata,
