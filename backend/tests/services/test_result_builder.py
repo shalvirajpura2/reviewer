@@ -1,4 +1,4 @@
-from app.models.analysis import ClassifiedFile, GithubCommitSummary, GithubPrMetadata, RiskSignal
+from app.models.analysis import CheckRunSummary, ClassifiedFile, GithubCommitSummary, GithubPrMetadata, RiskSignal
 from app.services.result_builder import build_result
 
 
@@ -81,3 +81,46 @@ def test_build_result_marks_partial_coverage_and_low_confidence():
     ]
     assert result.top_risk_files[1].patch_excerpt == []
     assert any("patch hunks" in item for item in result.analysis_context.coverage.partial_reasons)
+
+
+
+def test_build_result_includes_safeguards_and_downgrades_missing_ci_confidence():
+    metadata = build_metadata()
+    files = [
+        build_file("backend/app/services/reviewer.py", ["backend", "shared_core"], blast_radius_weight=4),
+    ]
+    commits = [GithubCommitSummary(sha="abc1234", message="tighten review", author="shalv")]
+    signals = []
+
+    result = build_result(metadata, files, commits, signals, check_runs=[])
+
+    assert result.safeguards.ci_state == "missing"
+    assert result.safeguards.tests_changed is False
+    assert "No test files changed in this PR." in result.safeguards.missing_safeguards
+    assert result.analysis_context.confidence_in_score == "low"
+
+
+def test_build_result_marks_passing_ci_with_test_changes():
+    metadata = build_metadata()
+    files = [
+        build_file("backend/app/services/reviewer.py", ["backend", "shared_core"], blast_radius_weight=4),
+        build_file("backend/tests/services/test_reviewer.py", ["backend", "test"], is_sensitive=False, blast_radius_weight=1),
+    ]
+    commits = [GithubCommitSummary(sha="abc1234", message="tighten review", author="shalv")]
+    signals = []
+    check_runs = [
+        CheckRunSummary(
+            name="backend tests",
+            status="completed",
+            conclusion="success",
+            details_url="https://ci.example.com/backend-tests",
+        )
+    ]
+
+    result = build_result(metadata, files, commits, signals, check_runs=check_runs)
+
+    assert result.safeguards.ci_state == "passing"
+    assert result.safeguards.checks_total == 1
+    assert result.safeguards.checks_passed == 1
+    assert result.safeguards.tests_changed is True
+    assert result.analysis_context.confidence_in_score == "high"

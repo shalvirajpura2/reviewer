@@ -50,6 +50,23 @@ function build_backend_result(overrides: Partial<BackendAnalysisResult> = {}): B
         priority: "now",
       },
     ],
+    safeguards: {
+      ci_state: "passing",
+      summary: "CI checks are passing and this PR includes test changes.",
+      checks_total: 2,
+      checks_passed: 2,
+      checks_failed: 0,
+      tests_changed: true,
+      missing_safeguards: [],
+      check_runs: [
+        {
+          name: "frontend tests",
+          status: "completed",
+          conclusion: "success",
+          details_url: "https://ci.example.com/frontend-tests",
+        },
+      ],
+    },
     changed_file_groups: [
       {
         label: "Shared / Core",
@@ -104,7 +121,7 @@ function build_backend_result(overrides: Partial<BackendAnalysisResult> = {}): B
       confidence_in_score: "medium",
       summary: "Built from GitHub metadata, 3 of 3 changed files analyzed, 2 commits, rule-based risk scoring, and patch-level structure hints. Patch coverage note: full patch hints where available. Response source: live.",
       limitations: [
-        "This analysis does not inspect CI status or deployment health.",
+        "This analysis does not inspect deployment health or real coverage deltas yet.",
         "Patch structure hints are based on changed hunks, not full repository semantics.",
       ],
       data_sources: ["GitHub PR metadata", "GitHub changed files", "GitHub commits", "rule-based risk engine"],
@@ -131,6 +148,8 @@ describe("map_analysis_to_review", () => {
     expect(mapped.top_risk_files[0]?.filename).toBe("backend/app/services/github_client.py");
     expect(mapped.top_risk_files[0]?.reviewer_hints).toEqual(["backend reviewer", "core maintainer"]);
     expect(mapped.top_risk_files[0]?.patch_excerpt).toEqual(["@@ -1,2 +1,3 @@", "-import httpx", "+import httpx"]);
+    expect(mapped.safeguards.status_label).toBe("CI passing");
+    expect(mapped.safeguards.check_runs[0]?.name).toBe("frontend tests");
   });
 
   it("dedupes limitations while keeping partial analysis reasons", () => {

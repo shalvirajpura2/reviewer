@@ -1,4 +1,4 @@
-from app.models.analysis import ClassifiedFile, GithubCommitSummary, GithubPrMetadata
+from app.models.analysis import CheckRunSummary, ClassifiedFile, GithubCommitSummary, GithubPrMetadata
 from app.services.signal_detector import detect_signals
 
 
@@ -73,3 +73,24 @@ def test_detect_signals_captures_cross_stack_and_test_gaps():
     assert "cross_stack_change" in signal_ids
     assert "patchless_code_changes" in signal_ids
     assert "no_tests_for_sensitive_change" in signal_ids
+
+
+
+def test_detect_signals_captures_failed_ci_checks():
+    metadata = build_metadata(changed_files=2, additions=40, deletions=8)
+    files = [
+        build_file("backend/app/services/reviewer.py", ["backend", "shared_core"], blast_radius_weight=4),
+        build_file("backend/tests/services/test_reviewer.py", ["backend", "test"], is_sensitive=False, blast_radius_weight=1),
+    ]
+    check_runs = [
+        CheckRunSummary(
+            name="backend tests",
+            status="completed",
+            conclusion="failure",
+            details_url="https://ci.example.com/backend-tests",
+        )
+    ]
+
+    signal_ids = {signal.id for signal in detect_signals(metadata, files, [], check_runs)}
+
+    assert "ci_checks_failed" in signal_ids

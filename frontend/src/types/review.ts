@@ -46,6 +46,26 @@ export interface ReviewTopRiskFile {
   blob_url?: string | null;
 }
 
+export interface ReviewCheckRun {
+  name: string;
+  status: string;
+  conclusion?: string | null;
+  details_url?: string | null;
+}
+
+export interface ReviewSafeguards {
+  ci_state: "passing" | "failing" | "pending" | "missing" | "unknown";
+  status_label: string;
+  status_tone: "safe" | "warn" | "danger" | "idle";
+  summary: string;
+  checks_total: number;
+  checks_passed: number;
+  checks_failed: number;
+  tests_changed: boolean;
+  missing_safeguards: string[];
+  check_runs: ReviewCheckRun[];
+}
+
 export interface ReviewCoverage {
   files_analyzed: number;
   total_files: number;
@@ -97,6 +117,7 @@ export interface ReviewResult {
   signal_evidence: ReviewSignalEvidence[];
   review_plan: ReviewRecommendation[];
   top_risk_files: ReviewTopRiskFile[];
+  safeguards: ReviewSafeguards;
   provenance?: ReviewProvenance;
 }
 
@@ -176,6 +197,24 @@ export interface BackendCommitSummary {
   html_url?: string | null;
 }
 
+export interface BackendCheckRunSummary {
+  name: string;
+  status: string;
+  conclusion?: string | null;
+  details_url?: string | null;
+}
+
+export interface BackendSafeguardSummary {
+  ci_state: "passing" | "failing" | "pending" | "missing" | "unknown";
+  summary: string;
+  checks_total: number;
+  checks_passed: number;
+  checks_failed: number;
+  tests_changed: boolean;
+  missing_safeguards: string[];
+  check_runs: BackendCheckRunSummary[];
+}
+
 export interface BackendAnalysisCoverage {
   files_analyzed: number;
   total_files: number;
@@ -203,6 +242,7 @@ export interface BackendAnalysisResult {
   risk_breakdown: Array<{ key: string; label: string; score: number; summary: string }>;
   triggered_signals: BackendRiskSignal[];
   recommendations: BackendRecommendationItem[];
+  safeguards: BackendSafeguardSummary;
   changed_file_groups: BackendChangedFileGroup[];
   top_risk_files: BackendTopRiskFile[];
   commits: BackendCommitSummary[];

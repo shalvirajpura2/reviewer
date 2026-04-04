@@ -40,6 +40,13 @@ class GithubCommitSummary(BaseModel):
     html_url: str | None = None
 
 
+class CheckRunSummary(BaseModel):
+    name: str
+    status: str
+    conclusion: str | None = None
+    details_url: str | None = None
+
+
 class ChangedFile(BaseModel):
     filename: str
     status: str
@@ -128,6 +135,17 @@ class AnalysisCoverage(BaseModel):
     partial_reasons: list[str]
 
 
+class SafeguardSummary(BaseModel):
+    ci_state: Literal["passing", "failing", "pending", "missing", "unknown"] = "unknown"
+    summary: str = "CI and test safeguards were not evaluated for this cached result."
+    checks_total: int = 0
+    checks_passed: int = 0
+    checks_failed: int = 0
+    tests_changed: bool = False
+    missing_safeguards: list[str] = []
+    check_runs: list[CheckRunSummary] = []
+
+
 class AnalysisContext(BaseModel):
     confidence_in_score: Literal["high", "medium", "low"]
     summary: str
@@ -156,6 +174,7 @@ class PrAnalysisResult(BaseModel):
     risk_breakdown: list[RiskBreakdownItem]
     triggered_signals: list[RiskSignal]
     recommendations: list[RecommendationItem]
+    safeguards: SafeguardSummary = Field(default_factory=SafeguardSummary)
     changed_file_groups: list[ChangedFilePreviewGroup]
     top_risk_files: list[TopRiskFile]
     commits: list[GithubCommitSummary]

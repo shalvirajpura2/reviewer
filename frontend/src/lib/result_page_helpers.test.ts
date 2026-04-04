@@ -34,6 +34,18 @@ function build_result(overrides: Partial<ReviewResult> = {}): ReviewResult {
     signal_evidence: [],
     review_plan: [],
     top_risk_files: [],
+    safeguards: {
+      ci_state: "passing",
+      status_label: "CI passing",
+      status_tone: "safe",
+      summary: "CI checks are passing and this PR includes test changes.",
+      checks_total: 2,
+      checks_passed: 2,
+      checks_failed: 0,
+      tests_changed: true,
+      missing_safeguards: [],
+      check_runs: [],
+    },
     provenance: {
       cache_status: "live",
       confidence_in_score: "medium",
