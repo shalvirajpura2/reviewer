@@ -1,10 +1,11 @@
-from app.models.analysis import ClassifiedFile, GithubCommitSummary, GithubPrMetadata, RiskSignal
+from app.models.analysis import CheckRunSummary, ClassifiedFile, GithubCommitSummary, GithubPrMetadata, RiskSignal
 
 
 def detect_signals(
     metadata: GithubPrMetadata,
     files: list[ClassifiedFile],
     commits: list[GithubCommitSummary],
+    check_runs: list[CheckRunSummary] | None = None,
 ) -> list[RiskSignal]:
     signals: list[RiskSignal] = []
     sensitive_files = [file for file in files if file.is_sensitive]
@@ -31,6 +32,18 @@ def detect_signals(
     blast_radius_score = sum(file.blast_radius_weight for file in files)
     symbol_heavy_files = [file for file in files if file.symbol_hints]
     average_changes_per_file = total_changes / max(1, metadata.changed_files)
+    normalized_check_runs = check_runs or []
+    failed_checks = [
+        check_run
+        for check_run in normalized_check_runs
+        if (check_run.conclusion or "").lower() in {"failure", "timed_out", "cancelled", "action_required"}
+    ]
+    pending_checks = [
+        check_run
+        for check_run in normalized_check_runs
+        if check_run.status.lower() in {"queued", "in_progress", "waiting", "requested", "pending"}
+        and (check_run.conclusion or "").lower() not in {"success", "neutral", "skipped"}
+    ]
 
     if docs_only:
         return [
@@ -56,6 +69,42 @@ def detect_signals(
             )
         ]
 
+    if failed_checks:
+        signals.append(
+            RiskSignal(
+                id="ci_checks_failed",
+                label="CI checks are failing",
+                severity="high",
+                evidence=[
+                    f"{check_run.name}: {check_run.conclusion or check_run.status}"
+                    for check_run in failed_checks[:4]
+                ],
+                score_impact=-18,
+                breakdown_key="test_risk",
+            )
+        )
+    elif pending_checks:
+        signals.append(
+            RiskSignal(
+                id="ci_checks_pending",
+                label="CI checks are still running",
+                severity="medium",
+                evidence=[f"{check_run.name}: {check_run.status}" for check_run in pending_checks[:4]],
+                score_impact=-8,
+                breakdown_key="test_risk",
+            )
+        )
+    elif code_files and not normalized_check_runs:
+        signals.append(
+            RiskSignal(
+                id="ci_checks_missing",
+                label="No CI checks reported for this commit",
+                severity="medium",
+                evidence=["GitHub did not return check runs for the PR head commit"],
+                score_impact=-10,
+                breakdown_key="test_risk",
+            )
+        )
     if sensitive_files:
         signals.append(
             RiskSignal(

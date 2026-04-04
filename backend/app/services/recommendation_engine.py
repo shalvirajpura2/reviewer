@@ -2,6 +2,24 @@ from app.models.analysis import RecommendationItem, RiskSignal
 
 
 recommendation_map = {
+    "ci_checks_failed": RecommendationItem(
+        id="fix_ci_before_merge",
+        title="Fix failing CI before merge",
+        detail="At least one GitHub check failed on the PR head commit, so resolve that failure before treating the score as merge-ready.",
+        priority="now",
+    ),
+    "ci_checks_pending": RecommendationItem(
+        id="wait_for_ci_checks",
+        title="Wait for CI checks to finish",
+        detail="Some GitHub checks are still running, so hold merge approval until those safeguards finish.",
+        priority="now",
+    ),
+    "ci_checks_missing": RecommendationItem(
+        id="verify_ci_coverage",
+        title="Verify CI coverage for this PR",
+        detail="GitHub did not report check runs for the PR head commit, so confirm whether CI is configured and whether required checks are expected.",
+        priority="now",
+    ),
     "sensitive_paths_changed": RecommendationItem(
         id="review_sensitive_logic",
         title="Review sensitive logic carefully",

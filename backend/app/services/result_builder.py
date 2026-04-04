@@ -2,11 +2,13 @@ from app.models.analysis import (
     AnalysisContext,
     AnalysisCoverage,
     ChangedFilePreviewGroup,
+    CheckRunSummary,
     ClassifiedFile,
     GithubCommitSummary,
     GithubPrMetadata,
     PrAnalysisResult,
     RiskSignal,
+    SafeguardSummary,
     ScoreSummary,
     TopRiskFile,
 )
@@ -15,7 +17,7 @@ from app.services.scoring_engine import compute_score
 
 
 analysis_limitations = [
-    "This analysis does not inspect CI status or deployment health.",
+    "This analysis does not inspect deployment health or real coverage deltas yet.",
     "Patch structure hints are based on changed hunks, not full repository semantics.",
     "Reviewer does not compute real coverage deltas or repository-wide dependency graphs yet.",
 ]
@@ -77,15 +79,83 @@ def build_analysis_coverage(
     )
 
 
+def build_safeguards(files: list[ClassifiedFile], check_runs: list[CheckRunSummary]) -> SafeguardSummary:
+    tests_changed = any("test" in file.areas for file in files)
+    checks_passed = sum(
+        1
+        for check_run in check_runs
+        if check_run.status.lower() == "completed" and (check_run.conclusion or "").lower() in {"success", "neutral", "skipped"}
+    )
+    checks_failed = sum(
+        1
+        for check_run in check_runs
+        if (check_run.conclusion or "").lower() in {"failure", "timed_out", "cancelled", "action_required"}
+    )
+    checks_pending = any(
+        check_run.status.lower() in {"queued", "in_progress", "waiting", "requested", "pending"}
+        for check_run in check_runs
+    )
+    missing_safeguards: list[str] = []
+
+    if checks_failed > 0:
+        ci_state = "failing"
+        missing_safeguards.append("At least one CI check is failing on the PR head commit.")
+    elif checks_pending:
+        ci_state = "pending"
+        missing_safeguards.append("Some CI checks are still running, so merge safety is not fully known yet.")
+    elif not check_runs:
+        ci_state = "missing"
+        missing_safeguards.append("No GitHub check runs were reported for the PR head commit.")
+    elif checks_passed == len(check_runs):
+        ci_state = "passing"
+    else:
+        ci_state = "unknown"
+        missing_safeguards.append("GitHub check runs returned mixed or unclear conclusions.")
+
+    if not tests_changed and any("test" not in file.areas and "docs" not in file.areas for file in files):
+        missing_safeguards.append("No test files changed in this PR.")
+
+    if ci_state == "passing" and tests_changed and not missing_safeguards:
+        summary = "CI checks are passing and this PR includes test changes."
+    elif ci_state == "passing" and not tests_changed:
+        summary = "CI checks are passing, but no test files changed in this PR."
+    elif ci_state == "failing":
+        summary = "CI checks are failing on the PR head commit."
+    elif ci_state == "pending":
+        summary = "CI checks are still running for the PR head commit."
+    elif ci_state == "missing":
+        summary = "No CI check runs were reported for the PR head commit."
+    else:
+        summary = "CI check status is unclear for the PR head commit."
+
+    return SafeguardSummary(
+        ci_state=ci_state,
+        summary=summary,
+        checks_total=len(check_runs),
+        checks_passed=checks_passed,
+        checks_failed=checks_failed,
+        tests_changed=tests_changed,
+        missing_safeguards=missing_safeguards,
+        check_runs=check_runs[:10],
+    )
+
+
 def build_confidence_in_score(
     files: list[ClassifiedFile],
     signals: list[RiskSignal],
     commits: list[GithubCommitSummary],
     coverage: AnalysisCoverage,
     cache_status: str,
+    safeguards: SafeguardSummary,
 ) -> str:
     if cache_status == "fallback" or coverage.is_partial:
         return "low"
+
+    if safeguards.ci_state in {"failing", "missing", "unknown"}:
+        return "low"
+
+    if safeguards.ci_state == "pending":
+        return "medium"
 
     if len(files) >= 35 or len(commits) >= 20:
         return "low"
@@ -315,12 +385,14 @@ def build_result(
     files: list[ClassifiedFile],
     commits: list[GithubCommitSummary],
     signals: list[RiskSignal],
+    check_runs: list[CheckRunSummary] | None = None,
     cache_status: str = "live",
     total_files: int | None = None,
     partial_reasons: list[str] | None = None,
 ) -> PrAnalysisResult:
     score_payload = compute_score(signals)
     coverage = build_analysis_coverage(files, total_files or len(files), partial_reasons or [])
+    safeguards = build_safeguards(files, check_runs or [])
 
     return PrAnalysisResult(
         metadata=metadata,
@@ -332,12 +404,13 @@ def build_result(
         risk_breakdown=score_payload["risk_breakdown"],
         triggered_signals=signals,
         recommendations=generate_recommendations(signals),
+        safeguards=safeguards,
         changed_file_groups=build_file_groups(files),
         top_risk_files=build_top_risk_files(files),
         commits=commits,
         score_summary=ScoreSummary(**score_payload["score_summary"]),
         analysis_context=AnalysisContext(
-            confidence_in_score=build_confidence_in_score(files, signals, commits, coverage, cache_status),
+            confidence_in_score=build_confidence_in_score(files, signals, commits, coverage, cache_status, safeguards),
             summary=build_confidence_summary(files, commits, cache_status, coverage),
             limitations=analysis_limitations,
             data_sources=["GitHub PR metadata", "GitHub changed files", "GitHub commits", "rule-based risk engine"],

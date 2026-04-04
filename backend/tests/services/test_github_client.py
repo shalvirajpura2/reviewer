@@ -53,3 +53,40 @@ async def test_get_github_client_reuses_open_client():
     assert first_client is second_client
 
     await github_client.close_github_client()
+
+
+
+@pytest.mark.asyncio
+async def test_fetch_commit_check_runs_normalizes_payload(monkeypatch):
+    async def fake_github_fetch(path):
+        assert path == "/repos/acme/reviewer/commits/abc1234/check-runs?per_page=100"
+        return {
+            "total_count": 2,
+            "check_runs": [
+                {
+                    "name": "unit tests",
+                    "status": "completed",
+                    "conclusion": "success",
+                    "details_url": "https://ci.example.com/unit-tests",
+                },
+                {
+                    "name": "build",
+                    "status": "in_progress",
+                    "conclusion": None,
+                    "html_url": "https://ci.example.com/build",
+                },
+            ],
+        }
+
+    monkeypatch.setattr(github_client, "github_fetch", fake_github_fetch)
+
+    check_runs, partial_reasons = await github_client.fetch_commit_check_runs(
+        {"owner": "acme", "repo": "reviewer", "pull_number": 42},
+        "abc1234",
+    )
+
+    assert partial_reasons == []
+    assert [check_run.name for check_run in check_runs] == ["unit tests", "build"]
+    assert check_runs[0].conclusion == "success"
+    assert check_runs[1].status == "in_progress"
+    assert check_runs[1].details_url == "https://ci.example.com/build"

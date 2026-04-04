@@ -4,7 +4,7 @@ from typing import Any
 import httpx
 
 from app.core.settings import settings
-from app.models.analysis import ChangedFile, GithubCommitSummary, GithubPrMetadata
+from app.models.analysis import ChangedFile, CheckRunSummary, GithubCommitSummary, GithubPrMetadata
 
 max_pr_file_pages = 30
 github_retry_attempts = 3
@@ -209,6 +209,45 @@ async def fetch_pr_commits(
         )
 
     return commits, partial_reasons
+
+
+async def fetch_commit_check_runs(parsed_pr: dict[str, str | int], head_sha: str) -> tuple[list[CheckRunSummary], list[str]]:
+    if not head_sha:
+        return [], ["GitHub did not return a PR head SHA, so CI check status could not be verified."]
+
+    try:
+        payload = await github_fetch(
+            f"/repos/{parsed_pr['owner']}/{parsed_pr['repo']}/commits/{head_sha}/check-runs?per_page=100"
+        )
+    except FileNotFoundError:
+        return [], ["GitHub did not expose check runs for this commit, so CI status could not be verified."]
+
+    if not isinstance(payload, dict):
+        return [], ["GitHub returned an unexpected check-run payload, so CI status could not be verified."]
+
+    raw_check_runs = payload.get("check_runs", [])
+    if not isinstance(raw_check_runs, list):
+        return [], ["GitHub returned an unexpected check-run payload, so CI status could not be verified."]
+
+    check_runs = [
+        CheckRunSummary(
+            name=str(item.get("name") or "Unnamed check"),
+            status=str(item.get("status") or "unknown"),
+            conclusion=item.get("conclusion"),
+            details_url=item.get("details_url") or item.get("html_url"),
+        )
+        for item in raw_check_runs[:50]
+        if isinstance(item, dict)
+    ]
+
+    total_count = int(payload.get("total_count", len(check_runs)) or len(check_runs))
+    partial_reasons = []
+    if total_count > len(check_runs):
+        partial_reasons.append(
+            f"Reviewer loaded {len(check_runs)} of {total_count} check runs returned by GitHub."
+        )
+
+    return check_runs, partial_reasons
 
 
 async def fetch_repo_stars(owner: str, repo: str) -> int:
