@@ -41,7 +41,7 @@ recommendation_map = {
     "config_files_changed": RecommendationItem(
         id="verify_config_in_staging",
         title="Verify config changes in staging",
-        detail="Exercise the changed environment or workflow path before approving merge.",
+        detail="Exercise the changed environment or workflow path and verify CI checks before approving merge.",
         priority="soon",
     ),
     "runtime_and_config_changed": RecommendationItem(
@@ -101,19 +101,19 @@ recommendation_map = {
     "no_tests_for_sensitive_change": RecommendationItem(
         id="add_regression_tests",
         title="Add tests for risky paths",
-        detail="Sensitive logic changed without test coverage updates, so ask for targeted regression tests.",
+        detail="Sensitive logic changed without test coverage updates, so ask for targeted regression tests and confirm CI is green.",
         priority="now",
     ),
     "implementation_without_tests": RecommendationItem(
         id="ask_for_behavior_checks",
         title="Ask for behavior checks or targeted tests",
-        detail="Implementation changed across several files without test updates, so confirm how the team validated the behavior.",
+        detail="Implementation changed across several files without test updates, so confirm how the team validated the behavior and which CI checks covered it.",
         priority="soon",
     ),
     "no_tests_changed": RecommendationItem(
         id="confirm_test_strategy",
         title="Confirm test strategy",
-        detail="No tests changed, so verify whether the current suite still covers the edited behavior.",
+        detail="No tests changed, so verify whether the current suite and CI checks still cover the edited behavior.",
         priority="soon",
     ),
     "high_file_count": RecommendationItem(

@@ -33,6 +33,7 @@ def test_generate_recommendations_sorts_by_priority_and_dedupes():
     recommendations = generate_recommendations(signals)
 
     assert [item.id for item in recommendations] == ["review_sensitive_logic", "verify_config_in_staging"]
+    assert "CI checks" in recommendations[1].detail
 
 
 def test_generate_recommendations_returns_standard_review_when_empty():
