@@ -511,15 +511,25 @@ export function ResultPage() {
   const dial_ref = useRef<HTMLDivElement | null>(null);
   const dial_timeout_ref = useRef<number>(0);
   const feedback_timeout_ref = useRef<number>(0);
+  const request_controller_ref = useRef<AbortController | null>(null);
+  const analysis_run_ref = useRef(0);
 
   async function run_analysis(force_refresh = false) {
     const validation_error = pr_url_validation_message(pr_url);
     if (validation_error) {
+      request_controller_ref.current?.abort();
       set_error_message(validation_error);
       set_is_loading(false);
       set_is_refreshing(false);
       return;
     }
+
+    request_controller_ref.current?.abort();
+
+    const request_controller = new AbortController();
+    const analysis_run_id = analysis_run_ref.current + 1;
+    request_controller_ref.current = request_controller;
+    analysis_run_ref.current = analysis_run_id;
 
     if (force_refresh) {
       set_is_refreshing(true);
@@ -531,25 +541,41 @@ export function ResultPage() {
     set_error_message(null);
 
     try {
-      const analysis = await analyze_pr(pr_url, force_refresh);
+      const analysis = await analyze_pr(pr_url, force_refresh, request_controller.signal);
+
+      if (analysis_run_id !== analysis_run_ref.current || request_controller.signal.aborted) {
+        return;
+      }
+
       const next_result = map_analysis_to_review(analysis);
       set_result(next_result);
       set_selected_file(next_result.top_risk_files[0]?.filename ?? null);
 
       window.clearTimeout(dial_timeout_ref.current);
       dial_timeout_ref.current = window.setTimeout(() => {
-        if (dial_ref.current) {
+        if (dial_ref.current && analysis_run_id === analysis_run_ref.current) {
           animate_dial(dial_ref.current, next_result.merge_confidence);
         }
       }, 320);
     } catch (error) {
+      if (analysis_run_id !== analysis_run_ref.current || request_controller.signal.aborted) {
+        return;
+      }
+
       set_error_message(error instanceof Error ? error.message : "Reviewer could not analyze that pull request.");
     } finally {
+      if (analysis_run_id !== analysis_run_ref.current) {
+        return;
+      }
+
+      if (request_controller_ref.current === request_controller) {
+        request_controller_ref.current = null;
+      }
+
       set_is_loading(false);
       set_is_refreshing(false);
     }
   }
-
   useEffect(() => {
     let is_active = true;
 
@@ -562,6 +588,9 @@ export function ResultPage() {
 
     return () => {
       is_active = false;
+      analysis_run_ref.current += 1;
+      request_controller_ref.current?.abort();
+      request_controller_ref.current = null;
       window.clearTimeout(dial_timeout_ref.current);
       window.clearTimeout(feedback_timeout_ref.current);
     };
