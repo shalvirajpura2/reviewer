@@ -5,6 +5,7 @@ import { Link, Navigate, useLocation, useSearchParams } from "react-router-dom";
 import { SiteFooter } from "../components/site_footer";
 import { analyze_pr } from "../lib/api";
 import { normalize_pr_url, pr_url_validation_message } from "../lib/pr_url";
+import { report_badge, source_badge_short, coverage_pill_copy, patch_line_class } from "../lib/result_page_helpers";
 import { map_analysis_to_review } from "../lib/review_mapper";
 import type {
   ReviewFileGroup,
@@ -90,33 +91,6 @@ function format_date_time(value?: string) {
   }).format(date);
 }
 
-function report_badge(result: ReviewResult) {
-  if (result.report_status === "fallback") return "saved fallback";
-  if (result.report_status === "cached") return "live cache";
-  if (result.report_status === "live") return "live analysis";
-  return "analysis data";
-}
-
-function source_badge_short(result: ReviewResult) {
-  if (result.report_status === "fallback") return "saved";
-  if (result.report_status === "cached") return "cache";
-  if (result.report_status === "live") return "live";
-  return "analysis";
-}
-
-function coverage_pill_copy(result: ReviewResult) {
-  const coverage = result.provenance?.coverage;
-
-  if (!coverage) {
-    return "analysis coverage";
-  }
-
-  if (coverage.is_partial) {
-    return `${coverage.files_analyzed}/${coverage.total_files} files analyzed`;
-  }
-
-  return `${coverage.total_files} files analyzed`;
-}
 
 function confidence_pill_copy(result: ReviewResult) {
   return result.confidence_label;
@@ -209,12 +183,6 @@ async function copy_text(value: string) {
   throw new Error("Clipboard is unavailable in this browser.");
 }
 
-function patch_line_class(patch_line: string) {
-  if (patch_line.startsWith("@@")) return "rp-patch-line rp-patch-hunk";
-  if (patch_line.startsWith("+")) return "rp-patch-line rp-patch-add";
-  if (patch_line.startsWith("-")) return "rp-patch-line rp-patch-remove";
-  return "rp-patch-line";
-}
 
 function FocusPanel({ file, next_actions }: { file: ReviewTopRiskFile; next_actions: string[] }) {
   return (
