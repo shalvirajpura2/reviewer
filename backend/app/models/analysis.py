@@ -22,6 +22,7 @@ class GithubPrMetadata(BaseModel):
     author_avatar_url: str
     base_branch: str
     head_branch: str
+    head_sha: str = ""
     commits: int
     additions: int
     deletions: int

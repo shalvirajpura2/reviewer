@@ -63,6 +63,7 @@ async def fetch_pr_metadata(parsed_pr: dict[str, str | int]) -> GithubPrMetadata
         author_avatar_url=payload["user"]["avatar_url"],
         base_branch=payload["base"]["ref"],
         head_branch=payload["head"]["ref"],
+        head_sha=payload.get("head", {}).get("sha", ""),
         commits=payload["commits"],
         additions=payload["additions"],
         deletions=payload["deletions"],
