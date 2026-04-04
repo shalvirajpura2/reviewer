@@ -10,6 +10,17 @@ from app.services.analysis_service import analyze_pull_request, preview_pull_req
 router = APIRouter(prefix="/api", tags=["analysis"])
 
 
+def error_response(request: Request, status_code: int, error_code: str, message: str) -> JSONResponse:
+    return JSONResponse(
+        status_code=status_code,
+        content={
+            "error_code": error_code,
+            "message": message,
+            "request_id": getattr(request.state, "request_id", "unknown"),
+        },
+    )
+
+
 def resolve_client_key(request: Request) -> str:
     direct_client_ip = request.client.host.strip() if request.client and request.client.host else ""
     trusted_client_ip = direct_client_ip
@@ -30,7 +41,6 @@ def resolve_client_key(request: Request) -> str:
 
     base_client_key = trusted_client_ip or direct_client_ip or "anonymous"
 
-
     return base_client_key
 
 
@@ -39,27 +49,18 @@ async def preview_route(payload: PreviewRequest, request: Request):
     try:
         return await preview_pull_request(payload.pr_url, resolve_client_key(request))
     except ValueError as error:
-        return JSONResponse(status_code=400, content={"error_code": "invalid_request", "message": str(error)})
+        return error_response(request, 400, "invalid_request", str(error))
     except FileNotFoundError as error:
-        return JSONResponse(status_code=404, content={"error_code": "not_found", "message": str(error)})
+        return error_response(request, 404, "not_found", str(error))
     except PermissionError as error:
-        return JSONResponse(
-            status_code=429,
-            content={
-                "error_code": "rate_limited",
-                "message": str(error) or "GitHub is temporarily rate limited for this preview. Please try again in a few minutes.",
-            },
+        return error_response(
+            request,
+            429,
+            "rate_limited",
+            str(error) or "GitHub is temporarily rate limited for this preview. Please try again in a few minutes.",
         )
     except ConnectionError as error:
-        return JSONResponse(status_code=503, content={"error_code": "upstream_unavailable", "message": str(error)})
-    except Exception:
-        return JSONResponse(
-            status_code=500,
-            content={
-                "error_code": "preview_failed",
-                "message": "Reviewer could not load that pull request preview right now.",
-            },
-        )
+        return error_response(request, 503, "upstream_unavailable", str(error))
 
 
 @router.post("/analyze", response_model=PrAnalysisResult)
@@ -67,24 +68,15 @@ async def analyze_route(payload: AnalyzeRequest, request: Request):
     try:
         return await analyze_pull_request(payload.pr_url, resolve_client_key(request), payload.force_refresh)
     except ValueError as error:
-        return JSONResponse(status_code=400, content={"error_code": "invalid_request", "message": str(error)})
+        return error_response(request, 400, "invalid_request", str(error))
     except FileNotFoundError as error:
-        return JSONResponse(status_code=404, content={"error_code": "not_found", "message": str(error)})
+        return error_response(request, 404, "not_found", str(error))
     except PermissionError as error:
-        return JSONResponse(
-            status_code=429,
-            content={
-                "error_code": "rate_limited",
-                "message": str(error) or "GitHub is temporarily rate limited for this analysis. Please try again in a few minutes.",
-            },
+        return error_response(
+            request,
+            429,
+            "rate_limited",
+            str(error) or "GitHub is temporarily rate limited for this analysis. Please try again in a few minutes.",
         )
     except ConnectionError as error:
-        return JSONResponse(status_code=503, content={"error_code": "upstream_unavailable", "message": str(error)})
-    except Exception:
-        return JSONResponse(
-            status_code=500,
-            content={
-                "error_code": "analysis_failed",
-                "message": "Reviewer could not complete the analysis right now.",
-            },
-        )
+        return error_response(request, 503, "upstream_unavailable", str(error))

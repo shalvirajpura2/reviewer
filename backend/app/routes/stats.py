@@ -1,4 +1,4 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 
 from app.models.stats import PublicStatsResponse, RecentAnalysesResponse, RecordVisitRequest, RepoStarsResponse
@@ -7,70 +7,51 @@ from app.services.stats_service import get_cached_repo_stars, get_public_stats, 
 router = APIRouter(prefix="/api/stats", tags=["stats"])
 
 
+def error_response(request: Request, status_code: int, error_code: str, message: str) -> JSONResponse:
+    return JSONResponse(
+        status_code=status_code,
+        content={
+            "error_code": error_code,
+            "message": message,
+            "request_id": getattr(request.state, "request_id", "unknown"),
+        },
+    )
+
+
 @router.get("", response_model=PublicStatsResponse)
 async def get_stats_route() -> PublicStatsResponse:
-    try:
-        return PublicStatsResponse(**get_public_stats())
-    except Exception:
-        return JSONResponse(
-            status_code=503,
-            content={"error_code": "stats_unavailable", "message": "Reviewer stats are temporarily unavailable."},
-        )
+    return PublicStatsResponse(**get_public_stats())
 
 
 @router.get("/recent-analyses", response_model=RecentAnalysesResponse)
 async def get_recent_analyses_route() -> RecentAnalysesResponse:
-    try:
-        return RecentAnalysesResponse(items=get_recent_analyses())
-    except Exception:
-        return JSONResponse(
-            status_code=503,
-            content={"error_code": "recent_analyses_unavailable", "message": "Reviewer could not load recent analyses right now."},
-        )
+    return RecentAnalysesResponse(items=get_recent_analyses())
 
 
 @router.post("/visit", response_model=PublicStatsResponse)
-async def record_visit_route(payload: RecordVisitRequest) -> PublicStatsResponse:
+async def record_visit_route(payload: RecordVisitRequest, request: Request) -> PublicStatsResponse:
     try:
         return PublicStatsResponse(**record_visit(payload.client_id))
     except ValueError as error:
-        return JSONResponse(
-            status_code=400,
-            content={"error_code": "invalid_visit", "message": str(error)},
-        )
-    except Exception:
-        return JSONResponse(
-            status_code=503,
-            content={"error_code": "visit_unavailable", "message": "Reviewer visit stats are temporarily unavailable."},
-        )
+        return error_response(request, 400, "invalid_visit", str(error))
 
 
 @router.get("/repo-stars", response_model=RepoStarsResponse)
-async def get_repo_stars_route():
+async def get_repo_stars_route(request: Request):
     try:
         stars = await get_cached_repo_stars("shalvirajpura2", "reviewer")
         return RepoStarsResponse(stars=stars)
     except PermissionError:
-        return JSONResponse(
-            status_code=503,
-            content={
-                "error_code": "github_temporarily_unavailable",
-                "message": "GitHub is temporarily unavailable for repository stats. Please try again shortly.",
-            },
+        return error_response(
+            request,
+            503,
+            "github_temporarily_unavailable",
+            "GitHub is temporarily unavailable for repository stats. Please try again shortly.",
         )
     except ConnectionError:
-        return JSONResponse(
-            status_code=503,
-            content={
-                "error_code": "github_unavailable",
-                "message": "GitHub is temporarily unavailable for repository stats. Please try again shortly.",
-            },
-        )
-    except Exception:
-        return JSONResponse(
-            status_code=503,
-            content={
-                "error_code": "repo_stars_unavailable",
-                "message": "Reviewer could not load GitHub stars right now.",
-            },
+        return error_response(
+            request,
+            503,
+            "github_unavailable",
+            "GitHub is temporarily unavailable for repository stats. Please try again shortly.",
         )
