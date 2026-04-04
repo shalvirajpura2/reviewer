@@ -54,7 +54,7 @@ export interface ReviewCheckRun {
 }
 
 export interface ReviewSafeguards {
-  ci_state: "passing" | "failing" | "pending" | "missing" | "unknown";
+  ci_state: "passing" | "failing" | "pending" | "missing" | "unknown" | "unavailable";
   status_label: string;
   status_tone: "safe" | "warn" | "danger" | "idle";
   summary: string;
@@ -205,7 +205,7 @@ export interface BackendCheckRunSummary {
 }
 
 export interface BackendSafeguardSummary {
-  ci_state: "passing" | "failing" | "pending" | "missing" | "unknown";
+  ci_state: "passing" | "failing" | "pending" | "missing" | "unknown" | "unavailable";
   summary: string;
   checks_total: number;
   checks_passed: number;

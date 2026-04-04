@@ -145,6 +145,7 @@ function build_safeguards(result: BackendAnalysisResult): ReviewResult["safeguar
     pending: { status_label: "CI pending", status_tone: "warn" as const },
     missing: { status_label: "CI missing", status_tone: "warn" as const },
     unknown: { status_label: "CI unknown", status_tone: "idle" as const },
+    unavailable: { status_label: "CI unavailable", status_tone: "idle" as const },
   }[safeguards.ci_state];
 
   return {

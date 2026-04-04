@@ -1,4 +1,22 @@
+from datetime import datetime, timedelta, timezone
+
 from app.models.analysis import CheckRunSummary, ClassifiedFile, GithubCommitSummary, GithubPrMetadata, RiskSignal
+
+
+historical_ci_cutoff_days = 30
+
+
+def is_historical_merged_pr(metadata: GithubPrMetadata) -> bool:
+    if not metadata.merged:
+        return False
+
+    timestamp = metadata.merged_at or metadata.updated_at
+    try:
+        parsed_at = datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
+    except ValueError:
+        return False
+
+    return datetime.now(timezone.utc) - parsed_at >= timedelta(days=historical_ci_cutoff_days)
 
 
 def detect_signals(
@@ -33,6 +51,7 @@ def detect_signals(
     symbol_heavy_files = [file for file in files if file.symbol_hints]
     average_changes_per_file = total_changes / max(1, metadata.changed_files)
     normalized_check_runs = check_runs or []
+    historical_merged_pr = is_historical_merged_pr(metadata)
     failed_checks = [
         check_run
         for check_run in normalized_check_runs
@@ -94,7 +113,7 @@ def detect_signals(
                 breakdown_key="test_risk",
             )
         )
-    elif code_files and not normalized_check_runs:
+    elif code_files and not normalized_check_runs and not historical_merged_pr:
         signals.append(
             RiskSignal(
                 id="ci_checks_missing",
