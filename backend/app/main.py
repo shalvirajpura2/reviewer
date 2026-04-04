@@ -1,3 +1,4 @@
+from contextlib import asynccontextmanager
 import logging
 import time
 from uuid import uuid4
@@ -10,6 +11,7 @@ from fastapi.responses import JSONResponse
 from app.core.settings import settings
 from app.routes.analyze import router as analyze_router
 from app.routes.stats import router as stats_router
+from app.services.github_client import close_github_client
 
 logging.basicConfig(
     level=getattr(logging, settings.log_level, logging.INFO),
@@ -18,10 +20,18 @@ logging.basicConfig(
 logger = logging.getLogger("reviewer.backend")
 started_at = time.time()
 
+
+@asynccontextmanager
+async def lifespan(app_instance: FastAPI):
+    yield
+    await close_github_client()
+
+
 app = FastAPI(
     title="Reviewer Backend",
     description="Explainable merge confidence analysis for public GitHub pull requests.",
     version="0.1.0",
+    lifespan=lifespan,
 )
 
 app.add_middleware(
@@ -106,6 +116,7 @@ async def unhandled_exception_handler(request: Request, error: Exception):
 
 app.include_router(analyze_router)
 app.include_router(stats_router)
+
 
 
 @app.get("/health")

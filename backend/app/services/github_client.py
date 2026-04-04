@@ -1,3 +1,4 @@
+import asyncio
 from typing import Any
 
 import httpx
@@ -6,7 +7,10 @@ from app.core.settings import settings
 from app.models.analysis import ChangedFile, GithubCommitSummary, GithubPrMetadata
 
 max_pr_file_pages = 30
-
+github_retry_attempts = 3
+github_retry_backoff_seconds = 0.35
+github_client: httpx.AsyncClient | None = None
+github_client_lock = asyncio.Lock()
 
 
 def build_headers() -> dict[str, str]:
@@ -21,31 +25,67 @@ def build_headers() -> dict[str, str]:
     return headers
 
 
+async def get_github_client() -> httpx.AsyncClient:
+    global github_client
+
+    if github_client and not github_client.is_closed:
+        return github_client
+
+    async with github_client_lock:
+        if github_client and not github_client.is_closed:
+            return github_client
+
+        github_client = httpx.AsyncClient(timeout=20.0)
+        return github_client
+
+
+async def close_github_client() -> None:
+    global github_client
+
+    if not github_client or github_client.is_closed:
+        return
+
+    async with github_client_lock:
+        if github_client and not github_client.is_closed:
+            await github_client.aclose()
+        github_client = None
+
+
 async def github_fetch(path: str) -> Any:
-    try:
-        async with httpx.AsyncClient(timeout=20.0) as client:
+    last_error: Exception | None = None
+
+    for attempt_number in range(1, github_retry_attempts + 1):
+        try:
+            client = await get_github_client()
             response = await client.get(f"{settings.github_api_base}{path}", headers=build_headers())
-    except httpx.TimeoutException as error:
-        raise ConnectionError("GitHub took too long to respond. Please try again.") from error
-    except httpx.HTTPError as error:
-        raise ConnectionError("GitHub could not be reached from the analysis service.") from error
+        except httpx.TimeoutException as error:
+            last_error = ConnectionError("GitHub took too long to respond. Please try again.")
+        except httpx.HTTPError:
+            last_error = ConnectionError("GitHub could not be reached from the analysis service.")
+        else:
+            if response.status_code == 403 and response.headers.get("x-ratelimit-remaining") == "0":
+                raise PermissionError("GitHub rate limit reached. Add a GITHUB_TOKEN or try again later.")
 
-    if response.status_code == 403 and response.headers.get("x-ratelimit-remaining") == "0":
-        raise PermissionError("GitHub rate limit reached. Add a GITHUB_TOKEN or try again later.")
+            if response.status_code == 403 and "secondary rate limit" in response.text.lower():
+                raise PermissionError("GitHub temporarily rate limited this analysis. Please retry shortly.")
 
-    if response.status_code == 403 and "secondary rate limit" in response.text.lower():
-        raise PermissionError("GitHub temporarily rate limited this analysis. Please retry shortly.")
+            if response.status_code == 404:
+                raise FileNotFoundError("Repository or pull request not found, or the PR is not public.")
 
-    if response.status_code == 404:
-        raise FileNotFoundError("Repository or pull request not found, or the PR is not public.")
+            if response.status_code in {502, 503, 504}:
+                last_error = ConnectionError("GitHub is temporarily unavailable. Please try again.")
+            elif response.status_code >= 400:
+                raise ValueError("GitHub returned an unexpected response while fetching the pull request.")
+            else:
+                return response.json()
 
-    if response.status_code in {502, 503, 504}:
-        raise ConnectionError("GitHub is temporarily unavailable. Please try again.")
+        if attempt_number < github_retry_attempts:
+            await asyncio.sleep(github_retry_backoff_seconds * attempt_number)
 
-    if response.status_code >= 400:
-        raise ValueError("GitHub returned an unexpected response while fetching the pull request.")
+    if last_error:
+        raise last_error
 
-    return response.json()
+    raise ConnectionError("GitHub could not be reached from the analysis service.")
 
 
 async def fetch_pr_metadata(parsed_pr: dict[str, str | int]) -> GithubPrMetadata:
