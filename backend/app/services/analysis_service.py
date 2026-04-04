@@ -3,138 +3,61 @@ import time
 
 from app.core.settings import settings
 from app.models.analysis import GithubPrMetadata, PrAnalysisResult, PrPreviewResult
+from app.services.analysis_cache_store import analysis_cache_store
 from app.services.file_classifier import classify_files
 from app.services.github_client import fetch_pr_commits, fetch_pr_files, fetch_pr_metadata
 from app.services.pr_url_parser import parse_pr_url
+from app.services.request_limiter import request_limiter
 from app.services.result_builder import build_result
 from app.services.signal_detector import detect_signals
-from app.services.stats_service import get_cached_analysis, record_analysis, store_cached_analysis
+from app.services.stats_service import record_analysis, store_cached_analysis
 
 
-analysis_cache: dict[str, tuple[float, PrAnalysisResult]] = {}
-preview_cache: dict[str, tuple[float, PrPreviewResult]] = {}
+analysis_cache = analysis_cache_store.analysis_cache
+preview_cache = analysis_cache_store.preview_cache
+request_history = request_limiter.request_history
+request_history_lock = request_limiter.request_history_lock
 inflight_analyses: dict[str, asyncio.Task[PrAnalysisResult]] = {}
 inflight_previews: dict[str, asyncio.Task[PrPreviewResult]] = {}
-request_history: dict[str, list[float]] = {}
 inflight_lock = asyncio.Lock()
 inflight_preview_lock = asyncio.Lock()
-request_history_lock = asyncio.Lock()
 
 
 def _cache_age_copy(cached_result: PrAnalysisResult, cache_status: str, age_seconds: float) -> PrAnalysisResult:
-    cache_minutes = max(1, round(age_seconds / 60))
-    cached_payload = cached_result.model_copy(deep=True)
-    cached_payload.analysis_context.cache_status = cache_status
-
-    if cache_status == "fallback":
-        cached_payload.analysis_context.confidence_in_score = "low"
-        cached_payload.analysis_context.summary = (
-            f"Showing a saved review from about {cache_minutes} minute{'s' if cache_minutes != 1 else ''} ago because GitHub could not serve a fresh analysis right now."
-        )
-        limitations = list(cached_payload.analysis_context.limitations)
-        fallback_note = "This response is a stale fallback based on the latest saved successful analysis."
-        if fallback_note not in limitations:
-            cached_payload.analysis_context.limitations = [fallback_note, *limitations]
-
-    return cached_payload
+    return analysis_cache_store.build_cache_age_copy(cached_result, cache_status, age_seconds)
 
 
 def read_memory_cached_result(cache_key: str) -> tuple[PrAnalysisResult, float] | None:
-    cached_entry = analysis_cache.get(cache_key)
-    if not cached_entry:
-        return None
-
-    cached_at, cached_result = cached_entry
-    age_seconds = time.time() - cached_at
-    if age_seconds > settings.cache_ttl_seconds:
-        analysis_cache.pop(cache_key, None)
-        return None
-
-    return _cache_age_copy(cached_result, "cached", age_seconds), age_seconds
+    return analysis_cache_store.read_memory_cached_result(cache_key)
 
 
 def write_memory_cached_result(cache_key: str, result: PrAnalysisResult, cached_at: float | None = None) -> None:
-    analysis_cache[cache_key] = (cached_at or time.time(), result)
+    analysis_cache_store.write_memory_cached_result(cache_key, result, cached_at)
 
 
 def read_memory_cached_preview(cache_key: str) -> PrPreviewResult | None:
-    cached_entry = preview_cache.get(cache_key)
-    if not cached_entry:
-        return None
-
-    cached_at, cached_preview = cached_entry
-    if time.time() - cached_at > settings.cache_ttl_seconds:
-        preview_cache.pop(cache_key, None)
-        return None
-
-    return cached_preview.model_copy(deep=True)
+    return analysis_cache_store.read_memory_cached_preview(cache_key)
 
 
 def write_memory_cached_preview(cache_key: str, result: PrPreviewResult) -> None:
-    preview_cache[cache_key] = (time.time(), result)
+    analysis_cache_store.write_memory_cached_preview(cache_key, result)
 
 
 def read_saved_cached_result(cache_key: str, max_age_seconds: int) -> tuple[PrAnalysisResult, float] | None:
-    cached_entry = get_cached_analysis(cache_key, max_age_seconds)
-    if not cached_entry:
-        return None
-
-    cached_result, age_seconds = cached_entry
-    write_memory_cached_result(cache_key, cached_result, time.time() - age_seconds)
-    return cached_result, age_seconds
+    return analysis_cache_store.read_saved_cached_result(cache_key, max_age_seconds)
 
 
 def cache_matches_current_revision(cached_result: PrAnalysisResult, metadata: GithubPrMetadata) -> bool:
-    cached_head_sha = cached_result.metadata.head_sha.strip()
-    current_head_sha = metadata.head_sha.strip()
-    return bool(cached_head_sha and current_head_sha and cached_head_sha == current_head_sha)
+    return analysis_cache_store.cache_matches_current_revision(cached_result, metadata)
 
 
 def refresh_cached_metadata(cached_result: PrAnalysisResult, metadata: GithubPrMetadata) -> PrAnalysisResult:
-    refreshed_result = cached_result.model_copy(deep=True)
-    refreshed_result.metadata = metadata
-    return refreshed_result
+    return analysis_cache_store.refresh_cached_metadata(cached_result, metadata)
 
 
 async def enforce_request_limit(client_key: str, action_name: str) -> None:
-    normalized_client_key = client_key.strip() or "anonymous"
-    now = time.time()
+    await request_limiter.enforce(client_key, action_name)
 
-    if action_name == "preview":
-        window_seconds = settings.preview_window_seconds
-        request_limit = settings.preview_requests_per_window
-        error_message = "Reviewer is protecting GitHub previews right now. Please wait a minute before previewing more pull requests."
-    else:
-        window_seconds = settings.analyze_window_seconds
-        request_limit = settings.analyze_requests_per_window
-        error_message = "Reviewer is protecting GitHub right now. Please wait a minute before analyzing more pull requests."
-
-    history_key = f"{action_name}:{normalized_client_key}"
-    window_start = now - window_seconds
-
-    async with request_history_lock:
-        stale_history_keys = [
-            existing_key
-            for existing_key, stamps in request_history.items()
-            if not any(stamp >= window_start for stamp in stamps)
-        ]
-        for stale_history_key in stale_history_keys:
-            request_history.pop(stale_history_key, None)
-
-        max_history_keys = max(1, settings.request_history_max_keys)
-        if len(request_history) >= max_history_keys and history_key not in request_history:
-            oldest_history_key = min(
-                request_history,
-                key=lambda existing_key: request_history[existing_key][-1] if request_history[existing_key] else 0,
-            )
-            request_history.pop(oldest_history_key, None)
-
-        recent_requests = [stamp for stamp in request_history.get(history_key, []) if stamp >= window_start]
-        if len(recent_requests) >= request_limit:
-            raise PermissionError(error_message)
-
-        recent_requests.append(now)
-        request_history[history_key] = recent_requests
 
 async def build_live_analysis(parsed_pr: dict[str, str | int], cache_key: str, metadata: GithubPrMetadata) -> PrAnalysisResult:
     started_at = time.perf_counter()
