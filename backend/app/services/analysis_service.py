@@ -101,13 +101,28 @@ async def enforce_request_limit(client_key: str, action_name: str) -> None:
     window_start = now - window_seconds
 
     async with request_history_lock:
+        stale_history_keys = [
+            existing_key
+            for existing_key, stamps in request_history.items()
+            if not any(stamp >= window_start for stamp in stamps)
+        ]
+        for stale_history_key in stale_history_keys:
+            request_history.pop(stale_history_key, None)
+
+        max_history_keys = max(1, settings.request_history_max_keys)
+        if len(request_history) >= max_history_keys and history_key not in request_history:
+            oldest_history_key = min(
+                request_history,
+                key=lambda existing_key: request_history[existing_key][-1] if request_history[existing_key] else 0,
+            )
+            request_history.pop(oldest_history_key, None)
+
         recent_requests = [stamp for stamp in request_history.get(history_key, []) if stamp >= window_start]
         if len(recent_requests) >= request_limit:
             raise PermissionError(error_message)
 
         recent_requests.append(now)
         request_history[history_key] = recent_requests
-
 
 async def build_live_analysis(parsed_pr: dict[str, str | int], cache_key: str) -> PrAnalysisResult:
     started_at = time.perf_counter()

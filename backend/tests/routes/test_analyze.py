@@ -1,3 +1,5 @@
+from types import SimpleNamespace
+
 from fastapi.testclient import TestClient
 
 from app.main import app
@@ -68,3 +70,25 @@ def test_analyze_route_returns_request_id(monkeypatch):
     assert response.status_code == 200
     assert response.headers["X-Request-Id"] == "req-123"
     assert response.json()["analysis_context"]["summary"] == "Built from backend evidence."
+
+
+def test_resolve_client_key_ignores_spoofed_client_id_header():
+    request = SimpleNamespace(
+        headers={"x-reviewer-client-id": "client-a", "x-forwarded-for": "1.1.1.1"},
+        client=SimpleNamespace(host="8.8.4.4"),
+    )
+
+    from app.routes.analyze import resolve_client_key
+
+    assert resolve_client_key(request) == "8.8.4.4"
+
+
+def test_resolve_client_key_trusts_forwarded_ip_only_from_local_proxy():
+    request = SimpleNamespace(
+        headers={"x-forwarded-for": "8.8.8.8, 1.1.1.1"},
+        client=SimpleNamespace(host="127.0.0.1"),
+    )
+
+    from app.routes.analyze import resolve_client_key
+
+    assert resolve_client_key(request) == "8.8.8.8"

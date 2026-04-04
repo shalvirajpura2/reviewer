@@ -1,3 +1,5 @@
+from ipaddress import ip_address
+
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 
@@ -9,20 +11,27 @@ router = APIRouter(prefix="/api", tags=["analysis"])
 
 
 def resolve_client_key(request: Request) -> str:
+    direct_client_ip = request.client.host.strip() if request.client and request.client.host else ""
+    trusted_client_ip = direct_client_ip
     forwarded_for = request.headers.get("x-forwarded-for", "")
-    forwarded_parts = [item.strip() for item in forwarded_for.split(",") if item.strip()]
-    header_client_id = request.headers.get("x-reviewer-client-id", "").strip()
 
-    if header_client_id:
-        return header_client_id
+    try:
+        remote_ip = ip_address(direct_client_ip) if direct_client_ip else None
+    except ValueError:
+        remote_ip = None
 
-    if forwarded_parts:
-        return forwarded_parts[0]
+    if remote_ip and (remote_ip.is_loopback or remote_ip.is_private or remote_ip.is_link_local):
+        for forwarded_part in [item.strip() for item in forwarded_for.split(",") if item.strip()]:
+            try:
+                trusted_client_ip = str(ip_address(forwarded_part))
+                break
+            except ValueError:
+                continue
 
-    if request.client and request.client.host:
-        return request.client.host
+    base_client_key = trusted_client_ip or direct_client_ip or "anonymous"
 
-    return "anonymous"
+
+    return base_client_key
 
 
 @router.post("/preview", response_model=PrPreviewResult)
