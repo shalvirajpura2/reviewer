@@ -158,6 +158,33 @@ def build_file_groups(files: list[ClassifiedFile]) -> list[ChangedFilePreviewGro
     return [group for group in groups if group.files]
 
 
+def build_patch_excerpt(file: ClassifiedFile, max_lines: int = 8) -> list[str]:
+    if not file.patch:
+        return []
+
+    excerpt_lines: list[str] = []
+
+    for patch_line in file.patch.splitlines():
+        if patch_line.startswith("@@"):
+            if excerpt_lines:
+                break
+            excerpt_lines.append(patch_line[:180])
+            continue
+
+        if not patch_line.startswith(("+", "-")) or patch_line.startswith(("+++", "---")):
+            continue
+
+        trimmed_line = patch_line.rstrip()
+        if not trimmed_line:
+            continue
+
+        excerpt_lines.append(trimmed_line[:180])
+        if len(excerpt_lines) >= max_lines:
+            break
+
+    return excerpt_lines
+
+
 def build_file_reasons(file: ClassifiedFile, test_files_present: bool) -> list[str]:
     reasons: list[str] = []
 
@@ -248,6 +275,7 @@ def build_top_risk_files(files: list[ClassifiedFile]) -> list[TopRiskFile]:
                 filename=file.filename,
                 risk_level=risk_level,
                 reasons=build_file_reasons(file, test_files_present),
+                patch_excerpt=build_patch_excerpt(file),
                 changes=file.changes,
                 areas=file.areas,
                 is_sensitive=file.is_sensitive,

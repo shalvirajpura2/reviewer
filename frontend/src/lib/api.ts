@@ -2,6 +2,7 @@ import type { BackendAnalysisResult, BackendMetadata } from "../types/review";
 import { normalize_pr_url, pr_url_validation_message } from "./pr_url";
 
 const configured_backend_url = import.meta.env.VITE_BACKEND_URL?.replace(/\/$/, "");
+const request_timeout_ms = 30000;
 
 export type SiteStats = {
   visitor_count: number;
@@ -49,11 +50,40 @@ async function parse_json_response<T>(response: Response): Promise<T | null> {
 
 async function request_json<T>(path: string, init?: RequestInit, fallback_message = "Request failed.") {
   let response: Response;
+  const request_controller = new AbortController();
+  const upstream_signal = init?.signal;
+  const timeout_id = window.setTimeout(() => {
+    request_controller.abort();
+  }, request_timeout_ms);
+
+  function abort_request() {
+    request_controller.abort();
+  }
+
+  if (upstream_signal?.aborted) {
+    request_controller.abort();
+  } else {
+    upstream_signal?.addEventListener("abort", abort_request, { once: true });
+  }
 
   try {
-    response = await fetch(`${resolve_backend_url()}${path}`, init);
-  } catch {
+    response = await fetch(`${resolve_backend_url()}${path}`, {
+      ...init,
+      signal: request_controller.signal,
+    });
+  } catch (error) {
+    if (upstream_signal?.aborted) {
+      throw new Error("Request cancelled.");
+    }
+
+    if (error instanceof DOMException && error.name === "AbortError") {
+      throw new Error("Request timed out. Please try again.");
+    }
+
     throw new Error("Network error. Please check your connection and try again.");
+  } finally {
+    window.clearTimeout(timeout_id);
+    upstream_signal?.removeEventListener("abort", abort_request);
   }
 
   const payload = await parse_json_response<T | ApiErrorPayload>(response);
@@ -104,7 +134,7 @@ export async function preview_pr(pr_url: string): Promise<PrPreview> {
   );
 }
 
-export async function analyze_pr(pr_url: string, force_refresh = false): Promise<BackendAnalysisResult> {
+export async function analyze_pr(pr_url: string, force_refresh = false, signal?: AbortSignal): Promise<BackendAnalysisResult> {
   const normalized_pr_url = normalize_pr_url(pr_url);
   const validation_error = pr_url_validation_message(normalized_pr_url);
 
@@ -121,6 +151,7 @@ export async function analyze_pr(pr_url: string, force_refresh = false): Promise
         "X-Reviewer-Client-Id": get_or_create_client_id(),
       },
       body: JSON.stringify({ pr_url: normalized_pr_url, force_refresh }),
+      signal,
     },
     "Reviewer could not analyze that pull request."
   );

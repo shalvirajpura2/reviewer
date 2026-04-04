@@ -68,7 +68,6 @@ function build_recent_commits(result: BackendAnalysisResult): ReviewScoreMovemen
     return result.commits.slice(0, 7).map((item) => ({
       sha: item.sha,
       label: item.message,
-      delta: 0
     }));
   }
 
@@ -76,7 +75,6 @@ function build_recent_commits(result: BackendAnalysisResult): ReviewScoreMovemen
     {
       sha: "-",
       label: "No commit data available",
-      delta: 0
     }
   ];
 }
@@ -184,6 +182,7 @@ export function map_analysis_to_review(result: BackendAnalysisResult): ReviewRes
       filename: item.filename,
       risk_level: item.risk_level,
       reasons: item.reasons,
+      patch_excerpt: item.patch_excerpt ?? [],
       changes: item.changes,
       areas: item.areas,
       is_sensitive: item.is_sensitive,

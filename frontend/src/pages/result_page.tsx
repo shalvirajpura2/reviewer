@@ -209,6 +209,13 @@ async function copy_text(value: string) {
   throw new Error("Clipboard is unavailable in this browser.");
 }
 
+function patch_line_class(patch_line: string) {
+  if (patch_line.startsWith("@@")) return "rp-patch-line rp-patch-hunk";
+  if (patch_line.startsWith("+")) return "rp-patch-line rp-patch-add";
+  if (patch_line.startsWith("-")) return "rp-patch-line rp-patch-remove";
+  return "rp-patch-line";
+}
+
 function FocusPanel({ file, next_actions }: { file: ReviewTopRiskFile; next_actions: string[] }) {
   return (
     <div className="rp-focus-stack">
@@ -231,6 +238,19 @@ function FocusPanel({ file, next_actions }: { file: ReviewTopRiskFile; next_acti
           <span key={area} className="rp-chip">{area}</span>
         ))}
       </div>
+
+      {file.patch_excerpt.length > 0 ? (
+        <div className="rp-patch-box" aria-label={`Patch excerpt from ${file.filename}`}>
+          <div className="rp-patch-title">Patch evidence</div>
+          <pre className="rp-patch-pre">
+            {file.patch_excerpt.map((patch_line, index) => (
+              <code key={`${file.filename}-${index}-${patch_line}`} className={patch_line_class(patch_line)}>
+                {patch_line}
+              </code>
+            ))}
+          </pre>
+        </div>
+      ) : null}
 
       <div className="rp-focus-grid">
         <div className="rp-focus-section">
@@ -511,15 +531,25 @@ export function ResultPage() {
   const dial_ref = useRef<HTMLDivElement | null>(null);
   const dial_timeout_ref = useRef<number>(0);
   const feedback_timeout_ref = useRef<number>(0);
+  const request_controller_ref = useRef<AbortController | null>(null);
+  const analysis_run_ref = useRef(0);
 
   async function run_analysis(force_refresh = false) {
     const validation_error = pr_url_validation_message(pr_url);
     if (validation_error) {
+      request_controller_ref.current?.abort();
       set_error_message(validation_error);
       set_is_loading(false);
       set_is_refreshing(false);
       return;
     }
+
+    request_controller_ref.current?.abort();
+
+    const request_controller = new AbortController();
+    const analysis_run_id = analysis_run_ref.current + 1;
+    request_controller_ref.current = request_controller;
+    analysis_run_ref.current = analysis_run_id;
 
     if (force_refresh) {
       set_is_refreshing(true);
@@ -531,25 +561,41 @@ export function ResultPage() {
     set_error_message(null);
 
     try {
-      const analysis = await analyze_pr(pr_url, force_refresh);
+      const analysis = await analyze_pr(pr_url, force_refresh, request_controller.signal);
+
+      if (analysis_run_id !== analysis_run_ref.current || request_controller.signal.aborted) {
+        return;
+      }
+
       const next_result = map_analysis_to_review(analysis);
       set_result(next_result);
       set_selected_file(next_result.top_risk_files[0]?.filename ?? null);
 
       window.clearTimeout(dial_timeout_ref.current);
       dial_timeout_ref.current = window.setTimeout(() => {
-        if (dial_ref.current) {
+        if (dial_ref.current && analysis_run_id === analysis_run_ref.current) {
           animate_dial(dial_ref.current, next_result.merge_confidence);
         }
       }, 320);
     } catch (error) {
+      if (analysis_run_id !== analysis_run_ref.current || request_controller.signal.aborted) {
+        return;
+      }
+
       set_error_message(error instanceof Error ? error.message : "Reviewer could not analyze that pull request.");
     } finally {
+      if (analysis_run_id !== analysis_run_ref.current) {
+        return;
+      }
+
+      if (request_controller_ref.current === request_controller) {
+        request_controller_ref.current = null;
+      }
+
       set_is_loading(false);
       set_is_refreshing(false);
     }
   }
-
   useEffect(() => {
     let is_active = true;
 
@@ -562,6 +608,9 @@ export function ResultPage() {
 
     return () => {
       is_active = false;
+      analysis_run_ref.current += 1;
+      request_controller_ref.current?.abort();
+      request_controller_ref.current = null;
       window.clearTimeout(dial_timeout_ref.current);
       window.clearTimeout(feedback_timeout_ref.current);
     };

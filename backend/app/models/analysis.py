@@ -22,6 +22,7 @@ class GithubPrMetadata(BaseModel):
     author_avatar_url: str
     base_branch: str
     head_branch: str
+    head_sha: str = ""
     commits: int
     additions: int
     deletions: int
@@ -104,6 +105,7 @@ class TopRiskFile(BaseModel):
     filename: str
     risk_level: Literal["low", "medium", "high"]
     reasons: list[str]
+    patch_excerpt: list[str] = []
     changes: int
     areas: list[str]
     is_sensitive: bool

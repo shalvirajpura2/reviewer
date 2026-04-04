@@ -13,7 +13,6 @@ export interface ReviewRiskBreakdownItem {
 export interface ReviewScoreMovementItem {
   sha?: string;
   label: string;
-  delta: number;
 }
 
 export interface ReviewFileGroup {
@@ -39,6 +38,7 @@ export interface ReviewTopRiskFile {
   filename: string;
   risk_level: "low" | "medium" | "high";
   reasons: string[];
+  patch_excerpt: string[];
   changes: number;
   areas: string[];
   is_sensitive: boolean;
@@ -159,6 +159,7 @@ export interface BackendTopRiskFile {
   filename: string;
   risk_level: "low" | "medium" | "high";
   reasons: string[];
+  patch_excerpt: string[];
   changes: number;
   areas: string[];
   is_sensitive: boolean;

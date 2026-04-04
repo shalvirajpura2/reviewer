@@ -1,7 +1,8 @@
 from datetime import datetime, timezone
-from typing import cast
 import json
+import os
 import time
+from typing import cast
 from pathlib import Path
 from threading import Lock
 
@@ -87,8 +88,14 @@ def _read_analysis_cache_file() -> dict[str, object]:
 
 def _write_json_file(path: Path, payload: dict[str, object]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    temp_path = path.with_name(f"{path.name}.tmp")
 
+    with temp_path.open("w", encoding="utf-8") as temp_file:
+        json.dump(payload, temp_file, indent=2)
+        temp_file.flush()
+        os.fsync(temp_file.fileno())
+
+    os.replace(temp_path, path)
 
 def _normalize_database_url(database_url: str) -> str:
     if database_url.startswith("postgresql://"):

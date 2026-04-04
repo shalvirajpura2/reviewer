@@ -11,7 +11,7 @@ export function is_valid_github_pr_url(value: string) {
 
     return (
       (url.protocol === "https:" || url.protocol === "http:") &&
-      url.hostname === "github.com" &&
+      (url.hostname === "github.com" || url.hostname === "www.github.com") &&
       segments.length >= 4 &&
       segments[2] === "pull" &&
       /^\d+$/.test(segments[3] ?? "")
