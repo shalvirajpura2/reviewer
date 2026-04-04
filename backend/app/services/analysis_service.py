@@ -6,6 +6,7 @@ from app.models.analysis import GithubPrMetadata, PrAnalysisResult, PrPreviewRes
 from app.services.analysis_cache_store import analysis_cache_store
 from app.services.file_classifier import classify_files
 from app.services.github_client import fetch_pr_commits, fetch_pr_files, fetch_pr_metadata
+from app.services.inflight_task_registry import InflightTaskRegistry
 from app.services.pr_url_parser import parse_pr_url
 from app.services.request_limiter import request_limiter
 from app.services.result_builder import build_result
@@ -17,10 +18,12 @@ analysis_cache = analysis_cache_store.analysis_cache
 preview_cache = analysis_cache_store.preview_cache
 request_history = request_limiter.request_history
 request_history_lock = request_limiter.request_history_lock
-inflight_analyses: dict[str, asyncio.Task[PrAnalysisResult]] = {}
-inflight_previews: dict[str, asyncio.Task[PrPreviewResult]] = {}
-inflight_lock = asyncio.Lock()
-inflight_preview_lock = asyncio.Lock()
+analysis_inflight_registry = InflightTaskRegistry[PrAnalysisResult]()
+preview_inflight_registry = InflightTaskRegistry[PrPreviewResult]()
+inflight_analyses = analysis_inflight_registry.inflight_tasks
+inflight_previews = preview_inflight_registry.inflight_tasks
+inflight_lock = analysis_inflight_registry.inflight_lock
+inflight_preview_lock = preview_inflight_registry.inflight_lock
 
 
 def _cache_age_copy(cached_result: PrAnalysisResult, cache_status: str, age_seconds: float) -> PrAnalysisResult:
@@ -131,20 +134,15 @@ async def preview_pull_request(pr_url: str, client_key: str) -> PrPreviewResult:
     if cached_preview:
         return cached_preview
 
-    async with inflight_preview_lock:
-        inflight_task = inflight_previews.get(cache_key)
-        is_owner = inflight_task is None
-        if is_owner:
-            inflight_task = asyncio.create_task(build_preview(parsed_pr))
-            inflight_previews[cache_key] = inflight_task
+    inflight_task, is_owner = await preview_inflight_registry.get_or_create(
+        cache_key,
+        lambda: asyncio.create_task(build_preview(parsed_pr)),
+    )
 
     try:
         preview_result = await inflight_task
     finally:
-        if is_owner:
-            async with inflight_preview_lock:
-                if inflight_previews.get(cache_key) is inflight_task:
-                    inflight_previews.pop(cache_key, None)
+        await preview_inflight_registry.release(cache_key, inflight_task, is_owner)
 
     write_memory_cached_preview(cache_key, preview_result)
     return preview_result.model_copy(deep=True)
@@ -182,12 +180,10 @@ async def analyze_pull_request(pr_url: str, client_key: str, force_refresh: bool
             record_analysis(cache_key, 0.0, "cached", cached_payload)
             return cached_payload
 
-    async with inflight_lock:
-        inflight_task = inflight_analyses.get(cache_key)
-        is_owner = inflight_task is None
-        if is_owner:
-            inflight_task = asyncio.create_task(build_live_analysis(parsed_pr, cache_key, metadata))
-            inflight_analyses[cache_key] = inflight_task
+    inflight_task, is_owner = await analysis_inflight_registry.get_or_create(
+        cache_key,
+        lambda: asyncio.create_task(build_live_analysis(parsed_pr, cache_key, metadata)),
+    )
 
     try:
         result = await inflight_task
@@ -197,10 +193,7 @@ async def analyze_pull_request(pr_url: str, client_key: str, force_refresh: bool
             return fallback_result
         raise
     finally:
-        if is_owner:
-            async with inflight_lock:
-                if inflight_analyses.get(cache_key) is inflight_task:
-                    inflight_analyses.pop(cache_key, None)
+        await analysis_inflight_registry.release(cache_key, inflight_task, is_owner)
 
     if is_owner:
         return result
