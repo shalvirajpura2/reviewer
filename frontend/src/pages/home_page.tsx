@@ -13,7 +13,7 @@ const feature_items = [
     icon: ShieldCheck,
     title: "Clear merge verdict",
     detail:
-      "Get a deterministic score, a plain-language verdict, and a clear read on how much confidence to place in the review.",
+      "Get a rule-based risk score, a plain-language verdict, and a clear read on how much confidence to place in the review.",
     tag: "Scored",
   },
   {
@@ -85,7 +85,7 @@ export function HomePage() {
         <div className="home-hero">
           <div className="hero-eyebrow">
             <span className="hero-dot" />
-            <span>Deterministic pull request review</span>
+            <span>Rule-based pull request review</span>
           </div>
 
           <div className="hero-lottie-shell" aria-hidden="true">
@@ -123,7 +123,7 @@ export function HomePage() {
                   {site_stats ? site_stats.deterministic_scoring_rate : "--"}
                   <small>%</small>
                 </div>
-                <div className="stat-label">deterministic scoring</div>
+                <div className="stat-label">rule-based scoring</div>
               </div>
               <div className="stat-item stat-item-padded">
                 <div className="stat-num">

@@ -113,13 +113,13 @@ def build_confidence_summary(
 
     if len(files) >= 35 or len(commits) >= 20:
         return (
-            f"Built from GitHub metadata, {scope_summary}, {len(commits)} commits, deterministic scoring rules, "
+            f"Built from GitHub metadata, {scope_summary}, {len(commits)} commits, rule-based risk scoring, "
             f"and patch-level structure hints. The review surface is broad enough that this score should guide triage more than final approval. "
             f"Patch coverage note: {patch_summary}. Response source: {cache_status}."
         )
 
     return (
-        f"Built from GitHub metadata, {scope_summary}, {len(commits)} commits, deterministic scoring rules, "
+        f"Built from GitHub metadata, {scope_summary}, {len(commits)} commits, rule-based risk scoring, "
         f"and patch-level structure hints. Patch coverage note: {patch_summary}. Response source: {cache_status}."
     )
 
@@ -316,7 +316,7 @@ def build_result(
             confidence_in_score=build_confidence_in_score(files, signals, commits, coverage, cache_status),
             summary=build_confidence_summary(files, commits, cache_status, coverage),
             limitations=analysis_limitations,
-            data_sources=["GitHub PR metadata", "GitHub changed files", "GitHub commits", "deterministic rules engine"],
+            data_sources=["GitHub PR metadata", "GitHub changed files", "GitHub commits", "rule-based risk engine"],
             cache_status=cache_status,
             coverage=coverage,
         ),

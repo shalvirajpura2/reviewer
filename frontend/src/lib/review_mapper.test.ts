@@ -101,12 +101,12 @@ function build_backend_result(overrides: Partial<BackendAnalysisResult> = {}): B
     },
     analysis_context: {
       confidence_in_score: "medium",
-      summary: "Built from GitHub metadata, 3 of 3 changed files analyzed, 2 commits, deterministic scoring rules, and patch-level structure hints. Patch coverage note: full patch hints where available. Response source: live.",
+      summary: "Built from GitHub metadata, 3 of 3 changed files analyzed, 2 commits, rule-based risk scoring, and patch-level structure hints. Patch coverage note: full patch hints where available. Response source: live.",
       limitations: [
         "This analysis does not inspect CI status or deployment health.",
         "Patch structure hints are based on changed hunks, not full repository semantics.",
       ],
-      data_sources: ["GitHub PR metadata", "GitHub changed files", "GitHub commits", "deterministic rules engine"],
+      data_sources: ["GitHub PR metadata", "GitHub changed files", "GitHub commits", "rule-based risk engine"],
       cache_status: "live",
       coverage: {
         files_analyzed: 3,

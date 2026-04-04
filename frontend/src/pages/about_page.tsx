@@ -28,7 +28,7 @@ GET /repos/{owner}/{repo}/pulls/{number}/commits`,
     points: [
       "Path sensitivity and area classification",
       "Diff shape and review surface extraction",
-      "Signals prepared for deterministic scoring",
+      "Signals prepared for rule-based scoring",
     ],
     code: `changed_files -> areas + sensitivity
 patch_hints -> imports, config, migration
@@ -37,15 +37,15 @@ review_context -> blast_radius + coverage_signals`,
   {
     number: "03",
     icon: ShieldCheck,
-    title: "Run deterministic review scoring",
+    title: "Run rule-based review scoring",
     description:
-      "Reviewer applies explainable rules to rank risk signals, compute merge confidence, and generate reviewer actions without pretending to know what it cannot verify.",
+      "Reviewer applies explainable rules to rank risk signals, estimate merge confidence, and generate reviewer actions without pretending to know what it cannot verify.",
     points: [
       "Verdict and merge confidence score",
       "Top risks with evidence",
       "Prioritized next actions",
     ],
-    code: `score = deterministic_rules(review_context)
+    code: `score = rule_based_risk_score(review_context)
 risks = ranked_signals(review_context)
 actions = reviewer_actions(score, risks)`,
   },
