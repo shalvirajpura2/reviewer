@@ -127,6 +127,45 @@ function build_review_focus(result: BackendAnalysisResult) {
   return build_changed_areas(result).slice(0, 4).map((item) => `Review ${item}`);
 }
 
+function build_safeguards(result: BackendAnalysisResult): ReviewResult["safeguards"] {
+  const safeguards = result.safeguards ?? {
+    ci_state: "unknown" as const,
+    summary: "CI and test safeguards were not evaluated for this result.",
+    checks_total: 0,
+    checks_passed: 0,
+    checks_failed: 0,
+    tests_changed: false,
+    missing_safeguards: [],
+    check_runs: [],
+  };
+
+  const status_copy = {
+    passing: { status_label: "CI passing", status_tone: "safe" as const },
+    failing: { status_label: "CI failing", status_tone: "danger" as const },
+    pending: { status_label: "CI pending", status_tone: "warn" as const },
+    missing: { status_label: "CI missing", status_tone: "warn" as const },
+    unknown: { status_label: "CI unknown", status_tone: "idle" as const },
+  }[safeguards.ci_state];
+
+  return {
+    ci_state: safeguards.ci_state,
+    status_label: status_copy.status_label,
+    status_tone: status_copy.status_tone,
+    summary: safeguards.summary,
+    checks_total: safeguards.checks_total,
+    checks_passed: safeguards.checks_passed,
+    checks_failed: safeguards.checks_failed,
+    tests_changed: safeguards.tests_changed,
+    missing_safeguards: safeguards.missing_safeguards.slice(0, 4),
+    check_runs: safeguards.check_runs.slice(0, 4).map((check_run) => ({
+      name: check_run.name,
+      status: check_run.status,
+      conclusion: check_run.conclusion,
+      details_url: check_run.details_url,
+    })),
+  };
+}
+
 function build_limitations(result: BackendAnalysisResult) {
   const partial_reasons = result.analysis_context.coverage.partial_reasons;
   const seen = new Set<string>();
@@ -189,6 +228,7 @@ export function map_analysis_to_review(result: BackendAnalysisResult): ReviewRes
       is_sensitive: item.is_sensitive,
       blob_url: item.blob_url
     })),
+    safeguards: build_safeguards(result),
     provenance: {
       cache_status: result.analysis_context.cache_status,
       confidence_in_score: result.analysis_context.confidence_in_score,

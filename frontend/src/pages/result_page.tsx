@@ -43,6 +43,13 @@ function severity_label(severity: ReviewRiskItem["severity"] | ReviewTopRiskFile
   return severity.toUpperCase();
 }
 
+function safeguard_class(status_tone: ReviewResult["safeguards"]["status_tone"]) {
+  if (status_tone === "safe") return "rp-safeguard-pill rp-safeguard-pass";
+  if (status_tone === "danger") return "rp-safeguard-pill rp-safeguard-fail";
+  if (status_tone === "warn") return "rp-safeguard-pill rp-safeguard-warn";
+  return "rp-safeguard-pill rp-safeguard-idle";
+}
+
 function confidence_color(score: number) {
   if (score >= 70) return "rgb(var(--green))";
   if (score >= 40) return "rgb(var(--amber))";
@@ -318,6 +325,48 @@ function ReviewNotesPanel({ result }: { result: ReviewResult }) {
             </div>
           </div>
         )) : <div className="rp-empty-state">No extra backend review notes were generated.</div>}
+      </div>
+    </div>
+  );
+}
+
+function ReviewSafeguardsPanel({ result }: { result: ReviewResult }) {
+  return (
+    <div className="rp-guide-panel">
+      <div className="rp-panel-header">
+        <div className="rp-card-label">merge safeguards</div>
+        <div className="rp-panel-hint">CI and test signal for the PR head commit</div>
+      </div>
+
+      <div className="rp-safeguard-head">
+        <span className={safeguard_class(result.safeguards.status_tone)}>{result.safeguards.status_label}</span>
+        <span className="rp-safeguard-test-pill">{result.safeguards.tests_changed ? "tests changed" : "no tests changed"}</span>
+      </div>
+
+      <div className="rp-guide-copy">{result.safeguards.summary}</div>
+
+      <div className="rp-certainty-grid rp-safeguard-grid">
+        <div className="rp-certainty-stat">
+          <span className="rp-certainty-stat-value">{result.safeguards.checks_total}</span>
+          <span className="rp-certainty-stat-label">checks found</span>
+        </div>
+        <div className="rp-certainty-stat">
+          <span className="rp-certainty-stat-value">{result.safeguards.checks_passed}</span>
+          <span className="rp-certainty-stat-label">checks passed</span>
+        </div>
+        <div className="rp-certainty-stat">
+          <span className="rp-certainty-stat-value">{result.safeguards.checks_failed}</span>
+          <span className="rp-certainty-stat-label">checks failed</span>
+        </div>
+      </div>
+
+      <div className="rp-guide-notes">
+        {[
+          ...result.safeguards.missing_safeguards.slice(0, 3),
+          ...result.safeguards.check_runs.slice(0, 2).map((check_run) => `${check_run.name}: ${check_run.conclusion ?? check_run.status}`),
+        ].map((item) => (
+          <div key={item} className="rp-prov-item">{item}</div>
+        ))}
       </div>
     </div>
   );
@@ -712,6 +761,7 @@ export function ResultPage() {
               <div className="rp-pill">Updated {updated_at}</div>
               <div className="rp-pill">{coverage_pill_copy(result)}</div>
               <div className="rp-pill">{confidence_pill_copy(result)}</div>
+              <div className={safeguard_class(result.safeguards.status_tone)}>{result.safeguards.status_label}</div>
               <a className="rp-pill rp-pill-link" href={result.pr_url} target="_blank" rel="noreferrer">
                 Open on GitHub
               </a>
@@ -852,6 +902,7 @@ export function ResultPage() {
           </div>
 
           <div className="rp-support-grid rp-anim" style={{ "--rp-delay": "150ms" } as CSSProperties}>
+            <ReviewSafeguardsPanel result={result} />
             <ReviewNotesPanel result={result} />
             <ReviewLimitsPanel result={result} />
           </div>
