@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 from functools import lru_cache
 
@@ -65,6 +65,32 @@ def detect_language_name(filename: str) -> str | None:
     return None
 
 
+def build_parseable_patch_source(patch_text: str) -> str:
+    source_lines: list[str] = []
+
+    for patch_line in patch_text.splitlines():
+        if patch_line.startswith(("@@", "+++", "---")):
+            continue
+
+        if patch_line.startswith("+"):
+            source_lines.append(patch_line[1:])
+            continue
+
+        if patch_line.startswith("-"):
+            continue
+
+        if patch_line.startswith(" "):
+            source_lines.append(patch_line[1:])
+            continue
+
+        if patch_line.startswith("\\ No newline at end of file"):
+            continue
+
+        source_lines.append(patch_line)
+
+    return "\n".join(source_lines).strip()
+
+
 def extract_tree_sitter_hints(file: ChangedFile) -> list[str]:
     if not file.patch:
         return []
@@ -77,8 +103,12 @@ def extract_tree_sitter_hints(file: ChangedFile) -> list[str]:
     if not parser:
         return []
 
+    parseable_source = build_parseable_patch_source(file.patch)
+    if not parseable_source:
+        return []
+
     try:
-        tree = parser.parse(file.patch.encode("utf-8"))
+        tree = parser.parse(parseable_source.encode("utf-8"))
     except Exception:
         return []
 
@@ -88,7 +118,7 @@ def extract_tree_sitter_hints(file: ChangedFile) -> list[str]:
     if root_type and root_type != "error":
         hints.append("patch_structure_detected")
 
-    if any(keyword in file.patch.lower() for keyword in {"import ", "from ", "require("}):
+    if any(keyword in parseable_source.lower() for keyword in {"import ", "from ", "require("}):
         hints.append("imports_changed")
 
     return hints
@@ -98,7 +128,8 @@ def extract_symbol_hints(file: ChangedFile) -> list[str]:
     if not file.patch:
         return []
 
-    lowered_patch = file.patch.lower()
+    parseable_source = build_parseable_patch_source(file.patch)
+    lowered_patch = parseable_source.lower() if parseable_source else file.patch.lower()
     symbol_hints = [term for term in high_signal_terms if term in lowered_patch]
     symbol_hints.extend(extract_tree_sitter_hints(file))
 
