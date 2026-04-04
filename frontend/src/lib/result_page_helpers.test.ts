@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { coverage_pill_copy, patch_line_class, report_badge, source_badge_short } from "./result_page_helpers";
+import { confidence_pill_copy, coverage_pill_copy, patch_line_class, report_badge, source_badge_short } from "./result_page_helpers";
 import type { ReviewResult } from "../types/review";
 
 
@@ -88,6 +88,18 @@ describe("result_page_helpers", () => {
         })
       )
     ).toBe("2/5 files analyzed");
+  });
+
+  it("prefers provenance confidence for the top-bar pill", () => {
+    expect(confidence_pill_copy(build_result({ confidence_label: "low confidence" }))).toBe("medium confidence");
+    expect(
+      confidence_pill_copy(
+        build_result({
+          confidence_label: "high confidence",
+          provenance: undefined,
+        })
+      )
+    ).toBe("high confidence");
   });
 
   it("maps patch lines to styles", () => {

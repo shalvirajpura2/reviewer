@@ -92,6 +92,8 @@ def classify_path_areas(pathname: str) -> list[str]:
         or ".test." in pathname
         or ".spec." in pathname
         or "test_" in pathname
+        or "_test." in pathname
+        or "_tests." in pathname
     ):
         areas.add("test")
 

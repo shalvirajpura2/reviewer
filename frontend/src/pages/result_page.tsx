@@ -5,7 +5,7 @@ import { Link, Navigate, useLocation, useSearchParams } from "react-router-dom";
 import { SiteFooter } from "../components/site_footer";
 import { analyze_pr } from "../lib/api";
 import { normalize_pr_url, pr_url_validation_message } from "../lib/pr_url";
-import { report_badge, source_badge_short, coverage_pill_copy, patch_line_class } from "../lib/result_page_helpers";
+import { confidence_pill_copy, coverage_pill_copy, patch_line_class, report_badge, source_badge_short } from "../lib/result_page_helpers";
 import { map_analysis_to_review } from "../lib/review_mapper";
 import type {
   ReviewFileGroup,
@@ -98,10 +98,6 @@ function format_date_time(value?: string) {
   }).format(date);
 }
 
-
-function confidence_pill_copy(result: ReviewResult) {
-  return result.confidence_label;
-}
 
 function risk_level(score: number) {
   if (score >= 70) return { label: "High", class_name: "rp-risk-level rp-risk-level-high" };
