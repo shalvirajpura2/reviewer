@@ -182,6 +182,7 @@ export function map_analysis_to_review(result: BackendAnalysisResult): ReviewRes
       filename: item.filename,
       risk_level: item.risk_level,
       reasons: item.reasons,
+      reviewer_hints: item.reviewer_hints ?? [],
       patch_excerpt: item.patch_excerpt ?? [],
       changes: item.changes,
       areas: item.areas,

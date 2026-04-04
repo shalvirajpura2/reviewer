@@ -38,6 +38,7 @@ export interface ReviewTopRiskFile {
   filename: string;
   risk_level: "low" | "medium" | "high";
   reasons: string[];
+  reviewer_hints: string[];
   patch_excerpt: string[];
   changes: number;
   areas: string[];
@@ -159,6 +160,7 @@ export interface BackendTopRiskFile {
   filename: string;
   risk_level: "low" | "medium" | "high";
   reasons: string[];
+  reviewer_hints: string[];
   patch_excerpt: string[];
   changes: number;
   areas: string[];

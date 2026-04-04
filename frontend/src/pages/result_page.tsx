@@ -263,6 +263,19 @@ function FocusPanel({ file, next_actions }: { file: ReviewTopRiskFile; next_acti
         </div>
 
         <div className="rp-focus-section">
+          <div className="rp-focus-section-title">Reviewer hints</div>
+          {file.reviewer_hints.map((item, index) => (
+            <div
+              key={item}
+              className="rp-bullet"
+              style={{ "--rp-delay": `${(index + file.reasons.length) * 45}ms` } as CSSProperties}
+            >
+              {item}
+            </div>
+          ))}
+        </div>
+
+        <div className="rp-focus-section">
           <div className="rp-focus-section-title">Check next</div>
           {(next_actions.length > 0 ? next_actions.slice(0, 3) : ["No additional backend review actions were generated."]).map((item, index) => (
             <div
