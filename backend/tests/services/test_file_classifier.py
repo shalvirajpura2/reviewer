@@ -50,3 +50,26 @@ def test_classify_files_keeps_docs_changes_low_risk(monkeypatch):
     assert file_item.is_sensitive is False
     assert file_item.blast_radius_weight == 1
     assert file_item.tags == ["docs"]
+
+
+
+def test_classify_files_marks_suffix_test_modules(monkeypatch):
+    monkeypatch.setattr(file_classifier, "extract_symbol_hints", lambda file: [])
+
+    classified = file_classifier.classify_files(
+        [
+            ChangedFile(
+                filename="codex-rs/app-server/src/message_processor/tracing_tests.rs",
+                status="modified",
+                additions=2,
+                deletions=2,
+                changes=4,
+                patch="assert!(true)",
+            )
+        ]
+    )
+
+    file_item = classified[0]
+
+    assert "test" in file_item.areas
+    assert "backend" in file_item.areas

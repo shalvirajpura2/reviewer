@@ -32,6 +32,17 @@ export function coverage_pill_copy(result: ReviewResult) {
 }
 
 
+export function confidence_pill_copy(result: ReviewResult) {
+  const confidence = result.provenance?.confidence_in_score;
+
+  if (confidence === "high") return "high confidence";
+  if (confidence === "medium") return "medium confidence";
+  if (confidence === "low") return "low confidence";
+
+  return result.confidence_label;
+}
+
+
 export function patch_line_class(patch_line: string) {
   if (patch_line.startsWith("@@")) return "rp-patch-line rp-patch-hunk";
   if (patch_line.startsWith("+")) return "rp-patch-line rp-patch-add";
