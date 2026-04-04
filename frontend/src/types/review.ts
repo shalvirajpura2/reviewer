@@ -13,7 +13,6 @@ export interface ReviewRiskBreakdownItem {
 export interface ReviewScoreMovementItem {
   sha?: string;
   label: string;
-  delta: number;
 }
 
 export interface ReviewFileGroup {
