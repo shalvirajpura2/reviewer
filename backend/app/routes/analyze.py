@@ -3,6 +3,7 @@ from ipaddress import ip_address
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 
+from app.core.settings import settings
 from app.models.analysis import AnalyzeRequest, PrAnalysisResult, PreviewRequest, PrPreviewResult
 from app.services.analysis_service import analyze_pull_request, preview_pull_request
 
@@ -21,27 +22,27 @@ def error_response(request: Request, status_code: int, error_code: str, message:
     )
 
 
+def is_trusted_proxy_host(client_host: str) -> bool:
+    try:
+        client_ip = ip_address(client_host)
+    except ValueError:
+        return False
+
+    return any(client_ip in trusted_proxy_network for trusted_proxy_network in settings.trusted_proxy_cidrs)
+
+
 def resolve_client_key(request: Request) -> str:
     direct_client_ip = request.client.host.strip() if request.client and request.client.host else ""
-    trusted_client_ip = direct_client_ip
     forwarded_for = request.headers.get("x-forwarded-for", "")
 
-    try:
-        remote_ip = ip_address(direct_client_ip) if direct_client_ip else None
-    except ValueError:
-        remote_ip = None
-
-    if remote_ip and (remote_ip.is_loopback or remote_ip.is_private or remote_ip.is_link_local):
+    if direct_client_ip and is_trusted_proxy_host(direct_client_ip):
         for forwarded_part in [item.strip() for item in forwarded_for.split(",") if item.strip()]:
             try:
-                trusted_client_ip = str(ip_address(forwarded_part))
-                break
+                return str(ip_address(forwarded_part))
             except ValueError:
                 continue
 
-    base_client_key = trusted_client_ip or direct_client_ip or "anonymous"
-
-    return base_client_key
+    return direct_client_ip or "anonymous"
 
 
 @router.post("/preview", response_model=PrPreviewResult)

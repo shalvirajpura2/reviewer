@@ -1,3 +1,4 @@
+from ipaddress import ip_network
 from types import SimpleNamespace
 
 from fastapi.testclient import TestClient
@@ -89,11 +90,26 @@ def test_resolve_client_key_ignores_spoofed_client_id_header():
     assert resolve_client_key(request) == "8.8.4.4"
 
 
-def test_resolve_client_key_trusts_forwarded_ip_only_from_local_proxy():
+def test_resolve_client_key_does_not_trust_forwarded_ip_without_trusted_proxy(monkeypatch):
     request = SimpleNamespace(
         headers={"x-forwarded-for": "8.8.8.8, 1.1.1.1"},
         client=SimpleNamespace(host="127.0.0.1"),
     )
+
+    monkeypatch.setattr("app.routes.analyze.settings.trusted_proxy_cidrs", tuple())
+
+    from app.routes.analyze import resolve_client_key
+
+    assert resolve_client_key(request) == "127.0.0.1"
+
+
+def test_resolve_client_key_trusts_forwarded_ip_from_configured_proxy(monkeypatch):
+    request = SimpleNamespace(
+        headers={"x-forwarded-for": "8.8.8.8, 1.1.1.1"},
+        client=SimpleNamespace(host="127.0.0.1"),
+    )
+
+    monkeypatch.setattr("app.routes.analyze.settings.trusted_proxy_cidrs", (ip_network("127.0.0.1/32"),))
 
     from app.routes.analyze import resolve_client_key
 

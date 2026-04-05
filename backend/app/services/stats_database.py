@@ -127,6 +127,22 @@ def ensure_database_schema() -> None:
                 cursor.execute("ALTER TABLE cached_analyses ADD COLUMN IF NOT EXISTS is_partial BOOLEAN")
                 cursor.execute(
                     """
+                    CREATE TABLE IF NOT EXISTS request_rate_events (
+                        id BIGSERIAL PRIMARY KEY,
+                        action_name TEXT NOT NULL,
+                        client_key TEXT NOT NULL,
+                        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+                    )
+                    """
+                )
+                cursor.execute(
+                    """
+                    CREATE INDEX IF NOT EXISTS request_rate_events_key_created_at_idx
+                    ON request_rate_events (action_name, client_key, created_at DESC)
+                    """
+                )
+                cursor.execute(
+                    """
                     INSERT INTO public_stats (
                         id,
                         visitor_count,

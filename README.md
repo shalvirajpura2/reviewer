@@ -218,6 +218,13 @@ pnpm dev
 ```
 
 Frontend runs on `http://localhost:5173` by default.
+### 5. Build the backend image
+
+Use the repository root as the Docker build context:
+
+```bash
+docker build -f backend/Dockerfile -t reviewer-backend .
+```
 
 ## Environment
 
@@ -269,3 +276,4 @@ Reviewer is being built to feel credible the moment a developer opens it:
 ## Builder
 
 Built by [Shalvi](https://shalvirajpura.xyz).
+
