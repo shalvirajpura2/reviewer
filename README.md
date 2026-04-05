@@ -223,7 +223,7 @@ Frontend runs on `http://localhost:5173` by default.
 Use the repository root as the Docker build context:
 
 ```bash
-docker build -f backend/Dockerfile -t reviewer-backend .
+docker build -f backend/Dockerfile -t reviewer-backend backend
 ```
 
 ## Environment
@@ -276,4 +276,5 @@ Reviewer is being built to feel credible the moment a developer opens it:
 ## Builder
 
 Built by [Shalvi](https://shalvirajpura.xyz).
+
 
