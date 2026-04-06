@@ -1,5 +1,14 @@
+import re
+
 from app.models.analysis import AnalysisContext, AnalysisCoverage, GithubPrMetadata, PrAnalysisResult, SafeguardSummary, ScoreSummary, TopRiskFile, RecommendationItem
 from app.renderers.cli_renderer import render_cli_json, render_cli_text
+
+
+ansi_pattern = re.compile(r"\x1b\[[0-9;]*m")
+
+
+def strip_ansi(value: str) -> str:
+    return ansi_pattern.sub("", value)
 
 
 def build_result() -> PrAnalysisResult:
@@ -70,11 +79,11 @@ def build_result() -> PrAnalysisResult:
 
 
 def test_render_cli_text_includes_guided_sections():
-    output = render_cli_text(build_result())
+    output = strip_ansi(render_cli_text(build_result()))
 
     assert "Reviewer Report" in output
     assert "Summary" in output
-    assert "Repository : acme/reviewer #9" in output
+    assert "Repository" in output and "acme/reviewer #9" in output
     assert "Focus Now" in output
     assert "1. Sensitive paths changed" in output
     assert "Start Here" in output

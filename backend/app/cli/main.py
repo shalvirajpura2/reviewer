@@ -3,7 +3,7 @@ import asyncio
 import sys
 
 from app.renderers.cli_renderer import render_cli_json, render_cli_text
-from app.renderers.cli_ui import render_status
+from app.renderers.cli_ui import render_status, render_welcome
 from app.services.analysis_service import analyze_pull_request
 from app.services.auth_session_service import login_with_device_flow, logout_session, require_authenticated_session, whoami_session
 from app.services.review_publish_service import publish_review_summary
@@ -14,7 +14,7 @@ cli_client_key = "reviewer_cli"
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="reviewer")
-    subparsers = parser.add_subparsers(dest="command", required=True)
+    subparsers = parser.add_subparsers(dest="command")
 
     login_parser = subparsers.add_parser("login", help="Sign in to GitHub for Reviewer CLI")
     login_parser.add_argument("--format", choices=["text", "json"], default="text", dest="output_format")
@@ -105,6 +105,10 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     try:
+        if args.command is None:
+            print(render_welcome())
+            return 0
+
         if args.command == "login":
             return asyncio.run(run_login(args.output_format))
 
@@ -129,4 +133,3 @@ def main(argv: list[str] | None = None) -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

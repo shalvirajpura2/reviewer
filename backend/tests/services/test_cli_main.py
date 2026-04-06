@@ -1,9 +1,16 @@
-import asyncio
+import re
 
 from app.cli.main import build_parser, main
 from app.models.analysis import AnalysisContext, AnalysisCoverage, GithubPrMetadata, PrAnalysisResult, SafeguardSummary, ScoreSummary
 from app.models.auth import GithubAuthSession
 from app.models.review_domain import ReviewCommentPublication
+
+
+ansi_pattern = re.compile(r"\x1b\[[0-9;]*m")
+
+
+def strip_ansi(value: str) -> str:
+    return ansi_pattern.sub("", value)
 
 
 def build_result() -> PrAnalysisResult:
@@ -80,6 +87,17 @@ def test_build_parser_defaults_to_text_format():
     assert args.force_refresh is False
 
 
+def test_main_without_command_shows_welcome(capsys):
+    exit_code = main([])
+    captured = capsys.readouterr()
+    output = strip_ansi(captured.out)
+
+    assert exit_code == 0
+    assert "REVIEWER CLI" in output
+    assert "Start Here" in output
+    assert "reviewer login" in output
+
+
 def test_build_parser_supports_login_commands():
     parser = build_parser()
 
@@ -111,10 +129,11 @@ def test_main_runs_login_command(monkeypatch, capsys):
 
     exit_code = main(["login"])
     captured = capsys.readouterr()
+    output = strip_ansi(captured.out)
 
     assert exit_code == 0
-    assert "Signed in as @shalv" in captured.out
-    assert "Run `reviewer analyze <pr-url>`" in captured.out
+    assert "Signed in as @shalv" in output
+    assert "Run `reviewer analyze <pr-url>`" in output
 
 
 def test_main_runs_whoami_command(monkeypatch, capsys):
@@ -125,10 +144,11 @@ def test_main_runs_whoami_command(monkeypatch, capsys):
 
     exit_code = main(["whoami"])
     captured = capsys.readouterr()
+    output = strip_ansi(captured.out)
 
     assert exit_code == 0
-    assert "Reviewer Session" in captured.out
-    assert "Account : @shalv" in captured.out
+    assert "Reviewer Session" in output
+    assert "Account : @shalv" in output
 
 
 def test_main_runs_logout_command(monkeypatch, capsys):
@@ -136,10 +156,11 @@ def test_main_runs_logout_command(monkeypatch, capsys):
 
     exit_code = main(["logout"])
     captured = capsys.readouterr()
+    output = strip_ansi(captured.out)
 
     assert exit_code == 0
-    assert "Logged out from Reviewer CLI." in captured.out
-    assert "reviewer login" in captured.out
+    assert "Logged out from Reviewer CLI." in output
+    assert "reviewer login" in output
 
 
 def test_main_runs_analyze_command(monkeypatch, capsys):
@@ -157,10 +178,11 @@ def test_main_runs_analyze_command(monkeypatch, capsys):
 
     exit_code = main(["analyze", "https://github.com/acme/reviewer/pull/9"])
     captured = capsys.readouterr()
+    output = strip_ansi(captured.out)
 
     assert exit_code == 0
-    assert "Reviewer Report" in captured.out
-    assert "Summary" in captured.out
+    assert "Reviewer Report" in output
+    assert "Summary" in output
 
 
 def test_main_runs_publish_summary_command(monkeypatch, capsys):
@@ -182,10 +204,11 @@ def test_main_runs_publish_summary_command(monkeypatch, capsys):
 
     exit_code = main(["publish-summary", "https://github.com/acme/reviewer/pull/9"])
     captured = capsys.readouterr()
+    output = strip_ansi(captured.out)
 
     assert exit_code == 0
-    assert "GitHub summary comment updated" in captured.out
-    assert "Open the pull request" in captured.out
+    assert "GitHub summary comment updated" in output
+    assert "Open the pull request" in output
 
 
 def test_main_returns_error_code_for_known_failures(monkeypatch, capsys):
@@ -200,6 +223,7 @@ def test_main_returns_error_code_for_known_failures(monkeypatch, capsys):
 
     exit_code = main(["analyze", "bad-url"])
     captured = capsys.readouterr()
+    error_output = strip_ansi(captured.err)
 
     assert exit_code == 1
-    assert "[error] Unsupported URL format" in captured.err
+    assert "[error] Unsupported URL format" in error_output
