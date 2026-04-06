@@ -1,8 +1,8 @@
 import httpx
 import pytest
 
-from app.services import github_client
 from app.renderers.github_renderer import reviewer_comment_marker
+from app.services import github_client
 
 
 class fake_client:
@@ -67,9 +67,33 @@ async def test_get_github_client_reuses_open_client():
     await github_client.close_github_client()
 
 
+def test_build_headers_uses_runtime_github_token(monkeypatch):
+    monkeypatch.setattr(github_client.settings, "github_token", "")
+    github_client.set_runtime_github_token("runtime-token")
+
+    headers = github_client.build_headers()
+
+    assert headers["Authorization"] == "Bearer runtime-token"
+    github_client.clear_runtime_github_token()
+
+
+@pytest.mark.asyncio
+async def test_fetch_viewer_uses_explicit_token(monkeypatch):
+    async def fake_github_fetch(path: str, github_token: str | None = None):
+        assert path == "/user"
+        assert github_token == "explicit-token"
+        return {"login": "shalv", "id": 7}
+
+    monkeypatch.setattr(github_client, "github_fetch", fake_github_fetch)
+
+    payload = await github_client.fetch_viewer("explicit-token")
+
+    assert payload["login"] == "shalv"
+
+
 @pytest.mark.asyncio
 async def test_fetch_commit_check_runs_normalizes_payload(monkeypatch):
-    async def fake_github_fetch(path):
+    async def fake_github_fetch(path, github_token=None):
         assert path == "/repos/acme/reviewer/commits/abc1234/check-runs?per_page=100"
         return {
             "total_count": 2,
@@ -122,6 +146,7 @@ async def test_upsert_review_summary_comment_updates_existing_comment(monkeypatc
     )
 
     assert result["id"] == 99
+    assert result["reviewer_action"] == "updated"
 
 
 @pytest.mark.asyncio
@@ -142,3 +167,4 @@ async def test_upsert_review_summary_comment_creates_when_missing(monkeypatch):
     )
 
     assert result["id"] == 100
+    assert result["reviewer_action"] == "created"

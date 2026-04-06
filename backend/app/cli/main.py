@@ -4,6 +4,7 @@ import sys
 
 from app.renderers.cli_renderer import render_cli_json, render_cli_text
 from app.services.analysis_service import analyze_pull_request
+from app.services.auth_session_service import login_with_device_flow, logout_session, require_authenticated_session, whoami_session
 from app.services.review_publish_service import publish_review_summary
 
 
@@ -13,6 +14,14 @@ cli_client_key = "reviewer_cli"
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="reviewer")
     subparsers = parser.add_subparsers(dest="command", required=True)
+
+    login_parser = subparsers.add_parser("login", help="Sign in to GitHub for Reviewer CLI")
+    login_parser.add_argument("--format", choices=["text", "json"], default="text", dest="output_format")
+
+    whoami_parser = subparsers.add_parser("whoami", help="Show the active GitHub session")
+    whoami_parser.add_argument("--format", choices=["text", "json"], default="text", dest="output_format")
+
+    subparsers.add_parser("logout", help="Clear the saved GitHub session")
 
     analyze_parser = subparsers.add_parser("analyze", help="Analyze a public GitHub pull request")
     analyze_parser.add_argument("pr_url", help="Public GitHub pull request URL")
@@ -26,7 +35,41 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+async def run_login(output_format: str) -> int:
+    session = await login_with_device_flow()
+
+    if output_format == "json":
+        print(session.model_dump_json(indent=2))
+    else:
+        print(f"Logged in as @{session.login}")
+
+    return 0
+
+
+async def run_whoami(output_format: str) -> int:
+    session = await whoami_session()
+    if session is None:
+        print("No active GitHub session.", file=sys.stderr)
+        return 1
+
+    if output_format == "json":
+        print(session.model_dump_json(indent=2))
+    else:
+        print(f"Logged in as @{session.login} via {session.source}")
+
+    return 0
+
+
+def run_logout() -> int:
+    if logout_session():
+        print("Logged out from Reviewer CLI.")
+    else:
+        print("No saved Reviewer CLI session was found.")
+    return 0
+
+
 async def run_analyze(pr_url: str, output_format: str, force_refresh: bool) -> int:
+    await require_authenticated_session()
     result = await analyze_pull_request(pr_url, cli_client_key, force_refresh)
 
     if output_format == "json":
@@ -38,6 +81,7 @@ async def run_analyze(pr_url: str, output_format: str, force_refresh: bool) -> i
 
 
 async def run_publish_summary(pr_url: str, output_format: str) -> int:
+    await require_authenticated_session()
     result = await publish_review_summary(pr_url, cli_client_key)
 
     if output_format == "json":
@@ -53,6 +97,15 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     try:
+        if args.command == "login":
+            return asyncio.run(run_login(args.output_format))
+
+        if args.command == "whoami":
+            return asyncio.run(run_whoami(args.output_format))
+
+        if args.command == "logout":
+            return run_logout()
+
         if args.command == "analyze":
             return asyncio.run(run_analyze(args.pr_url, args.output_format, args.force_refresh))
 

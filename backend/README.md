@@ -24,7 +24,19 @@ pip install -e backend
 
 ## Configure
 
-Set a GitHub token before running analysis commands:
+Preferred setup uses GitHub device login with your GitHub OAuth app client id:
+
+```bash
+# Windows PowerShell
+$env:GITHUB_CLIENT_ID="your_client_id_here"
+```
+
+```bash
+# macOS / Linux
+export GITHUB_CLIENT_ID="your_client_id_here"
+```
+
+Advanced users can still provide a token directly:
 
 ```bash
 # Windows PowerShell
@@ -39,7 +51,11 @@ export GITHUB_TOKEN="your_token_here"
 ## Usage
 
 ```bash
+reviewer login
+reviewer whoami
 reviewer analyze https://github.com/owner/repo/pull/123
-reviewer analyze https://github.com/owner/repo/pull/123 --format json
 reviewer publish-summary https://github.com/owner/repo/pull/123
+reviewer logout
 ```
+
+Protected commands automatically start the login flow when no valid session is available.

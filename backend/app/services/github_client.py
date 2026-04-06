@@ -12,16 +12,31 @@ github_retry_attempts = 3
 github_retry_backoff_seconds = 0.35
 github_client: httpx.AsyncClient | None = None
 github_client_lock = asyncio.Lock()
+runtime_github_token: str | None = None
 
 
-def build_headers() -> dict[str, str]:
+def set_runtime_github_token(github_token: str | None) -> None:
+    global runtime_github_token
+    runtime_github_token = github_token
+
+
+def clear_runtime_github_token() -> None:
+    set_runtime_github_token(None)
+
+
+def resolve_github_token(github_token: str | None = None) -> str | None:
+    return github_token or runtime_github_token or settings.github_token
+
+
+def build_headers(github_token: str | None = None) -> dict[str, str]:
     headers = {
         "Accept": "application/vnd.github+json",
         "User-Agent": "reviewer-v1",
     }
 
-    if settings.github_token:
-        headers["Authorization"] = f"Bearer {settings.github_token}"
+    resolved_token = resolve_github_token(github_token)
+    if resolved_token:
+        headers["Authorization"] = f"Bearer {resolved_token}"
 
     return headers
 
@@ -53,6 +68,9 @@ async def close_github_client() -> None:
 
 
 async def handle_github_response(response: httpx.Response, action_name: str) -> Any:
+    if response.status_code == 401:
+        raise PermissionError("GitHub authentication is invalid or expired. Please login again.")
+
     if response.status_code == 403 and response.headers.get("x-ratelimit-remaining") == "0":
         raise PermissionError("GitHub rate limit reached. Add a GITHUB_TOKEN or try again later.")
 
@@ -71,13 +89,13 @@ async def handle_github_response(response: httpx.Response, action_name: str) -> 
     return response.json()
 
 
-async def github_fetch(path: str) -> Any:
+async def github_fetch(path: str, github_token: str | None = None) -> Any:
     last_error: Exception | None = None
 
     for attempt_number in range(1, github_retry_attempts + 1):
         try:
             client = await get_github_client()
-            response = await client.get(f"{settings.github_api_base}{path}", headers=build_headers())
+            response = await client.get(f"{settings.github_api_base}{path}", headers=build_headers(github_token))
         except httpx.TimeoutException:
             last_error = ConnectionError("GitHub took too long to respond. Please try again.")
         except httpx.HTTPError:
@@ -97,16 +115,21 @@ async def github_fetch(path: str) -> Any:
     raise ConnectionError("GitHub could not be reached from the analysis service.")
 
 
-async def github_send(method: str, path: str, payload: dict[str, Any], action_name: str) -> Any:
+async def github_send(method: str, path: str, payload: dict[str, Any], action_name: str, github_token: str | None = None) -> Any:
     try:
         client = await get_github_client()
-        response = await client.request(method, f"{settings.github_api_base}{path}", headers=build_headers(), json=payload)
+        response = await client.request(method, f"{settings.github_api_base}{path}", headers=build_headers(github_token), json=payload)
     except httpx.TimeoutException:
         raise ConnectionError("GitHub took too long to respond. Please try again.")
     except httpx.HTTPError:
         raise ConnectionError("GitHub could not be reached from the analysis service.")
 
     return await handle_github_response(response, action_name)
+
+
+async def fetch_viewer(github_token: str | None = None) -> dict[str, Any]:
+    payload = await github_fetch("/user", github_token=github_token)
+    return payload if isinstance(payload, dict) else {}
 
 
 async def fetch_pr_metadata(parsed_pr: dict[str, str | int]) -> GithubPrMetadata:
@@ -330,4 +353,3 @@ async def upsert_review_summary_comment(parsed_pr: dict[str, str | int], body: s
 async def fetch_repo_stars(owner: str, repo: str) -> int:
     payload = await github_fetch(f"/repos/{owner}/{repo}")
     return int(payload.get("stargazers_count", 0))
-

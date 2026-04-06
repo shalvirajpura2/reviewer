@@ -247,17 +247,19 @@ For local development in this repository:
 pip install -e backend
 ```
 
-Before running the command, set `GITHUB_TOKEN` in your environment.
+Preferred setup uses GitHub device login with `GITHUB_CLIENT_ID` configured in your environment.
 
 Then run Reviewer directly from your terminal:
 
 ```bash
+reviewer login
+reviewer whoami
 reviewer analyze https://github.com/owner/repo/pull/123
-reviewer analyze https://github.com/owner/repo/pull/123 --format json
 reviewer publish-summary https://github.com/owner/repo/pull/123
+reviewer logout
 ```
 
-The CLI uses the same backend analysis engine and environment variables as the FastAPI service, including `GITHUB_TOKEN`.
+Protected commands automatically start the login flow when no valid session is available. `GITHUB_TOKEN` is still supported as an advanced fallback.
 ## Environment
 
 ### Shared
@@ -308,4 +310,5 @@ Reviewer is being built to feel credible the moment a developer opens it:
 ## Builder
 
 Built by [Shalvi](https://shalvirajpura.xyz).
+
 

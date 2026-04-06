@@ -1,5 +1,8 @@
+import asyncio
+
 from app.cli.main import build_parser, main
 from app.models.analysis import AnalysisContext, AnalysisCoverage, GithubPrMetadata, PrAnalysisResult, SafeguardSummary, ScoreSummary
+from app.models.auth import GithubAuthSession
 from app.models.review_domain import ReviewCommentPublication
 
 
@@ -56,6 +59,17 @@ def build_result() -> PrAnalysisResult:
     )
 
 
+def build_session() -> GithubAuthSession:
+    return GithubAuthSession(
+        access_token="token-123",
+        token_type="bearer",
+        scope="read:user public_repo",
+        login="shalv",
+        user_id=7,
+        source="device",
+    )
+
+
 def test_build_parser_defaults_to_text_format():
     parser = build_parser()
 
@@ -64,6 +78,19 @@ def test_build_parser_defaults_to_text_format():
     assert args.command == "analyze"
     assert args.output_format == "text"
     assert args.force_refresh is False
+
+
+def test_build_parser_supports_login_commands():
+    parser = build_parser()
+
+    login_args = parser.parse_args(["login", "--format", "json"])
+    whoami_args = parser.parse_args(["whoami"])
+    logout_args = parser.parse_args(["logout"])
+
+    assert login_args.command == "login"
+    assert login_args.output_format == "json"
+    assert whoami_args.command == "whoami"
+    assert logout_args.command == "logout"
 
 
 def test_build_parser_supports_publish_summary_command():
@@ -75,13 +102,53 @@ def test_build_parser_supports_publish_summary_command():
     assert args.output_format == "json"
 
 
+def test_main_runs_login_command(monkeypatch, capsys):
+    async def fake_login_with_device_flow():
+        return build_session()
+
+    monkeypatch.setattr("app.cli.main.login_with_device_flow", fake_login_with_device_flow)
+
+    exit_code = main(["login"])
+    captured = capsys.readouterr()
+
+    assert exit_code == 0
+    assert "Logged in as @shalv" in captured.out
+
+
+def test_main_runs_whoami_command(monkeypatch, capsys):
+    async def fake_whoami_session():
+        return build_session()
+
+    monkeypatch.setattr("app.cli.main.whoami_session", fake_whoami_session)
+
+    exit_code = main(["whoami"])
+    captured = capsys.readouterr()
+
+    assert exit_code == 0
+    assert "Logged in as @shalv via device" in captured.out
+
+
+def test_main_runs_logout_command(monkeypatch, capsys):
+    monkeypatch.setattr("app.cli.main.logout_session", lambda: True)
+
+    exit_code = main(["logout"])
+    captured = capsys.readouterr()
+
+    assert exit_code == 0
+    assert "Logged out from Reviewer CLI." in captured.out
+
+
 def test_main_runs_analyze_command(monkeypatch, capsys):
+    async def fake_require_authenticated_session():
+        return build_session()
+
     async def fake_analyze_pull_request(pr_url: str, client_key: str, force_refresh: bool):
         assert pr_url == "https://github.com/acme/reviewer/pull/9"
         assert client_key == "reviewer_cli"
         assert force_refresh is False
         return build_result()
 
+    monkeypatch.setattr("app.cli.main.require_authenticated_session", fake_require_authenticated_session)
     monkeypatch.setattr("app.cli.main.analyze_pull_request", fake_analyze_pull_request)
 
     exit_code = main(["analyze", "https://github.com/acme/reviewer/pull/9"])
@@ -92,6 +159,9 @@ def test_main_runs_analyze_command(monkeypatch, capsys):
 
 
 def test_main_runs_publish_summary_command(monkeypatch, capsys):
+    async def fake_require_authenticated_session():
+        return build_session()
+
     async def fake_publish_review_summary(pr_url: str, client_key: str):
         assert pr_url == "https://github.com/acme/reviewer/pull/9"
         assert client_key == "reviewer_cli"
@@ -102,6 +172,7 @@ def test_main_runs_publish_summary_command(monkeypatch, capsys):
             body="comment body",
         )
 
+    monkeypatch.setattr("app.cli.main.require_authenticated_session", fake_require_authenticated_session)
     monkeypatch.setattr("app.cli.main.publish_review_summary", fake_publish_review_summary)
 
     exit_code = main(["publish-summary", "https://github.com/acme/reviewer/pull/9"])
@@ -112,9 +183,13 @@ def test_main_runs_publish_summary_command(monkeypatch, capsys):
 
 
 def test_main_returns_error_code_for_known_failures(monkeypatch, capsys):
+    async def fake_require_authenticated_session():
+        return build_session()
+
     async def fake_analyze_pull_request(pr_url: str, client_key: str, force_refresh: bool):
         raise ValueError("Unsupported URL format. Paste a direct pull request URL.")
 
+    monkeypatch.setattr("app.cli.main.require_authenticated_session", fake_require_authenticated_session)
     monkeypatch.setattr("app.cli.main.analyze_pull_request", fake_analyze_pull_request)
 
     exit_code = main(["analyze", "bad-url"])
