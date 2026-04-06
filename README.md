@@ -198,7 +198,7 @@ pnpm install
 Copy `.env.example` to `.env` and set at least:
 
 ```bash
-GITHUB_TOKEN=your_token_here
+GITHUB_CLIENT_ID=your_client_id_here
 VITE_BACKEND_URL=http://localhost:8000
 ```
 
@@ -259,11 +259,13 @@ reviewer publish-summary https://github.com/owner/repo/pull/123
 reviewer logout
 ```
 
-Protected commands automatically start the login flow when no valid session is available. `GITHUB_TOKEN` is still supported as an advanced fallback.
+The CLI now guides users step by step during login, reuses the saved GitHub session automatically, and renders reports in readable sections so the next action is clear. `GITHUB_TOKEN` is still supported as an advanced fallback.
+
 ## Environment
 
 ### Shared
 
+- `GITHUB_CLIENT_ID`
 - `GITHUB_TOKEN`
 
 ### Frontend
@@ -273,6 +275,7 @@ Protected commands automatically start the login flow when no valid session is a
 ### Backend
 
 - `GITHUB_API_BASE`
+- `REVIEWER_CONFIG_DIR`
 - `BACKEND_PORT`
 - `CACHE_TTL_SECONDS`
 - `CORS_ALLOW_ORIGINS`
@@ -310,5 +313,3 @@ Reviewer is being built to feel credible the moment a developer opens it:
 ## Builder
 
 Built by [Shalvi](https://shalvirajpura.xyz).
-
-

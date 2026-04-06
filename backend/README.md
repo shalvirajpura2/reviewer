@@ -1,6 +1,6 @@
 # Reviewer CLI
 
-Reviewer CLI exposes the shared pull request analysis engine as a terminal command.
+Reviewer CLI exposes the shared pull request analysis engine as a guided terminal experience.
 
 ## Install
 
@@ -48,6 +48,13 @@ $env:GITHUB_TOKEN="your_token_here"
 export GITHUB_TOKEN="your_token_here"
 ```
 
+Optional: override where Reviewer stores the local login session.
+
+```bash
+# Windows PowerShell
+$env:REVIEWER_CONFIG_DIR="C:\Users\you\AppData\Roaming\reviewer-cli"
+```
+
 ## Usage
 
 ```bash
@@ -57,5 +64,12 @@ reviewer analyze https://github.com/owner/repo/pull/123
 reviewer publish-summary https://github.com/owner/repo/pull/123
 reviewer logout
 ```
+
+## What The CLI Does For Users
+
+- Guides GitHub login step by step with the device link and one-time code.
+- Reuses the saved GitHub session automatically so people do not have to log in again on every command.
+- Renders reports in readable sections so the next action is obvious.
+- Suggests what to do after login, publish, and logout.
 
 Protected commands automatically start the login flow when no valid session is available.
