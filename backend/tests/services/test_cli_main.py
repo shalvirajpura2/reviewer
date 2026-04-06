@@ -93,8 +93,8 @@ def test_main_without_command_shows_welcome(capsys):
     output = strip_ansi(captured.out)
 
     assert exit_code == 0
-    assert "########  ########" in output
-    assert "######   #       ######" in output
+    assert "deterministic github review" in output
+    assert "professional pull request analysis in your terminal" in output
     assert "Start Here" in output
     assert "reviewer login" in output
 
