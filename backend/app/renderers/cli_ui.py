@@ -5,23 +5,25 @@ ansi_green_soft = "\033[38;5;114m"
 ansi_muted = "\033[38;5;145m"
 ansi_white = "\033[38;5;255m"
 ansi_bold = "\033[1m"
+ansi_banner_fill = "\033[38;5;215m"
+ansi_banner_shadow = "\033[38;5;173m"
 panel_width = 78
 
 
 reviewer_banner_lines = [
-    "RRRRR   EEEEE  V   V  IIIII  EEEEE  W   W  EEEEE  RRRRR ",
-    "R   RR  E      V   V    I    E      W   W  E      R   RR",
-    "RRRRR   EEEE   V   V    I    EEEE   W W W  EEEE   RRRRR ",
-    "R  RR   E       V V     I    E      WW WW  E      R  RR ",
-    "R   RR  EEEEE    V    IIIII  EEEEE  W   W  EEEEE  R   RR",
+    "########  ########  #      #  ######  ########  #      #  ########  ########",
+    "##    ##  ##        #      #    ##    ##        #      #  ##        ##    ##",
+    "########  ######    #      #    ##    ######    #  ##  #  ######    ########",
+    "##  ##    ##         #    #     ##    ##        ## ## ##  ##        ##  ##  ",
+    "##   ##   ########    ####    ######  ########  ###  ###  ########  ##   ## ",
 ]
 
 reviewer_cli_lines = [
-    " CCC   L      IIIII ",
-    "C   C  L        I   ",
-    "C      L        I   ",
-    "C   C  L        I   ",
-    " CCC   LLLLL  IIIII ",
+    " ######   #       ###### ",
+    "##       #          ##   ",
+    "##       #          ##   ",
+    "##       #          ##   ",
+    " ######  ######  ######  ",
 ]
 
 
@@ -75,10 +77,27 @@ def render_centered_lines(lines: list[str], color: str, bold: bool = False) -> l
     return centered
 
 
+def render_centered_colored_lines(items: list[tuple[str, str, bool]]) -> list[str]:
+    inner_width = panel_width - 4
+    centered = []
+    for line, color, bold in items:
+        padding = max((inner_width - len(line)) // 2, 0)
+        centered.append(colorize(f"{' ' * padding}{line}", color, bold=bold))
+    return centered
+
+
+def build_banner_block(lines: list[str]) -> list[tuple[str, str, bool]]:
+    rendered_lines: list[tuple[str, str, bool]] = []
+    for line in lines:
+        rendered_lines.append((f"  {line}", ansi_banner_shadow, True))
+        rendered_lines.append((line, ansi_banner_fill, True))
+    return rendered_lines
+
+
 def render_hero_panel() -> str:
     eyebrow = colorize("deterministic github review", ansi_muted)
-    banner_lines = render_centered_lines(reviewer_banner_lines, ansi_green, bold=True)
-    cli_lines = render_centered_lines(reviewer_cli_lines, ansi_green_soft, bold=True)
+    banner_lines = render_centered_colored_lines(build_banner_block(reviewer_banner_lines))
+    cli_lines = render_centered_colored_lines(build_banner_block(reviewer_cli_lines))
     subtitle = colorize("professional pull request analysis in your terminal", ansi_white)
     return render_panel(
         "Reviewer",
