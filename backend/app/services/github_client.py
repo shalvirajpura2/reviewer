@@ -5,6 +5,7 @@ import httpx
 
 from app.core.settings import settings
 from app.models.analysis import ChangedFile, CheckRunSummary, GithubCommitSummary, GithubPrMetadata
+from app.renderers.github_renderer import reviewer_comment_marker
 
 max_pr_file_pages = 30
 github_retry_attempts = 3
@@ -51,6 +52,25 @@ async def close_github_client() -> None:
         github_client = None
 
 
+async def handle_github_response(response: httpx.Response, action_name: str) -> Any:
+    if response.status_code == 403 and response.headers.get("x-ratelimit-remaining") == "0":
+        raise PermissionError("GitHub rate limit reached. Add a GITHUB_TOKEN or try again later.")
+
+    if response.status_code == 403 and "secondary rate limit" in response.text.lower():
+        raise PermissionError(f"GitHub temporarily rate limited this {action_name}. Please retry shortly.")
+
+    if response.status_code == 404:
+        raise FileNotFoundError("Repository or pull request not found, or the PR is not public.")
+
+    if response.status_code >= 400:
+        raise ValueError(f"GitHub returned an unexpected response while trying to {action_name}.")
+
+    if not response.content:
+        return None
+
+    return response.json()
+
+
 async def github_fetch(path: str) -> Any:
     last_error: Exception | None = None
 
@@ -58,26 +78,15 @@ async def github_fetch(path: str) -> Any:
         try:
             client = await get_github_client()
             response = await client.get(f"{settings.github_api_base}{path}", headers=build_headers())
-        except httpx.TimeoutException as error:
+        except httpx.TimeoutException:
             last_error = ConnectionError("GitHub took too long to respond. Please try again.")
         except httpx.HTTPError:
             last_error = ConnectionError("GitHub could not be reached from the analysis service.")
         else:
-            if response.status_code == 403 and response.headers.get("x-ratelimit-remaining") == "0":
-                raise PermissionError("GitHub rate limit reached. Add a GITHUB_TOKEN or try again later.")
-
-            if response.status_code == 403 and "secondary rate limit" in response.text.lower():
-                raise PermissionError("GitHub temporarily rate limited this analysis. Please retry shortly.")
-
-            if response.status_code == 404:
-                raise FileNotFoundError("Repository or pull request not found, or the PR is not public.")
-
             if response.status_code in {502, 503, 504}:
                 last_error = ConnectionError("GitHub is temporarily unavailable. Please try again.")
-            elif response.status_code >= 400:
-                raise ValueError("GitHub returned an unexpected response while fetching the pull request.")
             else:
-                return response.json()
+                return await handle_github_response(response, "fetch the pull request")
 
         if attempt_number < github_retry_attempts:
             await asyncio.sleep(github_retry_backoff_seconds * attempt_number)
@@ -86,6 +95,18 @@ async def github_fetch(path: str) -> Any:
         raise last_error
 
     raise ConnectionError("GitHub could not be reached from the analysis service.")
+
+
+async def github_send(method: str, path: str, payload: dict[str, Any], action_name: str) -> Any:
+    try:
+        client = await get_github_client()
+        response = await client.request(method, f"{settings.github_api_base}{path}", headers=build_headers(), json=payload)
+    except httpx.TimeoutException:
+        raise ConnectionError("GitHub took too long to respond. Please try again.")
+    except httpx.HTTPError:
+        raise ConnectionError("GitHub could not be reached from the analysis service.")
+
+    return await handle_github_response(response, action_name)
 
 
 async def fetch_pr_metadata(parsed_pr: dict[str, str | int]) -> GithubPrMetadata:
@@ -251,6 +272,53 @@ async def fetch_commit_check_runs(parsed_pr: dict[str, str | int], head_sha: str
         )
 
     return check_runs, partial_reasons
+
+
+async def fetch_issue_comments(parsed_pr: dict[str, str | int]) -> list[dict[str, Any]]:
+    payload = await github_fetch(
+        f"/repos/{parsed_pr['owner']}/{parsed_pr['repo']}/issues/{parsed_pr['pull_number']}/comments?per_page=100"
+    )
+
+    return payload if isinstance(payload, list) else []
+
+
+async def create_issue_comment(parsed_pr: dict[str, str | int], body: str) -> dict[str, Any]:
+    payload = await github_send(
+        "POST",
+        f"/repos/{parsed_pr['owner']}/{parsed_pr['repo']}/issues/{parsed_pr['pull_number']}/comments",
+        {"body": body},
+        "publish the GitHub review comment",
+    )
+
+    return payload if isinstance(payload, dict) else {}
+
+
+async def update_issue_comment(comment_id: int, body: str) -> dict[str, Any]:
+    payload = await github_send(
+        "PATCH",
+        f"/repos/issues/comments/{comment_id}",
+        {"body": body},
+        "update the GitHub review comment",
+    )
+
+    return payload if isinstance(payload, dict) else {}
+
+
+async def upsert_review_summary_comment(parsed_pr: dict[str, str | int], body: str) -> dict[str, Any]:
+    comments = await fetch_issue_comments(parsed_pr)
+
+    existing_comment = next(
+        (
+            comment for comment in comments
+            if reviewer_comment_marker in str(comment.get("body") or "")
+        ),
+        None,
+    )
+
+    if existing_comment and existing_comment.get("id"):
+        return await update_issue_comment(int(existing_comment["id"]), body)
+
+    return await create_issue_comment(parsed_pr, body)
 
 
 async def fetch_repo_stars(owner: str, repo: str) -> int:

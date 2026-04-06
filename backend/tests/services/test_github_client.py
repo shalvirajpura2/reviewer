@@ -2,6 +2,7 @@ import httpx
 import pytest
 
 from app.services import github_client
+from app.renderers.github_renderer import reviewer_comment_marker
 
 
 class fake_client:
@@ -9,9 +10,19 @@ class fake_client:
         self.responses = list(responses)
         self.request_count = 0
         self.is_closed = False
+        self.requests = []
 
     async def get(self, url, headers=None):
         self.request_count += 1
+        self.requests.append(("GET", url, headers, None))
+        next_response = self.responses.pop(0)
+        if isinstance(next_response, Exception):
+            raise next_response
+        return next_response
+
+    async def request(self, method, url, headers=None, json=None):
+        self.request_count += 1
+        self.requests.append((method, url, headers, json))
         next_response = self.responses.pop(0)
         if isinstance(next_response, Exception):
             raise next_response
@@ -32,6 +43,7 @@ async def test_github_fetch_retries_transient_502(monkeypatch):
         return client
 
     monkeypatch.setattr(github_client, "get_github_client", fake_get_github_client)
+
     async def fake_sleep(delay):
         return None
 
@@ -53,7 +65,6 @@ async def test_get_github_client_reuses_open_client():
     assert first_client is second_client
 
     await github_client.close_github_client()
-
 
 
 @pytest.mark.asyncio
@@ -90,3 +101,44 @@ async def test_fetch_commit_check_runs_normalizes_payload(monkeypatch):
     assert check_runs[0].conclusion == "success"
     assert check_runs[1].status == "in_progress"
     assert check_runs[1].details_url == "https://ci.example.com/build"
+
+
+@pytest.mark.asyncio
+async def test_upsert_review_summary_comment_updates_existing_comment(monkeypatch):
+    async def fake_fetch_issue_comments(parsed_pr):
+        return [{"id": 99, "body": f"{reviewer_comment_marker}\nold comment"}]
+
+    async def fake_update_issue_comment(comment_id: int, body: str):
+        assert comment_id == 99
+        assert "new comment" in body
+        return {"id": 99, "html_url": "https://github.com/acme/reviewer/pull/9#issuecomment-99", "body": body}
+
+    monkeypatch.setattr(github_client, "fetch_issue_comments", fake_fetch_issue_comments)
+    monkeypatch.setattr(github_client, "update_issue_comment", fake_update_issue_comment)
+
+    result = await github_client.upsert_review_summary_comment(
+        {"owner": "acme", "repo": "reviewer", "pull_number": 9},
+        f"{reviewer_comment_marker}\nnew comment",
+    )
+
+    assert result["id"] == 99
+
+
+@pytest.mark.asyncio
+async def test_upsert_review_summary_comment_creates_when_missing(monkeypatch):
+    async def fake_fetch_issue_comments(parsed_pr):
+        return []
+
+    async def fake_create_issue_comment(parsed_pr, body: str):
+        assert body.startswith(reviewer_comment_marker)
+        return {"id": 100, "html_url": "https://github.com/acme/reviewer/pull/9#issuecomment-100", "body": body}
+
+    monkeypatch.setattr(github_client, "fetch_issue_comments", fake_fetch_issue_comments)
+    monkeypatch.setattr(github_client, "create_issue_comment", fake_create_issue_comment)
+
+    result = await github_client.upsert_review_summary_comment(
+        {"owner": "acme", "repo": "reviewer", "pull_number": 9},
+        f"{reviewer_comment_marker}\nnew comment",
+    )
+
+    assert result["id"] == 100
