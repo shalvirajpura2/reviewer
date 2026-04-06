@@ -8,6 +8,20 @@ version = "0.1.0"
 description = "Deterministic pull request review for public GitHub pull requests"
 readme = "README.md"
 requires-python = ">=3.11"
+authors = [
+  { name = "Shalvi" },
+]
+keywords = ["github", "pull-request", "review", "cli", "developer-tools"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Environment :: Console",
+  "Intended Audience :: Developers",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.11",
+  "Topic :: Software Development :: Quality Assurance",
+  "Topic :: Software Development :: Version Control :: Git",
+]
 dependencies = [
   "fastapi==0.115.12",
   "uvicorn[standard]==0.34.0",
@@ -19,6 +33,11 @@ dependencies = [
   "psycopg[binary]==3.2.9",
 ]
 
+[project.urls]
+Documentation = "https://github.com/shalvirajpura2/reviewer"
+Source = "https://github.com/shalvirajpura2/reviewer"
+Issues = "https://github.com/shalvirajpura2/reviewer/issues"
+
 [project.scripts]
 reviewer = "app.cli.main:main"
 
@@ -28,3 +47,4 @@ include-package-data = false
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["app*"]
+
