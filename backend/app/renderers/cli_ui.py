@@ -6,6 +6,7 @@ ansi_muted = "\033[38;5;145m"
 ansi_white = "\033[38;5;255m"
 ansi_bold = "\033[1m"
 panel_width = 78
+ansi_pattern = __import__("re").compile(r"\x1b\[[0-9;]*m")
 
 
 reviewer_banner_lines = [
@@ -27,23 +28,27 @@ def join_blocks(*blocks: str) -> str:
     return f"{newline}{newline}".join(normalized_blocks)
 
 
-def pad_plain(value: str, width: int) -> str:
-    visible = len(value)
+def visible_width(value: str) -> int:
+    return len(ansi_pattern.sub("", value))
+
+
+def pad_ansi(value: str, width: int) -> str:
+    visible = visible_width(value)
     if visible >= width:
-        return value[:width]
+        return value
     return f"{value}{' ' * (width - visible)}"
 
 
 def render_panel(title: str, lines: list[str], footer: str | None = None) -> str:
     inner_width = panel_width - 4
     top = colorize(f"+{'-' * (panel_width - 2)}+", ansi_green_soft)
-    title_line = colorize("| ", ansi_green_soft) + colorize(pad_plain(title, inner_width), ansi_white, bold=True) + colorize(" |", ansi_green_soft)
+    title_line = colorize("| ", ansi_green_soft) + colorize(pad_ansi(title, inner_width), ansi_white, bold=True) + colorize(" |", ansi_green_soft)
     divider = colorize(f"+{'-' * (panel_width - 2)}+", ansi_green_soft)
     body_lines = []
     for line in lines:
         body_lines.append(
             colorize("| ", ansi_green_soft)
-            + pad_plain(line, inner_width)
+            + pad_ansi(line, inner_width)
             + colorize(" |", ansi_green_soft)
         )
     footer_block = []
@@ -51,7 +56,7 @@ def render_panel(title: str, lines: list[str], footer: str | None = None) -> str
         footer_block.append(divider)
         footer_block.append(
             colorize("| ", ansi_green_soft)
-            + pad_plain(footer, inner_width)
+            + pad_ansi(footer, inner_width)
             + colorize(" |", ansi_green_soft)
         )
     bottom = colorize(f"+{'-' * (panel_width - 2)}+", ansi_green_soft)
@@ -62,7 +67,7 @@ def render_centered_lines(lines: list[str], color: str, bold: bool = False) -> l
     inner_width = panel_width - 4
     centered = []
     for line in lines:
-        padding = max((inner_width - len(line)) // 2, 0)
+        padding = max((inner_width - visible_width(line)) // 2, 0)
         centered.append(colorize(f"{' ' * padding}{line}", color, bold=bold))
     return centered
 
@@ -70,15 +75,12 @@ def render_centered_lines(lines: list[str], color: str, bold: bool = False) -> l
 def render_hero_panel() -> str:
     eyebrow = colorize("deterministic github review", ansi_muted)
     banner_lines = render_centered_lines(reviewer_banner_lines, ansi_green, bold=True)
-    subtitle = colorize("professional pull request analysis in your terminal", ansi_white)
     return render_panel(
         "Reviewer",
         [
             eyebrow,
             "",
             *banner_lines,
-            "",
-            subtitle,
         ],
     )
 

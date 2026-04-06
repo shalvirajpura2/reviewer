@@ -94,7 +94,6 @@ def test_main_without_command_shows_welcome(capsys):
 
     assert exit_code == 0
     assert "deterministic github review" in output
-    assert "professional pull request analysis in your terminal" in output
     assert "Start Here" in output
     assert "reviewer login" in output
 
