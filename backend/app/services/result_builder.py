@@ -14,6 +14,7 @@ from app.models.analysis import (
     ScoreSummary,
     TopRiskFile,
 )
+from app.models.review_domain import ReviewAnalysis, ReviewFinding
 from app.services.recommendation_engine import generate_recommendations
 from app.services.scoring_engine import compute_score
 
@@ -304,6 +305,7 @@ def build_reviewer_hints(file: ClassifiedFile) -> list[str]:
 
     return reviewer_hints[:3] or ["code owner"]
 
+
 def build_file_reasons(file: ClassifiedFile, test_files_present: bool) -> list[str]:
     reasons: list[str] = []
 
@@ -406,6 +408,122 @@ def build_top_risk_files(files: list[ClassifiedFile]) -> list[TopRiskFile]:
     return top_files
 
 
+def build_findings(
+    signals: list[RiskSignal],
+    top_risk_files: list[TopRiskFile],
+    recommendations: list,
+    safeguards: SafeguardSummary,
+    confidence_in_score: str,
+) -> list[ReviewFinding]:
+    findings: list[ReviewFinding] = []
+
+    for signal in signals[:5]:
+        findings.append(
+            ReviewFinding(
+                id=f"signal:{signal.id}",
+                severity=signal.severity,
+                confidence=confidence_in_score,
+                category="signal",
+                title=signal.label,
+                body=signal.evidence[0] if signal.evidence else "Reviewer detected a risk signal without explicit evidence text.",
+                evidence=signal.evidence[:4],
+                suggested_action="Review the attached evidence before approving the pull request.",
+            )
+        )
+
+    for file in top_risk_files[:5]:
+        findings.append(
+            ReviewFinding(
+                id=f"file:{file.filename}",
+                severity=file.risk_level,
+                confidence="medium" if file.patch_excerpt else "low",
+                category="file",
+                title=f"Inspect {file.filename}",
+                body=file.reasons[0] if file.reasons else "Reviewer ranked this file near the top of the review queue.",
+                path=file.filename,
+                evidence=file.reasons[:4],
+                blob_url=file.blob_url,
+                suggested_action=file.reviewer_hints[0] if file.reviewer_hints else "Open this file first.",
+            )
+        )
+
+    if safeguards.ci_state in {"failing", "pending", "missing", "unknown"}:
+        findings.append(
+            ReviewFinding(
+                id=f"safeguard:{safeguards.ci_state}",
+                severity="high" if safeguards.ci_state == "failing" else "medium",
+                confidence="high",
+                category="safeguard",
+                title="Check merge safeguards",
+                body=safeguards.summary,
+                evidence=safeguards.missing_safeguards[:4],
+                suggested_action="Verify CI and test coverage before merging.",
+            )
+        )
+
+    for recommendation in recommendations[:3]:
+        findings.append(
+            ReviewFinding(
+                id=f"recommendation:{recommendation.id}",
+                severity="medium" if recommendation.priority == "now" else "low",
+                confidence=confidence_in_score,
+                category="recommendation",
+                title=recommendation.title,
+                body=recommendation.detail,
+                evidence=[recommendation.detail],
+                suggested_action=recommendation.title,
+            )
+        )
+
+    return findings
+
+
+def build_review_analysis(
+    metadata: GithubPrMetadata,
+    files: list[ClassifiedFile],
+    commits: list[GithubCommitSummary],
+    signals: list[RiskSignal],
+    check_runs: list[CheckRunSummary] | None = None,
+    cache_status: str = "live",
+    total_files: int | None = None,
+    partial_reasons: list[str] | None = None,
+) -> ReviewAnalysis:
+    score_payload = compute_score(signals)
+    coverage = build_analysis_coverage(files, total_files or len(files), partial_reasons or [])
+    safeguards = build_safeguards(metadata, files, check_runs or [])
+    confidence_in_score = build_confidence_in_score(files, signals, commits, coverage, cache_status, safeguards)
+    recommendations = generate_recommendations(signals)
+    top_risk_files = build_top_risk_files(files)
+    summary = build_confidence_summary(files, commits, cache_status, coverage)
+
+    return ReviewAnalysis(
+        metadata=metadata,
+        score=score_payload["score"],
+        label=score_payload["label"],
+        verdict=score_payload["verdict"],
+        summary=summary,
+        review_focus=build_review_focus(signals),
+        affected_areas=build_affected_areas(files),
+        risk_breakdown=score_payload["risk_breakdown"],
+        triggered_signals=signals,
+        findings=build_findings(signals, top_risk_files, recommendations, safeguards, confidence_in_score),
+        recommendations=recommendations,
+        safeguards=safeguards,
+        changed_file_groups=build_file_groups(files),
+        top_risk_files=top_risk_files,
+        commits=commits,
+        score_summary=ScoreSummary(**score_payload["score_summary"]),
+        analysis_context=AnalysisContext(
+            confidence_in_score=confidence_in_score,
+            summary=summary,
+            limitations=analysis_limitations,
+            data_sources=["GitHub PR metadata", "GitHub changed files", "GitHub commits", "rule-based risk engine"],
+            cache_status=cache_status,
+            coverage=coverage,
+        ),
+    )
+
+
 def build_result(
     metadata: GithubPrMetadata,
     files: list[ClassifiedFile],
@@ -416,31 +534,31 @@ def build_result(
     total_files: int | None = None,
     partial_reasons: list[str] | None = None,
 ) -> PrAnalysisResult:
-    score_payload = compute_score(signals)
-    coverage = build_analysis_coverage(files, total_files or len(files), partial_reasons or [])
-    safeguards = build_safeguards(metadata, files, check_runs or [])
+    review_analysis = build_review_analysis(
+        metadata,
+        files,
+        commits,
+        signals,
+        check_runs=check_runs,
+        cache_status=cache_status,
+        total_files=total_files,
+        partial_reasons=partial_reasons,
+    )
 
     return PrAnalysisResult(
-        metadata=metadata,
-        score=score_payload["score"],
-        label=score_payload["label"],
-        verdict=score_payload["verdict"],
-        review_focus=build_review_focus(signals),
-        affected_areas=build_affected_areas(files),
-        risk_breakdown=score_payload["risk_breakdown"],
-        triggered_signals=signals,
-        recommendations=generate_recommendations(signals),
-        safeguards=safeguards,
-        changed_file_groups=build_file_groups(files),
-        top_risk_files=build_top_risk_files(files),
-        commits=commits,
-        score_summary=ScoreSummary(**score_payload["score_summary"]),
-        analysis_context=AnalysisContext(
-            confidence_in_score=build_confidence_in_score(files, signals, commits, coverage, cache_status, safeguards),
-            summary=build_confidence_summary(files, commits, cache_status, coverage),
-            limitations=analysis_limitations,
-            data_sources=["GitHub PR metadata", "GitHub changed files", "GitHub commits", "rule-based risk engine"],
-            cache_status=cache_status,
-            coverage=coverage,
-        ),
+        metadata=review_analysis.metadata,
+        score=review_analysis.score,
+        label=review_analysis.label,
+        verdict=review_analysis.verdict,
+        review_focus=review_analysis.review_focus,
+        affected_areas=review_analysis.affected_areas,
+        risk_breakdown=review_analysis.risk_breakdown,
+        triggered_signals=review_analysis.triggered_signals,
+        recommendations=review_analysis.recommendations,
+        safeguards=review_analysis.safeguards,
+        changed_file_groups=review_analysis.changed_file_groups,
+        top_risk_files=review_analysis.top_risk_files,
+        commits=review_analysis.commits,
+        score_summary=review_analysis.score_summary,
+        analysis_context=review_analysis.analysis_context,
     )
