@@ -316,11 +316,18 @@ async def upsert_review_summary_comment(parsed_pr: dict[str, str | int], body: s
     )
 
     if existing_comment and existing_comment.get("id"):
-        return await update_issue_comment(int(existing_comment["id"]), body)
+        payload = await update_issue_comment(int(existing_comment["id"]), body)
+        if isinstance(payload, dict):
+            payload["reviewer_action"] = "updated"
+        return payload
 
-    return await create_issue_comment(parsed_pr, body)
+    payload = await create_issue_comment(parsed_pr, body)
+    if isinstance(payload, dict):
+        payload["reviewer_action"] = "created"
+    return payload
 
 
 async def fetch_repo_stars(owner: str, repo: str) -> int:
     payload = await github_fetch(f"/repos/{owner}/{repo}")
     return int(payload.get("stargazers_count", 0))
+

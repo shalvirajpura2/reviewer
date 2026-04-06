@@ -56,3 +56,10 @@ class ReviewAnalysis(BaseModel):
     commits: list[GithubCommitSummary]
     score_summary: ScoreSummary
     analysis_context: AnalysisContext
+
+
+class ReviewCommentPublication(BaseModel):
+    action: Literal["created", "updated"]
+    comment_id: int
+    html_url: str | None = None
+    body: str

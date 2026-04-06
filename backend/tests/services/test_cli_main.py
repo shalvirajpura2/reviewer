@@ -1,5 +1,6 @@
-from app.models.analysis import AnalysisContext, AnalysisCoverage, GithubPrMetadata, PrAnalysisResult, SafeguardSummary, ScoreSummary
 from app.cli.main import build_parser, main
+from app.models.analysis import AnalysisContext, AnalysisCoverage, GithubPrMetadata, PrAnalysisResult, SafeguardSummary, ScoreSummary
+from app.models.review_domain import ReviewCommentPublication
 
 
 def build_result() -> PrAnalysisResult:
@@ -65,6 +66,15 @@ def test_build_parser_defaults_to_text_format():
     assert args.force_refresh is False
 
 
+def test_build_parser_supports_publish_summary_command():
+    parser = build_parser()
+
+    args = parser.parse_args(["publish-summary", "https://github.com/acme/reviewer/pull/9", "--format", "json"])
+
+    assert args.command == "publish-summary"
+    assert args.output_format == "json"
+
+
 def test_main_runs_analyze_command(monkeypatch, capsys):
     async def fake_analyze_pull_request(pr_url: str, client_key: str, force_refresh: bool):
         assert pr_url == "https://github.com/acme/reviewer/pull/9"
@@ -79,6 +89,26 @@ def test_main_runs_analyze_command(monkeypatch, capsys):
 
     assert exit_code == 0
     assert "Repository: acme/reviewer #9" in captured.out
+
+
+def test_main_runs_publish_summary_command(monkeypatch, capsys):
+    async def fake_publish_review_summary(pr_url: str, client_key: str):
+        assert pr_url == "https://github.com/acme/reviewer/pull/9"
+        assert client_key == "reviewer_cli"
+        return ReviewCommentPublication(
+            action="updated",
+            comment_id=77,
+            html_url="https://github.com/acme/reviewer/pull/9#issuecomment-77",
+            body="comment body",
+        )
+
+    monkeypatch.setattr("app.cli.main.publish_review_summary", fake_publish_review_summary)
+
+    exit_code = main(["publish-summary", "https://github.com/acme/reviewer/pull/9"])
+    captured = capsys.readouterr()
+
+    assert exit_code == 0
+    assert "GitHub summary comment updated" in captured.out
 
 
 def test_main_returns_error_code_for_known_failures(monkeypatch, capsys):
