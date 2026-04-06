@@ -8,7 +8,21 @@ ansi_bold = "\033[1m"
 panel_width = 78
 
 
-reviewer_wordmark = "r e v i e w e r"
+reviewer_banner_lines = [
+    "RRRRR   EEEEE  V   V  IIIII  EEEEE  W   W  EEEEE  RRRRR ",
+    "R   RR  E      V   V    I    E      W   W  E      R   RR",
+    "RRRRR   EEEE   V   V    I    EEEE   W W W  EEEE   RRRRR ",
+    "R  RR   E       V V     I    E      WW WW  E      R  RR ",
+    "R   RR  EEEEE    V    IIIII  EEEEE  W   W  EEEEE  R   RR",
+]
+
+reviewer_cli_lines = [
+    " CCC   L      IIIII ",
+    "C   C  L        I   ",
+    "C      L        I   ",
+    "C   C  L        I   ",
+    " CCC   LLLLL  IIIII ",
+]
 
 
 def colorize(value: str, color: str, bold: bool = False) -> str:
@@ -30,33 +44,58 @@ def pad_plain(value: str, width: int) -> str:
 
 def render_panel(title: str, lines: list[str], footer: str | None = None) -> str:
     inner_width = panel_width - 4
-    top = colorize(f"┌{'─' * (panel_width - 2)}┐", ansi_green_soft)
-    title_line = colorize("│ ", ansi_green_soft) + colorize(pad_plain(title, inner_width), ansi_white, bold=True) + colorize(" │", ansi_green_soft)
-    divider = colorize(f"├{'─' * (panel_width - 2)}┤", ansi_green_soft)
+    top = colorize(f"+{'-' * (panel_width - 2)}+", ansi_green_soft)
+    title_line = colorize("| ", ansi_green_soft) + colorize(pad_plain(title, inner_width), ansi_white, bold=True) + colorize(" |", ansi_green_soft)
+    divider = colorize(f"+{'-' * (panel_width - 2)}+", ansi_green_soft)
     body_lines = []
     for line in lines:
         body_lines.append(
-            colorize("│ ", ansi_green_soft)
+            colorize("| ", ansi_green_soft)
             + pad_plain(line, inner_width)
-            + colorize(" │", ansi_green_soft)
+            + colorize(" |", ansi_green_soft)
         )
     footer_block = []
     if footer:
         footer_block.append(divider)
         footer_block.append(
-            colorize("│ ", ansi_green_soft)
+            colorize("| ", ansi_green_soft)
             + pad_plain(footer, inner_width)
-            + colorize(" │", ansi_green_soft)
+            + colorize(" |", ansi_green_soft)
         )
-    bottom = colorize(f"└{'─' * (panel_width - 2)}┘", ansi_green_soft)
+    bottom = colorize(f"+{'-' * (panel_width - 2)}+", ansi_green_soft)
     return newline.join([top, title_line, divider, *body_lines, *footer_block, bottom])
 
 
-def render_banner() -> str:
+def render_centered_lines(lines: list[str], color: str, bold: bool = False) -> list[str]:
+    inner_width = panel_width - 4
+    centered = []
+    for line in lines:
+        padding = max((inner_width - len(line)) // 2, 0)
+        centered.append(colorize(f"{' ' * padding}{line}", color, bold=bold))
+    return centered
+
+
+def render_hero_panel() -> str:
     eyebrow = colorize("deterministic github review", ansi_muted)
-    wordmark = colorize(reviewer_wordmark, ansi_green, bold=True)
+    banner_lines = render_centered_lines(reviewer_banner_lines, ansi_green, bold=True)
+    cli_lines = render_centered_lines(reviewer_cli_lines, ansi_green_soft, bold=True)
     subtitle = colorize("professional pull request analysis in your terminal", ansi_white)
-    return newline.join([eyebrow, wordmark, subtitle])
+    return render_panel(
+        "Reviewer",
+        [
+            eyebrow,
+            "",
+            *banner_lines,
+            "",
+            *cli_lines,
+            "",
+            subtitle,
+        ],
+    )
+
+
+def render_banner() -> str:
+    return render_hero_panel()
 
 
 def render_welcome() -> str:
