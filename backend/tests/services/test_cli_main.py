@@ -104,6 +104,7 @@ def test_build_parser_supports_publish_summary_command():
 
 def test_main_runs_login_command(monkeypatch, capsys):
     async def fake_login_with_device_flow():
+        print("[ok] Signed in as @shalv. You can run review commands now.")
         return build_session()
 
     monkeypatch.setattr("app.cli.main.login_with_device_flow", fake_login_with_device_flow)
@@ -112,7 +113,8 @@ def test_main_runs_login_command(monkeypatch, capsys):
     captured = capsys.readouterr()
 
     assert exit_code == 0
-    assert "Logged in as @shalv" in captured.out
+    assert "Signed in as @shalv" in captured.out
+    assert "Run `reviewer analyze <pr-url>`" in captured.out
 
 
 def test_main_runs_whoami_command(monkeypatch, capsys):
@@ -125,7 +127,8 @@ def test_main_runs_whoami_command(monkeypatch, capsys):
     captured = capsys.readouterr()
 
     assert exit_code == 0
-    assert "Logged in as @shalv via device" in captured.out
+    assert "Reviewer Session" in captured.out
+    assert "Account : @shalv" in captured.out
 
 
 def test_main_runs_logout_command(monkeypatch, capsys):
@@ -136,6 +139,7 @@ def test_main_runs_logout_command(monkeypatch, capsys):
 
     assert exit_code == 0
     assert "Logged out from Reviewer CLI." in captured.out
+    assert "reviewer login" in captured.out
 
 
 def test_main_runs_analyze_command(monkeypatch, capsys):
@@ -155,7 +159,8 @@ def test_main_runs_analyze_command(monkeypatch, capsys):
     captured = capsys.readouterr()
 
     assert exit_code == 0
-    assert "Repository: acme/reviewer #9" in captured.out
+    assert "Reviewer Report" in captured.out
+    assert "Summary" in captured.out
 
 
 def test_main_runs_publish_summary_command(monkeypatch, capsys):
@@ -180,6 +185,7 @@ def test_main_runs_publish_summary_command(monkeypatch, capsys):
 
     assert exit_code == 0
     assert "GitHub summary comment updated" in captured.out
+    assert "Open the pull request" in captured.out
 
 
 def test_main_returns_error_code_for_known_failures(monkeypatch, capsys):
@@ -196,4 +202,4 @@ def test_main_returns_error_code_for_known_failures(monkeypatch, capsys):
     captured = capsys.readouterr()
 
     assert exit_code == 1
-    assert "Unsupported URL format" in captured.err
+    assert "[error] Unsupported URL format" in captured.err

@@ -1,4 +1,4 @@
-from app.models.analysis import AnalysisContext, AnalysisCoverage, GithubPrMetadata, PrAnalysisResult, SafeguardSummary, ScoreSummary
+from app.models.analysis import AnalysisContext, AnalysisCoverage, GithubPrMetadata, PrAnalysisResult, SafeguardSummary, ScoreSummary, TopRiskFile, RecommendationItem
 from app.renderers.cli_renderer import render_cli_json, render_cli_text
 
 
@@ -25,11 +25,13 @@ def build_result() -> PrAnalysisResult:
         score=82,
         label="high confidence",
         verdict="mergeable with standard review",
-        review_focus=["Sensitive paths changed"],
+        review_focus=["Sensitive paths changed", "Check shared code"],
         affected_areas=["backend", "shared-core"],
         risk_breakdown=[],
         triggered_signals=[],
-        recommendations=[],
+        recommendations=[
+            RecommendationItem(id="owner-review", title="Request owner review", detail="Ask the core maintainer to verify the behavior change.", priority="now"),
+        ],
         safeguards=SafeguardSummary(
             ci_state="passing",
             summary="CI checks are passing and this PR includes test changes.",
@@ -41,7 +43,19 @@ def build_result() -> PrAnalysisResult:
             check_runs=[],
         ),
         changed_file_groups=[],
-        top_risk_files=[],
+        top_risk_files=[
+            TopRiskFile(
+                filename="backend/app/services/github_client.py",
+                risk_level="high",
+                reasons=["sensitive execution path touched"],
+                reviewer_hints=["backend reviewer"],
+                patch_excerpt=[],
+                changes=40,
+                areas=["backend", "shared_core"],
+                is_sensitive=True,
+                blob_url="https://github.com/acme/reviewer/blob/main/backend/app/services/github_client.py",
+            )
+        ],
         commits=[],
         score_summary=ScoreSummary(base_score=100, total_penalty=18, total_relief=0, score_version="v1.2-deterministic"),
         analysis_context=AnalysisContext(
@@ -55,12 +69,17 @@ def build_result() -> PrAnalysisResult:
     )
 
 
-def test_render_cli_text_includes_core_sections():
+def test_render_cli_text_includes_guided_sections():
     output = render_cli_text(build_result())
 
-    assert "Repository: acme/reviewer #9" in output
-    assert "Verdict: mergeable with standard review" in output
-    assert "Safeguards: CI checks are passing and this PR includes test changes." in output
+    assert "Reviewer Report" in output
+    assert "Summary" in output
+    assert "Repository : acme/reviewer #9" in output
+    assert "Focus Now" in output
+    assert "1. Sensitive paths changed" in output
+    assert "Start Here" in output
+    assert "backend/app/services/github_client.py -> sensitive execution path touched" in output
+    assert "Next Steps" in output
 
 
 def test_render_cli_json_emits_serialized_result():

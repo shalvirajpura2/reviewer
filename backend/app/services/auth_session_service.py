@@ -8,6 +8,7 @@ import httpx
 
 from app.core.settings import settings
 from app.models.auth import GithubAuthSession, GithubDeviceCode, GithubViewer
+from app.renderers.cli_ui import render_status
 from app.services.github_client import clear_runtime_github_token, fetch_viewer, set_runtime_github_token
 
 
@@ -161,12 +162,19 @@ async def login_with_device_flow(print_fn=print) -> GithubAuthSession:
     device_code = await start_device_login()
     verification_target = device_code.verification_uri_complete or device_code.verification_uri
 
-    print_fn(f"Sign in with GitHub: {verification_target}")
-    print_fn(f"One-time code: {device_code.user_code}")
+    print_fn("Reviewer GitHub Login")
+    print_fn("=====================")
+    print_fn("1. Open this link in your browser:")
+    print_fn(f"   {verification_target}")
+    print_fn("2. Enter this one-time code:")
+    print_fn(f"   {device_code.user_code}")
+    print_fn("3. Approve Reviewer CLI in GitHub")
+    print_fn(render_status("wait", "Waiting for GitHub approval..."))
 
     session = await poll_for_access_token(device_code)
     save_auth_session(session)
     set_runtime_github_token(session.access_token)
+    print_fn(render_status("ok", f"Signed in as @{session.login}. You can run review commands now."))
     return session
 
 
@@ -177,6 +185,7 @@ async def resolve_authenticated_session(auto_login: bool = False, print_fn=print
             viewer = await fetch_github_viewer(saved_session.access_token)
         except PermissionError:
             clear_auth_session()
+            print_fn(render_status("info", "Saved GitHub session expired. Starting a fresh login."))
         else:
             normalized_session = GithubAuthSession(
                 access_token=saved_session.access_token,
@@ -203,6 +212,7 @@ async def resolve_authenticated_session(auto_login: bool = False, print_fn=print
         )
 
     if auto_login:
+        print_fn(render_status("info", "No active GitHub session found. Starting login so we can continue."))
         return await login_with_device_flow(print_fn=print_fn)
 
     return None
