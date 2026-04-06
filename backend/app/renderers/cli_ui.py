@@ -17,16 +17,6 @@ reviewer_banner_lines = [
     "╚═╝  ╚═╝╚══════╝  ╚═══╝  ╚═╝╚══════╝ ╚══╝╚══╝ ╚══════╝╚═╝  ╚═╝",
 ]
 
-reviewer_cli_lines = [
-    " ██████╗██╗     ██╗",
-    "██╔════╝██║     ██║",
-    "██║     ██║     ██║",
-    "██║     ██║     ██║",
-    "╚██████╗███████╗██║",
-    " ╚═════╝╚══════╝╚═╝",
-]
-
-
 def colorize(value: str, color: str, bold: bool = False) -> str:
     prefix = f"{ansi_bold}{color}" if bold else color
     return f"{prefix}{value}{ansi_reset}"
@@ -80,7 +70,6 @@ def render_centered_lines(lines: list[str], color: str, bold: bool = False) -> l
 def render_hero_panel() -> str:
     eyebrow = colorize("deterministic github review", ansi_muted)
     banner_lines = render_centered_lines(reviewer_banner_lines, ansi_green, bold=True)
-    cli_lines = render_centered_lines(reviewer_cli_lines, ansi_green_soft, bold=True)
     subtitle = colorize("professional pull request analysis in your terminal", ansi_white)
     return render_panel(
         "Reviewer",
@@ -88,8 +77,6 @@ def render_hero_panel() -> str:
             eyebrow,
             "",
             *banner_lines,
-            "",
-            *cli_lines,
             "",
             subtitle,
         ],
