@@ -8,12 +8,11 @@ ansi_bold = "\033[1m"
 
 
 reviewer_banner_lines = [
-    "██████╗ ███████╗██╗   ██╗██╗███████╗██╗    ██╗███████╗██████╗ ",
-    "██╔══██╗██╔════╝██║   ██║██║██╔════╝██║    ██║██╔════╝██╔══██╗",
-    "██████╔╝█████╗  ██║   ██║██║█████╗  ██║ █╗ ██║█████╗  ██████╔╝",
-    "██╔══██╗██╔══╝  ╚██╗ ██╔╝██║██╔══╝  ██║███╗██║██╔══╝  ██╔══██╗",
-    "██║  ██║███████╗ ╚████╔╝ ██║███████╗╚███╔███╔╝███████╗██║  ██║",
-    "╚═╝  ╚═╝╚══════╝  ╚═══╝  ╚═╝╚══════╝ ╚══╝╚══╝ ╚══════╝╚═╝  ╚═╝",
+    "RRRRR   EEEEE  V   V  III  EEEEE  W   W  EEEEE  RRRRR",
+    "R   RR  E      V   V   I   E      W   W  E      R   RR",
+    "RRRRR   EEEE   V   V   I   EEEE   W W W  EEEE   RRRRR",
+    "R  RR   E       V V    I   E      WW WW  E      R  RR",
+    "R   RR  EEEEE    V    III  EEEEE  W   W  EEEEE  R   RR",
 ]
 
 
@@ -29,7 +28,7 @@ def join_blocks(*blocks: str) -> str:
 
 def render_banner() -> str:
     colored_lines = []
-    palette = [ansi_green_soft, ansi_green, ansi_green_soft, ansi_green, ansi_green_soft, ansi_green]
+    palette = [ansi_green_soft, ansi_green, ansi_green_soft, ansi_green, ansi_green_soft]
     for line, color in zip(reviewer_banner_lines, palette):
         colored_lines.append(colorize(line, color, bold=True))
     return newline.join(colored_lines)
