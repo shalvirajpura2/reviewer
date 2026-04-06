@@ -1,3 +1,6 @@
+import sys
+
+
 newline = "\n"
 ansi_reset = "\033[0m"
 ansi_green = "\033[38;5;120m"
@@ -16,6 +19,14 @@ reviewer_banner_lines = [
     "██╔══██╗██╔══╝  ╚██╗ ██╔╝██║██╔══╝  ██║███╗██║██╔══╝  ██╔══██╗",
     "██║  ██║███████╗ ╚████╔╝ ██║███████╗╚███╔███╔╝███████╗██║  ██║",
     "╚═╝  ╚═╝╚══════╝  ╚═══╝  ╚═╝╚══════╝ ╚══╝╚══╝ ╚══════╝╚═╝  ╚═╝",
+]
+
+reviewer_banner_ascii_lines = [
+    "RRRRR   EEEEE  V   V  IIIII  EEEEE  W   W  EEEEE  RRRRR",
+    "R   RR  E      V   V    I    E      W   W  E      R   RR",
+    "RRRRR   EEEE   V   V    I    EEEE   W W W  EEEE   RRRRR",
+    "R  RR   E       V V     I    E      WW WW  E      R  RR",
+    "R   RR  EEEEE    V    IIIII  EEEEE  W   W  EEEEE  R   RR",
 ]
 
 def colorize(value: str, color: str, bold: bool = False) -> str:
@@ -72,9 +83,23 @@ def render_centered_lines(lines: list[str], color: str, bold: bool = False) -> l
     return centered
 
 
+def can_render_unicode() -> bool:
+    encoding = (getattr(sys.stdout, "encoding", None) or "").lower()
+    if "utf" not in encoding:
+        return False
+
+    sample = reviewer_banner_lines[0]
+    try:
+        sample.encode(sys.stdout.encoding or "utf-8")
+    except UnicodeEncodeError:
+        return False
+    return True
+
+
 def render_hero_panel() -> str:
     eyebrow = colorize("deterministic github review", ansi_muted)
-    banner_lines = render_centered_lines(reviewer_banner_lines, ansi_green, bold=True)
+    banner_source = reviewer_banner_lines if can_render_unicode() else reviewer_banner_ascii_lines
+    banner_lines = render_centered_lines(banner_source, ansi_green, bold=True)
     return render_panel(
         "Reviewer",
         [
