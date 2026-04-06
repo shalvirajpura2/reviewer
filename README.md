@@ -31,6 +31,7 @@
 - [Important product files](#important-product-files)
 - [Tech stack](#tech-stack)
 - [Local setup](#local-setup)
+- [CLI](#cli)
 - [Environment](#environment)
 - [Quality checks](#quality-checks)
 - [Current direction](#current-direction)
@@ -226,6 +227,23 @@ Use the repository root as the Docker build context:
 docker build -f backend/Dockerfile -t reviewer-backend backend
 ```
 
+## CLI
+
+Install the CLI from the backend package:
+
+```bash
+pip install -e backend
+```
+
+Then run Reviewer directly from your terminal:
+
+```bash
+reviewer analyze https://github.com/owner/repo/pull/123
+reviewer analyze https://github.com/owner/repo/pull/123 --format json
+```
+
+The CLI uses the same backend analysis engine and environment variables as the FastAPI service, including `GITHUB_TOKEN`.
+
 ## Environment
 
 ### Shared
@@ -276,5 +294,4 @@ Reviewer is being built to feel credible the moment a developer opens it:
 ## Builder
 
 Built by [Shalvi](https://shalvirajpura.xyz).
-
 
