@@ -93,7 +93,7 @@ def test_main_without_command_shows_welcome(capsys):
     output = strip_ansi(captured.out)
 
     assert exit_code == 0
-    assert "REVIEWER CLI" in output
+    assert "r e v i e w e r" in output
     assert "Start Here" in output
     assert "reviewer login" in output
 

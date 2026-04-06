@@ -5,15 +5,10 @@ ansi_green_soft = "\033[38;5;114m"
 ansi_muted = "\033[38;5;145m"
 ansi_white = "\033[38;5;255m"
 ansi_bold = "\033[1m"
+panel_width = 78
 
 
-reviewer_banner_lines = [
-    "RRRRR   EEEEE  V   V  III  EEEEE  W   W  EEEEE  RRRRR",
-    "R   RR  E      V   V   I   E      W   W  E      R   RR",
-    "RRRRR   EEEE   V   V   I   EEEE   W W W  EEEE   RRRRR",
-    "R  RR   E       V V    I   E      WW WW  E      R  RR",
-    "R   RR  EEEEE    V    III  EEEEE  W   W  EEEEE  R   RR",
-]
+reviewer_wordmark = "r e v i e w e r"
 
 
 def colorize(value: str, color: str, bold: bool = False) -> str:
@@ -26,33 +21,63 @@ def join_blocks(*blocks: str) -> str:
     return f"{newline}{newline}".join(normalized_blocks)
 
 
+def pad_plain(value: str, width: int) -> str:
+    visible = len(value)
+    if visible >= width:
+        return value[:width]
+    return f"{value}{' ' * (width - visible)}"
+
+
+def render_panel(title: str, lines: list[str], footer: str | None = None) -> str:
+    inner_width = panel_width - 4
+    top = colorize(f"┌{'─' * (panel_width - 2)}┐", ansi_green_soft)
+    title_line = colorize("│ ", ansi_green_soft) + colorize(pad_plain(title, inner_width), ansi_white, bold=True) + colorize(" │", ansi_green_soft)
+    divider = colorize(f"├{'─' * (panel_width - 2)}┤", ansi_green_soft)
+    body_lines = []
+    for line in lines:
+        body_lines.append(
+            colorize("│ ", ansi_green_soft)
+            + pad_plain(line, inner_width)
+            + colorize(" │", ansi_green_soft)
+        )
+    footer_block = []
+    if footer:
+        footer_block.append(divider)
+        footer_block.append(
+            colorize("│ ", ansi_green_soft)
+            + pad_plain(footer, inner_width)
+            + colorize(" │", ansi_green_soft)
+        )
+    bottom = colorize(f"└{'─' * (panel_width - 2)}┘", ansi_green_soft)
+    return newline.join([top, title_line, divider, *body_lines, *footer_block, bottom])
+
+
 def render_banner() -> str:
-    colored_lines = []
-    palette = [ansi_green_soft, ansi_green, ansi_green_soft, ansi_green, ansi_green_soft]
-    for line, color in zip(reviewer_banner_lines, palette):
-        colored_lines.append(colorize(line, color, bold=True))
-    return newline.join(colored_lines)
+    eyebrow = colorize("deterministic github review", ansi_muted)
+    wordmark = colorize(reviewer_wordmark, ansi_green, bold=True)
+    subtitle = colorize("professional pull request analysis in your terminal", ansi_white)
+    return newline.join([eyebrow, wordmark, subtitle])
 
 
 def render_welcome() -> str:
     return join_blocks(
         render_banner(),
-        colorize("REVIEWER CLI", ansi_white, bold=True) + newline + colorize("Deterministic pull request review for GitHub", ansi_muted),
-        render_section(
+        render_panel(
             "Start Here",
             [
-                colorize("1. Run `reviewer login`", ansi_green_soft),
-                colorize("2. Run `reviewer analyze <pr-url>`", ansi_green_soft),
-                colorize("3. Run `reviewer publish-summary <pr-url>`", ansi_green_soft),
+                f"{colorize('1.', ansi_green, bold=True)} Sign in with {colorize('reviewer login', ansi_white, bold=True)}",
+                f"{colorize('2.', ansi_green, bold=True)} Analyze a pull request with {colorize('reviewer analyze <pr-url>', ansi_white, bold=True)}",
+                f"{colorize('3.', ansi_green, bold=True)} Post a GitHub summary with {colorize('reviewer publish-summary <pr-url>', ansi_white, bold=True)}",
             ],
+            footer="Use reviewer --help for the full command reference.",
         ),
-        render_section(
-            "Helpful Commands",
+        render_panel(
+            "Session",
             [
-                colorize("reviewer whoami", ansi_muted),
-                colorize("reviewer logout", ansi_muted),
-                colorize("reviewer --help", ansi_muted),
+                f"{colorize('reviewer whoami', ansi_white, bold=True)}   View the active GitHub account",
+                f"{colorize('reviewer logout', ansi_white, bold=True)}   Clear the saved Reviewer session",
             ],
+            footer="Your CLI stays signed in until you log out or your token expires.",
         ),
     )
 
