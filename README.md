@@ -247,7 +247,7 @@ For local development in this repository:
 pip install -e backend
 ```
 
-Preferred setup uses GitHub device login with `GITHUB_CLIENT_ID` configured in your environment.
+Reviewer CLI now ships with the default GitHub device login client id, so most users can log in immediately after install. `GITHUB_CLIENT_ID` remains available as an override for local or self-hosted setups.
 
 Then run Reviewer directly from your terminal:
 
@@ -267,7 +267,6 @@ Set `REVIEWER_BACKEND_API_BASE` to let the CLI hand off `publish-summary` to you
 
 ### Shared
 
-- `GITHUB_CLIENT_ID`
 - `GITHUB_APP_ID`
 - `GITHUB_APP_PRIVATE_KEY`
 - `GITHUB_TOKEN`

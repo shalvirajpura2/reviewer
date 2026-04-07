@@ -24,17 +24,7 @@ pip install -e backend
 
 ## Configure
 
-Preferred setup uses GitHub device login with your GitHub OAuth app client id:
-
-```bash
-# Windows PowerShell
-$env:GITHUB_CLIENT_ID="your_client_id_here"
-```
-
-```bash
-# macOS / Linux
-export GITHUB_CLIENT_ID="your_client_id_here"
-```
+Reviewer CLI ships with the default GitHub device login client id, so most users can run `reviewer login` immediately after install. `GITHUB_CLIENT_ID` remains available only as an override for local or self-hosted setups.
 
 Advanced users can still provide a token directly:
 
