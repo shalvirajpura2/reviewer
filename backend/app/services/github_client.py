@@ -316,10 +316,10 @@ async def create_issue_comment(parsed_pr: dict[str, str | int], body: str) -> di
     return payload if isinstance(payload, dict) else {}
 
 
-async def update_issue_comment(comment_id: int, body: str) -> dict[str, Any]:
+async def update_issue_comment(parsed_pr: dict[str, str | int], comment_id: int, body: str) -> dict[str, Any]:
     payload = await github_send(
         "PATCH",
-        f"/repos/issues/comments/{comment_id}",
+        f"/repos/{parsed_pr['owner']}/{parsed_pr['repo']}/issues/comments/{comment_id}",
         {"body": body},
         "update the GitHub review comment",
     )
@@ -339,7 +339,7 @@ async def upsert_review_summary_comment(parsed_pr: dict[str, str | int], body: s
     )
 
     if existing_comment and existing_comment.get("id"):
-        payload = await update_issue_comment(int(existing_comment["id"]), body)
+        payload = await update_issue_comment(parsed_pr, int(existing_comment["id"]), body)
         if isinstance(payload, dict):
             payload["reviewer_action"] = "updated"
         return payload
@@ -353,3 +353,4 @@ async def upsert_review_summary_comment(parsed_pr: dict[str, str | int], body: s
 async def fetch_repo_stars(owner: str, repo: str) -> int:
     payload = await github_fetch(f"/repos/{owner}/{repo}")
     return int(payload.get("stargazers_count", 0))
+

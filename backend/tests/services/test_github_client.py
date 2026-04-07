@@ -132,7 +132,8 @@ async def test_upsert_review_summary_comment_updates_existing_comment(monkeypatc
     async def fake_fetch_issue_comments(parsed_pr):
         return [{"id": 99, "body": f"{reviewer_comment_marker}\nold comment"}]
 
-    async def fake_update_issue_comment(comment_id: int, body: str):
+    async def fake_update_issue_comment(parsed_pr, comment_id: int, body: str):
+        assert parsed_pr == {"owner": "acme", "repo": "reviewer", "pull_number": 9}
         assert comment_id == 99
         assert "new comment" in body
         return {"id": 99, "html_url": "https://github.com/acme/reviewer/pull/9#issuecomment-99", "body": body}
@@ -168,3 +169,4 @@ async def test_upsert_review_summary_comment_creates_when_missing(monkeypatch):
 
     assert result["id"] == 100
     assert result["reviewer_action"] == "created"
+
