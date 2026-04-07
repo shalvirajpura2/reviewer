@@ -130,7 +130,10 @@ async def test_fetch_commit_check_runs_normalizes_payload(monkeypatch):
 @pytest.mark.asyncio
 async def test_upsert_review_summary_comment_updates_existing_comment(monkeypatch):
     async def fake_fetch_issue_comments(parsed_pr):
-        return [{"id": 99, "body": f"{reviewer_comment_marker}\nold comment"}]
+        return [{"id": 99, "body": f"{reviewer_comment_marker}\nold comment", "user": {"login": "shalv"}}]
+
+    async def fake_fetch_viewer(github_token=None):
+        return {"login": "shalv", "id": 7}
 
     async def fake_update_issue_comment(parsed_pr, comment_id: int, body: str):
         assert parsed_pr == {"owner": "acme", "repo": "reviewer", "pull_number": 9}
@@ -139,6 +142,7 @@ async def test_upsert_review_summary_comment_updates_existing_comment(monkeypatc
         return {"id": 99, "html_url": "https://github.com/acme/reviewer/pull/9#issuecomment-99", "body": body}
 
     monkeypatch.setattr(github_client, "fetch_issue_comments", fake_fetch_issue_comments)
+    monkeypatch.setattr(github_client, "fetch_viewer", fake_fetch_viewer)
     monkeypatch.setattr(github_client, "update_issue_comment", fake_update_issue_comment)
 
     result = await github_client.upsert_review_summary_comment(
@@ -153,13 +157,17 @@ async def test_upsert_review_summary_comment_updates_existing_comment(monkeypatc
 @pytest.mark.asyncio
 async def test_upsert_review_summary_comment_creates_when_missing(monkeypatch):
     async def fake_fetch_issue_comments(parsed_pr):
-        return []
+        return [{"id": 100, "body": f"{reviewer_comment_marker}\nother comment", "user": {"login": "other-user"}}]
+
+    async def fake_fetch_viewer(github_token=None):
+        return {"login": "shalv", "id": 7}
 
     async def fake_create_issue_comment(parsed_pr, body: str):
         assert body.startswith(reviewer_comment_marker)
         return {"id": 100, "html_url": "https://github.com/acme/reviewer/pull/9#issuecomment-100", "body": body}
 
     monkeypatch.setattr(github_client, "fetch_issue_comments", fake_fetch_issue_comments)
+    monkeypatch.setattr(github_client, "fetch_viewer", fake_fetch_viewer)
     monkeypatch.setattr(github_client, "create_issue_comment", fake_create_issue_comment)
 
     result = await github_client.upsert_review_summary_comment(
@@ -169,6 +177,3 @@ async def test_upsert_review_summary_comment_creates_when_missing(monkeypatch):
 
     assert result["id"] == 100
     assert result["reviewer_action"] == "created"
-
-
-

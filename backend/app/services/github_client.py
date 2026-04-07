@@ -81,6 +81,18 @@ async def handle_github_response(response: httpx.Response, action_name: str) -> 
         raise FileNotFoundError("Repository or pull request not found, or the PR is not public.")
 
     if response.status_code >= 400:
+        response_message = ""
+        if response.content:
+            try:
+                payload = response.json()
+            except ValueError:
+                payload = None
+            if isinstance(payload, dict):
+                response_message = str(payload.get("message") or "").strip()
+
+        if response_message:
+            raise ValueError(f"GitHub could not {action_name}: {response_message}")
+
         raise ValueError(f"GitHub returned an unexpected response while trying to {action_name}.")
 
     if not response.content:
@@ -329,11 +341,14 @@ async def update_issue_comment(parsed_pr: dict[str, str | int], comment_id: int,
 
 async def upsert_review_summary_comment(parsed_pr: dict[str, str | int], body: str) -> dict[str, Any]:
     comments = await fetch_issue_comments(parsed_pr)
+    viewer = await fetch_viewer()
+    viewer_login = str(viewer.get("login") or "").lower()
 
     existing_comment = next(
         (
             comment for comment in comments
             if reviewer_comment_marker in str(comment.get("body") or "")
+            and str(comment.get("user", {}).get("login") or "").lower() == viewer_login
         ),
         None,
     )
@@ -353,6 +368,7 @@ async def upsert_review_summary_comment(parsed_pr: dict[str, str | int], body: s
 async def fetch_repo_stars(owner: str, repo: str) -> int:
     payload = await github_fetch(f"/repos/{owner}/{repo}")
     return int(payload.get("stargazers_count", 0))
+
 
 
 
