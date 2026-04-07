@@ -355,3 +355,4 @@ async def fetch_repo_stars(owner: str, repo: str) -> int:
     return int(payload.get("stargazers_count", 0))
 
 
+
