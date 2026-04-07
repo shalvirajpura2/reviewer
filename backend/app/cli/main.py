@@ -62,7 +62,7 @@ def build_parser() -> argparse.ArgumentParser:
     analyze_parser.add_argument("--format", choices=["text", "json"], default="text", dest="output_format")
     analyze_parser.add_argument("--force-refresh", action="store_true", dest="force_refresh")
 
-    publish_parser = subparsers.add_parser("publish-summary", help="Publish or update the Reviewer summary comment on GitHub")
+    publish_parser = subparsers.add_parser("publish-summary", help="Publish or update the Reviewer summary comment on GitHub after installing https://github.com/apps/reviewer-live on the repo")
     publish_parser.add_argument("pr_url", help="Public GitHub pull request URL")
     publish_parser.add_argument("--format", choices=["text", "json"], default="text", dest="output_format")
 
@@ -131,7 +131,7 @@ async def run_publish_summary(pr_url: str, output_format: str) -> int:
         print(result.model_dump_json(indent=2))
     else:
         print(render_status("ok", f"GitHub summary comment {result.action}: {result.html_url or result.comment_id}"))
-        print(render_status("next", "Open the pull request to review the published comment."))
+        print(render_status("next", "Install https://github.com/apps/reviewer-live on the repo first if bot publishing is not enabled yet, then open the pull request to review the comment."))
 
     return 0
 

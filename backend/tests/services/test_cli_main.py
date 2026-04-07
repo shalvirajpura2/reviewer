@@ -210,7 +210,8 @@ def test_main_runs_publish_summary_command(monkeypatch, capsys):
 
     assert exit_code == 0
     assert "GitHub summary comment updated" in output
-    assert "Open the pull request" in output
+    assert "github.com/apps/reviewer-live" in output
+    assert "open the pull request" in output.lower()
 
 
 def test_main_returns_error_code_for_known_failures(monkeypatch, capsys):
