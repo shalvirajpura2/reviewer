@@ -20,10 +20,21 @@ async def publish_review_summary(pr_url: str, client_key: str, use_backend_publi
     await enforce_request_limit(client_key, "analyze")
 
     parsed_pr = parse_pr_url(pr_url)
-    metadata = await fetch_pr_metadata(parsed_pr)
-    files, partial_reasons = await fetch_pr_files(parsed_pr, metadata.changed_files)
-    commits, commit_partial_reasons = await fetch_pr_commits(parsed_pr, metadata.commits)
-    check_runs, check_partial_reasons = await fetch_commit_check_runs(parsed_pr, metadata.head_sha)
+    publish_token = None
+    if use_backend_publish_token:
+        if github_app_is_configured():
+            publish_token = await fetch_installation_access_token(parsed_pr)
+        elif settings.reviewer_publish_github_token:
+            publish_token = settings.reviewer_publish_github_token
+        else:
+            raise PermissionError(
+                "Reviewer backend publishing is not configured. Set GITHUB_APP_ID and GITHUB_APP_PRIVATE_KEY or REVIEWER_PUBLISH_GITHUB_TOKEN first."
+            )
+
+    metadata = await fetch_pr_metadata(parsed_pr, github_token=publish_token)
+    files, partial_reasons = await fetch_pr_files(parsed_pr, metadata.changed_files, github_token=publish_token)
+    commits, commit_partial_reasons = await fetch_pr_commits(parsed_pr, metadata.commits, github_token=publish_token)
+    check_runs, check_partial_reasons = await fetch_commit_check_runs(parsed_pr, metadata.head_sha, github_token=publish_token)
     classified_files = classify_files(files)
     signals = detect_signals(metadata, classified_files, commits, check_runs)
     review_analysis = build_review_analysis(
@@ -37,17 +48,6 @@ async def publish_review_summary(pr_url: str, client_key: str, use_backend_publi
         partial_reasons=[*partial_reasons, *commit_partial_reasons, *check_partial_reasons],
     )
     comment_body = build_github_summary_comment(review_analysis)
-
-    publish_token = None
-    if use_backend_publish_token:
-        if github_app_is_configured():
-            publish_token = await fetch_installation_access_token(parsed_pr)
-        elif settings.reviewer_publish_github_token:
-            publish_token = settings.reviewer_publish_github_token
-        else:
-            raise PermissionError(
-                "Reviewer backend publishing is not configured. Set GITHUB_APP_ID and GITHUB_APP_PRIVATE_KEY or REVIEWER_PUBLISH_GITHUB_TOKEN first."
-            )
 
     published_comment = await upsert_review_summary_comment(parsed_pr, comment_body, github_token=publish_token)
 

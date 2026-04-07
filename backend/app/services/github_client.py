@@ -144,9 +144,10 @@ async def fetch_viewer(github_token: str | None = None) -> dict[str, Any]:
     return payload if isinstance(payload, dict) else {}
 
 
-async def fetch_pr_metadata(parsed_pr: dict[str, str | int]) -> GithubPrMetadata:
+async def fetch_pr_metadata(parsed_pr: dict[str, str | int], github_token: str | None = None) -> GithubPrMetadata:
     payload = await github_fetch(
-        f"/repos/{parsed_pr['owner']}/{parsed_pr['repo']}/pulls/{parsed_pr['pull_number']}"
+        f"/repos/{parsed_pr['owner']}/{parsed_pr['repo']}/pulls/{parsed_pr['pull_number']}",
+        github_token=github_token,
     )
 
     return GithubPrMetadata(
@@ -176,6 +177,7 @@ async def fetch_pr_metadata(parsed_pr: dict[str, str | int]) -> GithubPrMetadata
 async def fetch_pr_files(
     parsed_pr: dict[str, str | int],
     expected_file_count: int | None = None,
+    github_token: str | None = None,
 ) -> tuple[list[ChangedFile], list[str]]:
     collected_files: list[ChangedFile] = []
     partial_reasons: list[str] = []
@@ -183,7 +185,8 @@ async def fetch_pr_files(
 
     while page <= max_pr_file_pages:
         payload = await github_fetch(
-            f"/repos/{parsed_pr['owner']}/{parsed_pr['repo']}/pulls/{parsed_pr['pull_number']}/files?per_page=100&page={page}"
+            f"/repos/{parsed_pr['owner']}/{parsed_pr['repo']}/pulls/{parsed_pr['pull_number']}/files?per_page=100&page={page}",
+            github_token=github_token,
         )
 
         if not payload:
@@ -224,6 +227,7 @@ async def fetch_pr_files(
 async def fetch_pr_commits(
     parsed_pr: dict[str, str | int],
     expected_commit_count: int | None = None,
+    github_token: str | None = None,
 ) -> tuple[list[GithubCommitSummary], list[str]]:
     commits: list[GithubCommitSummary] = []
     partial_reasons: list[str] = []
@@ -231,7 +235,8 @@ async def fetch_pr_commits(
 
     while page <= settings.max_pr_commit_pages:
         payload = await github_fetch(
-            f"/repos/{parsed_pr['owner']}/{parsed_pr['repo']}/pulls/{parsed_pr['pull_number']}/commits?per_page=100&page={page}"
+            f"/repos/{parsed_pr['owner']}/{parsed_pr['repo']}/pulls/{parsed_pr['pull_number']}/commits?per_page=100&page={page}",
+            github_token=github_token,
         )
 
         if not payload:
@@ -270,13 +275,14 @@ async def fetch_pr_commits(
     return commits, partial_reasons
 
 
-async def fetch_commit_check_runs(parsed_pr: dict[str, str | int], head_sha: str) -> tuple[list[CheckRunSummary], list[str]]:
+async def fetch_commit_check_runs(parsed_pr: dict[str, str | int], head_sha: str, github_token: str | None = None) -> tuple[list[CheckRunSummary], list[str]]:
     if not head_sha:
         return [], ["GitHub did not return a PR head SHA, so CI check status could not be verified."]
 
     try:
         payload = await github_fetch(
-            f"/repos/{parsed_pr['owner']}/{parsed_pr['repo']}/commits/{head_sha}/check-runs?per_page=100"
+            f"/repos/{parsed_pr['owner']}/{parsed_pr['repo']}/commits/{head_sha}/check-runs?per_page=100",
+            github_token=github_token,
         )
     except FileNotFoundError:
         return [], ["GitHub did not expose check runs for this commit, so CI status could not be verified."]
