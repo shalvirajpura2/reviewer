@@ -2,6 +2,10 @@ import argparse
 import asyncio
 import sys
 
+import httpx
+
+from app.core.settings import settings
+from app.models.review_domain import ReviewCommentPublication
 from app.renderers.cli_renderer import render_cli_json, render_cli_text
 from app.renderers.cli_ui import render_status, render_welcome
 from app.services.analysis_service import analyze_pull_request
@@ -10,6 +14,35 @@ from app.services.review_publish_service import publish_review_summary
 
 
 cli_client_key = "reviewer_cli"
+
+
+async def publish_summary_via_backend(pr_url: str) -> ReviewCommentPublication:
+    if not settings.reviewer_backend_api_base:
+        raise ValueError("Reviewer backend publishing is not configured. Set REVIEWER_BACKEND_API_BASE first.")
+
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        try:
+            response = await client.post(
+                f"{settings.reviewer_backend_api_base}/api/publish-summary",
+                json={"pr_url": pr_url},
+            )
+        except httpx.TimeoutException:
+            raise ConnectionError("Reviewer backend took too long to respond. Please try again.")
+        except httpx.HTTPError:
+            raise ConnectionError("Reviewer backend could not be reached from the CLI.")
+
+    if response.status_code >= 400:
+        try:
+            payload = response.json()
+        except ValueError:
+            payload = None
+
+        if isinstance(payload, dict) and payload.get("message"):
+            raise ValueError(str(payload["message"]))
+
+        raise ValueError("Reviewer backend could not publish the GitHub summary comment.")
+
+    return ReviewCommentPublication(**response.json())
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -88,8 +121,11 @@ async def run_analyze(pr_url: str, output_format: str, force_refresh: bool) -> i
 
 
 async def run_publish_summary(pr_url: str, output_format: str) -> int:
-    await require_authenticated_session()
-    result = await publish_review_summary(pr_url, cli_client_key)
+    if settings.reviewer_backend_api_base:
+        result = await publish_summary_via_backend(pr_url)
+    else:
+        await require_authenticated_session()
+        result = await publish_review_summary(pr_url, cli_client_key)
 
     if output_format == "json":
         print(result.model_dump_json(indent=2))

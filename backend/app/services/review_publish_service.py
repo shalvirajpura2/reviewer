@@ -1,3 +1,4 @@
+from app.core.settings import settings
 from app.models.review_domain import ReviewCommentPublication
 from app.renderers.github_renderer import build_github_summary_comment
 from app.services.analysis_service import enforce_request_limit
@@ -14,7 +15,7 @@ from app.services.result_builder import build_review_analysis
 from app.services.signal_detector import detect_signals
 
 
-async def publish_review_summary(pr_url: str, client_key: str) -> ReviewCommentPublication:
+async def publish_review_summary(pr_url: str, client_key: str, use_backend_publish_token: bool = False) -> ReviewCommentPublication:
     await enforce_request_limit(client_key, "analyze")
 
     parsed_pr = parse_pr_url(pr_url)
@@ -35,7 +36,12 @@ async def publish_review_summary(pr_url: str, client_key: str) -> ReviewCommentP
         partial_reasons=[*partial_reasons, *commit_partial_reasons, *check_partial_reasons],
     )
     comment_body = build_github_summary_comment(review_analysis)
-    published_comment = await upsert_review_summary_comment(parsed_pr, comment_body)
+    publish_token = settings.reviewer_publish_github_token if use_backend_publish_token else None
+
+    if use_backend_publish_token and not publish_token:
+        raise PermissionError("Reviewer backend publishing is not configured. Set REVIEWER_PUBLISH_GITHUB_TOKEN first.")
+
+    published_comment = await upsert_review_summary_comment(parsed_pr, comment_body, github_token=publish_token)
 
     return ReviewCommentPublication(
         action=str(published_comment.get("reviewer_action") or "created"),

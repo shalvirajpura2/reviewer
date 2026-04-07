@@ -68,7 +68,7 @@ async def fake_fetch_commit_check_runs(parsed_pr, head_sha: str):
     return [CheckRunSummary(name="backend tests", status="completed", conclusion="success")], []
 
 
-async def fake_upsert_review_summary_comment(parsed_pr, body: str):
+async def fake_upsert_review_summary_comment(parsed_pr, body: str, github_token=None):
     assert body.startswith("<!-- reviewer:summary-comment -->")
     return {
         "reviewer_action": "updated",

@@ -261,12 +261,15 @@ reviewer logout
 
 The CLI now guides users step by step during login, reuses the saved GitHub session automatically, and renders reports in readable sections so the next action is clear. `GITHUB_TOKEN` is still supported as an advanced fallback.
 
+Set `REVIEWER_BACKEND_API_BASE` to let the CLI hand off `publish-summary` to your hosted Reviewer backend, and set `REVIEWER_PUBLISH_GITHUB_TOKEN` on that backend if you want PR comments to be posted with a server-owned GitHub identity.
+
 ## Environment
 
 ### Shared
 
 - `GITHUB_CLIENT_ID`
 - `GITHUB_TOKEN`
+- `REVIEWER_BACKEND_API_BASE`
 
 ### Frontend
 
@@ -277,6 +280,7 @@ The CLI now guides users step by step during login, reuses the saved GitHub sess
 - `GITHUB_API_BASE`
 - `REVIEWER_CONFIG_DIR`
 - `BACKEND_PORT`
+- `REVIEWER_PUBLISH_GITHUB_TOKEN`
 - `CACHE_TTL_SECONDS`
 - `CORS_ALLOW_ORIGINS`
 - `CORS_ALLOW_ORIGIN_REGEX`

@@ -10,6 +10,7 @@ from fastapi.responses import JSONResponse
 
 from app.core.settings import settings
 from app.routes.analyze import router as analyze_router
+from app.routes.publish import router as publish_router
 from app.routes.stats import router as stats_router
 from app.services.github_client import close_github_client
 
@@ -115,8 +116,8 @@ async def unhandled_exception_handler(request: Request, error: Exception):
 
 
 app.include_router(analyze_router)
+app.include_router(publish_router)
 app.include_router(stats_router)
-
 
 
 @app.get("/health")
@@ -124,6 +125,7 @@ async def health_check() -> dict[str, str | bool | int]:
     return {
         "status": "ok",
         "github_token_configured": bool(settings.github_token),
+        "reviewer_publish_github_token_configured": bool(settings.reviewer_publish_github_token),
         "database_configured": bool(settings.database_url),
         "uptime_seconds": int(time.time() - started_at),
         "cache_ttl_seconds": settings.cache_ttl_seconds,

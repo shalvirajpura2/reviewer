@@ -73,3 +73,5 @@ reviewer logout
 - Suggests what to do after login, publish, and logout.
 
 Protected commands automatically start the login flow when no valid session is available.
+
+If `REVIEWER_BACKEND_API_BASE` is set, `reviewer publish-summary` uses the hosted Reviewer backend instead of the local GitHub session. Configure `REVIEWER_PUBLISH_GITHUB_TOKEN` on that backend to publish PR comments with a server-owned GitHub identity.

@@ -227,3 +227,24 @@ def test_main_returns_error_code_for_known_failures(monkeypatch, capsys):
 
     assert exit_code == 1
     assert "[error] Unsupported URL format" in error_output
+
+
+def test_main_runs_publish_summary_via_backend(monkeypatch, capsys):
+    async def fake_publish_summary_via_backend(pr_url: str):
+        assert pr_url == "https://github.com/acme/reviewer/pull/9"
+        return ReviewCommentPublication(
+            action="created",
+            comment_id=88,
+            html_url="https://github.com/acme/reviewer/pull/9#issuecomment-88",
+            body="comment body",
+        )
+
+    monkeypatch.setattr("app.cli.main.settings.reviewer_backend_api_base", "https://reviewer.live")
+    monkeypatch.setattr("app.cli.main.publish_summary_via_backend", fake_publish_summary_via_backend)
+
+    exit_code = main(["publish-summary", "https://github.com/acme/reviewer/pull/9"])
+    captured = capsys.readouterr()
+    output = strip_ansi(captured.out)
+
+    assert exit_code == 0
+    assert "GitHub summary comment created" in output

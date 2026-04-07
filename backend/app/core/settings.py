@@ -24,6 +24,8 @@ class Settings:
     github_client_id = os.getenv("GITHUB_CLIENT_ID", "")
     github_api_base = os.getenv("GITHUB_API_BASE", "https://api.github.com")
     reviewer_config_dir = os.getenv("REVIEWER_CONFIG_DIR", "")
+    reviewer_publish_github_token = os.getenv("REVIEWER_PUBLISH_GITHUB_TOKEN", "")
+    reviewer_backend_api_base = os.getenv("REVIEWER_BACKEND_API_BASE", "").rstrip("/")
     backend_port = int(os.getenv("BACKEND_PORT", "8000"))
     log_level = os.getenv("LOG_LEVEL", "INFO").upper()
     cache_ttl_seconds = int(os.getenv("CACHE_TTL_SECONDS", "300"))
