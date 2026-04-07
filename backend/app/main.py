@@ -125,6 +125,7 @@ async def health_check() -> dict[str, str | bool | int]:
     return {
         "status": "ok",
         "github_token_configured": bool(settings.github_token),
+        "github_app_configured": bool(settings.github_app_id and settings.github_app_private_key),
         "reviewer_publish_github_token_configured": bool(settings.reviewer_publish_github_token),
         "database_configured": bool(settings.database_url),
         "uptime_seconds": int(time.time() - started_at),

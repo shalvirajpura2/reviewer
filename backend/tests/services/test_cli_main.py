@@ -173,6 +173,7 @@ def test_main_runs_analyze_command(monkeypatch, capsys):
         assert force_refresh is False
         return build_result()
 
+    monkeypatch.setattr("app.cli.main.settings.reviewer_backend_api_base", "")
     monkeypatch.setattr("app.cli.main.require_authenticated_session", fake_require_authenticated_session)
     monkeypatch.setattr("app.cli.main.analyze_pull_request", fake_analyze_pull_request)
 
@@ -189,7 +190,7 @@ def test_main_runs_publish_summary_command(monkeypatch, capsys):
     async def fake_require_authenticated_session():
         return build_session()
 
-    async def fake_publish_review_summary(pr_url: str, client_key: str):
+    async def fake_publish_review_summary(pr_url: str, client_key: str, use_backend_publish_token: bool = False):
         assert pr_url == "https://github.com/acme/reviewer/pull/9"
         assert client_key == "reviewer_cli"
         return ReviewCommentPublication(
@@ -199,6 +200,7 @@ def test_main_runs_publish_summary_command(monkeypatch, capsys):
             body="comment body",
         )
 
+    monkeypatch.setattr("app.cli.main.settings.reviewer_backend_api_base", "")
     monkeypatch.setattr("app.cli.main.require_authenticated_session", fake_require_authenticated_session)
     monkeypatch.setattr("app.cli.main.publish_review_summary", fake_publish_review_summary)
 

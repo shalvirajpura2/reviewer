@@ -91,3 +91,34 @@ def test_publish_review_summary_returns_publication_payload(monkeypatch):
     assert isinstance(result, ReviewCommentPublication)
     assert result.action == "updated"
     assert result.comment_id == 77
+
+
+def test_publish_review_summary_prefers_github_app_installation_token(monkeypatch):
+    captured = {}
+
+    async def fake_fetch_installation_access_token(parsed_pr):
+        assert parsed_pr["owner"] == "acme"
+        return "installation-token"
+
+    async def fake_upsert_review_summary_comment_with_token(parsed_pr, body: str, github_token=None):
+        captured["github_token"] = github_token
+        return {
+            "reviewer_action": "created",
+            "id": 91,
+            "html_url": "https://github.com/acme/reviewer/pull/7#issuecomment-91",
+            "body": body,
+        }
+
+    monkeypatch.setattr("app.services.review_publish_service.enforce_request_limit", fake_enforce_request_limit)
+    monkeypatch.setattr("app.services.review_publish_service.fetch_pr_metadata", fake_fetch_pr_metadata)
+    monkeypatch.setattr("app.services.review_publish_service.fetch_pr_files", fake_fetch_pr_files)
+    monkeypatch.setattr("app.services.review_publish_service.fetch_pr_commits", fake_fetch_pr_commits)
+    monkeypatch.setattr("app.services.review_publish_service.fetch_commit_check_runs", fake_fetch_commit_check_runs)
+    monkeypatch.setattr("app.services.review_publish_service.github_app_is_configured", lambda: True)
+    monkeypatch.setattr("app.services.review_publish_service.fetch_installation_access_token", fake_fetch_installation_access_token)
+    monkeypatch.setattr("app.services.review_publish_service.upsert_review_summary_comment", fake_upsert_review_summary_comment_with_token)
+
+    result = asyncio.run(publish_review_summary("https://github.com/acme/reviewer/pull/7", "reviewer_cli", use_backend_publish_token=True))
+
+    assert result.comment_id == 91
+    assert captured["github_token"] == "installation-token"

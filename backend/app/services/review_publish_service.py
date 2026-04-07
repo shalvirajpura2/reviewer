@@ -3,6 +3,7 @@ from app.models.review_domain import ReviewCommentPublication
 from app.renderers.github_renderer import build_github_summary_comment
 from app.services.analysis_service import enforce_request_limit
 from app.services.file_classifier import classify_files
+from app.services.github_app_auth import fetch_installation_access_token, github_app_is_configured
 from app.services.github_client import (
     fetch_commit_check_runs,
     fetch_pr_commits,
@@ -36,10 +37,17 @@ async def publish_review_summary(pr_url: str, client_key: str, use_backend_publi
         partial_reasons=[*partial_reasons, *commit_partial_reasons, *check_partial_reasons],
     )
     comment_body = build_github_summary_comment(review_analysis)
-    publish_token = settings.reviewer_publish_github_token if use_backend_publish_token else None
 
-    if use_backend_publish_token and not publish_token:
-        raise PermissionError("Reviewer backend publishing is not configured. Set REVIEWER_PUBLISH_GITHUB_TOKEN first.")
+    publish_token = None
+    if use_backend_publish_token:
+        if github_app_is_configured():
+            publish_token = await fetch_installation_access_token(parsed_pr)
+        elif settings.reviewer_publish_github_token:
+            publish_token = settings.reviewer_publish_github_token
+        else:
+            raise PermissionError(
+                "Reviewer backend publishing is not configured. Set GITHUB_APP_ID and GITHUB_APP_PRIVATE_KEY or REVIEWER_PUBLISH_GITHUB_TOKEN first."
+            )
 
     published_comment = await upsert_review_summary_comment(parsed_pr, comment_body, github_token=publish_token)
 
