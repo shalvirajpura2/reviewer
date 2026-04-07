@@ -1,5 +1,5 @@
 from app.models.analysis import CheckRunSummary, ClassifiedFile, GithubCommitSummary, GithubPrMetadata, RiskSignal
-from app.services.result_builder import build_result
+from app.services.result_builder import build_result, build_review_analysis
 
 
 def build_metadata(**overrides):
@@ -83,6 +83,32 @@ def test_build_result_marks_partial_coverage_and_low_confidence():
     assert any("patch hunks" in item for item in result.analysis_context.coverage.partial_reasons)
 
 
+def test_build_review_analysis_exposes_canonical_findings():
+    metadata = build_metadata()
+    files = [
+        build_file("backend/app/services/github_client.py", ["backend", "shared_core", "sensitive"], is_sensitive=True),
+        build_file("backend/app/core/settings.py", ["backend", "config", "infra", "sensitive"], is_sensitive=True, patch=None),
+    ]
+    commits = [GithubCommitSummary(sha="abc1234", message="tighten analysis", author="shalv")]
+    signals = [
+        RiskSignal(
+            id="sensitive_paths_changed",
+            label="Sensitive paths changed",
+            severity="high",
+            evidence=[files[0].filename],
+            score_impact=-16,
+            breakdown_key="sensitive_code_risk",
+        )
+    ]
+
+    result = build_review_analysis(metadata, files, commits, signals, total_files=3, partial_reasons=["Only part of the PR was fetched."])
+
+    assert result.summary.startswith("Built from GitHub metadata")
+    assert result.findings
+    assert result.findings[0].category == "signal"
+    assert result.findings[0].title == "Sensitive paths changed"
+    assert any(item.category == "file" and item.path == "backend/app/services/github_client.py" for item in result.findings)
+
 
 def test_build_result_includes_safeguards_and_downgrades_missing_ci_confidence():
     metadata = build_metadata()
@@ -124,7 +150,6 @@ def test_build_result_marks_passing_ci_with_test_changes():
     assert result.safeguards.checks_passed == 1
     assert result.safeguards.tests_changed is True
     assert result.analysis_context.confidence_in_score == "high"
-
 
 
 def test_build_result_marks_old_merged_pr_ci_as_unavailable():

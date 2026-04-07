@@ -12,6 +12,10 @@ class PreviewRequest(BaseModel):
     pr_url: str = Field(min_length=1)
 
 
+class PublishSummaryRequest(BaseModel):
+    pr_url: str = Field(min_length=1)
+
+
 class GithubPrMetadata(BaseModel):
     owner: str
     repo: str

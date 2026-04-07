@@ -131,3 +131,31 @@ def test_analyze_route_uses_global_500_handler_for_unexpected_errors(monkeypatch
     assert response.status_code == 500
     assert response.json()["error_code"] == "internal_error"
     assert response.json()["request_id"] == "req-500"
+
+
+def test_publish_summary_route_returns_publication(monkeypatch):
+    from app.models.review_domain import ReviewCommentPublication
+
+    async def fake_publish_review_summary(pr_url: str, client_key: str, use_backend_publish_token: bool = False):
+        assert pr_url == "https://github.com/acme/reviewer/pull/9"
+        assert client_key == "testclient"
+        assert use_backend_publish_token is True
+        return ReviewCommentPublication(
+            action="created",
+            comment_id=501,
+            html_url="https://github.com/acme/reviewer/pull/9#issuecomment-501",
+            body="comment body",
+        )
+
+    monkeypatch.setattr("app.routes.publish.publish_review_summary", fake_publish_review_summary)
+
+    response = client.post(
+        "/api/publish-summary",
+        json={"pr_url": "https://github.com/acme/reviewer/pull/9"},
+        headers={"x-request-id": "req-publish-200"},
+    )
+
+    assert response.status_code == 200
+    assert response.headers["X-Request-Id"] == "req-publish-200"
+    assert response.json()["action"] == "created"
+    assert response.json()["comment_id"] == 501

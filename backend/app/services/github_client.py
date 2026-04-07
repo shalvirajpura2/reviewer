@@ -5,22 +5,38 @@ import httpx
 
 from app.core.settings import settings
 from app.models.analysis import ChangedFile, CheckRunSummary, GithubCommitSummary, GithubPrMetadata
+from app.renderers.github_renderer import reviewer_comment_marker
 
 max_pr_file_pages = 30
 github_retry_attempts = 3
 github_retry_backoff_seconds = 0.35
 github_client: httpx.AsyncClient | None = None
 github_client_lock = asyncio.Lock()
+runtime_github_token: str | None = None
 
 
-def build_headers() -> dict[str, str]:
+def set_runtime_github_token(github_token: str | None) -> None:
+    global runtime_github_token
+    runtime_github_token = github_token
+
+
+def clear_runtime_github_token() -> None:
+    set_runtime_github_token(None)
+
+
+def resolve_github_token(github_token: str | None = None) -> str | None:
+    return github_token or runtime_github_token or settings.github_token
+
+
+def build_headers(github_token: str | None = None) -> dict[str, str]:
     headers = {
         "Accept": "application/vnd.github+json",
         "User-Agent": "reviewer-v1",
     }
 
-    if settings.github_token:
-        headers["Authorization"] = f"Bearer {settings.github_token}"
+    resolved_token = resolve_github_token(github_token)
+    if resolved_token:
+        headers["Authorization"] = f"Bearer {resolved_token}"
 
     return headers
 
@@ -51,33 +67,56 @@ async def close_github_client() -> None:
         github_client = None
 
 
-async def github_fetch(path: str) -> Any:
+async def handle_github_response(response: httpx.Response, action_name: str) -> Any:
+    if response.status_code == 401:
+        raise PermissionError("GitHub authentication is invalid or expired. Please login again.")
+
+    if response.status_code == 403 and response.headers.get("x-ratelimit-remaining") == "0":
+        raise PermissionError("GitHub rate limit reached. Add a GITHUB_TOKEN or try again later.")
+
+    if response.status_code == 403 and "secondary rate limit" in response.text.lower():
+        raise PermissionError(f"GitHub temporarily rate limited this {action_name}. Please retry shortly.")
+
+    if response.status_code == 404:
+        raise FileNotFoundError("Repository or pull request not found, or the PR is not public.")
+
+    if response.status_code >= 400:
+        response_message = ""
+        if response.content:
+            try:
+                payload = response.json()
+            except ValueError:
+                payload = None
+            if isinstance(payload, dict):
+                response_message = str(payload.get("message") or "").strip()
+
+        if response_message:
+            raise ValueError(f"GitHub could not {action_name}: {response_message}")
+
+        raise ValueError(f"GitHub returned an unexpected response while trying to {action_name}.")
+
+    if not response.content:
+        return None
+
+    return response.json()
+
+
+async def github_fetch(path: str, github_token: str | None = None, action_name: str = "fetch GitHub data") -> Any:
     last_error: Exception | None = None
 
     for attempt_number in range(1, github_retry_attempts + 1):
         try:
             client = await get_github_client()
-            response = await client.get(f"{settings.github_api_base}{path}", headers=build_headers())
-        except httpx.TimeoutException as error:
+            response = await client.get(f"{settings.github_api_base}{path}", headers=build_headers(github_token))
+        except httpx.TimeoutException:
             last_error = ConnectionError("GitHub took too long to respond. Please try again.")
         except httpx.HTTPError:
             last_error = ConnectionError("GitHub could not be reached from the analysis service.")
         else:
-            if response.status_code == 403 and response.headers.get("x-ratelimit-remaining") == "0":
-                raise PermissionError("GitHub rate limit reached. Add a GITHUB_TOKEN or try again later.")
-
-            if response.status_code == 403 and "secondary rate limit" in response.text.lower():
-                raise PermissionError("GitHub temporarily rate limited this analysis. Please retry shortly.")
-
-            if response.status_code == 404:
-                raise FileNotFoundError("Repository or pull request not found, or the PR is not public.")
-
             if response.status_code in {502, 503, 504}:
                 last_error = ConnectionError("GitHub is temporarily unavailable. Please try again.")
-            elif response.status_code >= 400:
-                raise ValueError("GitHub returned an unexpected response while fetching the pull request.")
             else:
-                return response.json()
+                return await handle_github_response(response, action_name)
 
         if attempt_number < github_retry_attempts:
             await asyncio.sleep(github_retry_backoff_seconds * attempt_number)
@@ -88,9 +127,28 @@ async def github_fetch(path: str) -> Any:
     raise ConnectionError("GitHub could not be reached from the analysis service.")
 
 
-async def fetch_pr_metadata(parsed_pr: dict[str, str | int]) -> GithubPrMetadata:
+async def github_send(method: str, path: str, payload: dict[str, Any], action_name: str, github_token: str | None = None) -> Any:
+    try:
+        client = await get_github_client()
+        response = await client.request(method, f"{settings.github_api_base}{path}", headers=build_headers(github_token), json=payload)
+    except httpx.TimeoutException:
+        raise ConnectionError("GitHub took too long to respond. Please try again.")
+    except httpx.HTTPError:
+        raise ConnectionError("GitHub could not be reached from the analysis service.")
+
+    return await handle_github_response(response, action_name)
+
+
+async def fetch_viewer(github_token: str | None = None) -> dict[str, Any]:
+    payload = await github_fetch("/user", github_token=github_token, action_name="fetch the authenticated GitHub user")
+    return payload if isinstance(payload, dict) else {}
+
+
+async def fetch_pr_metadata(parsed_pr: dict[str, str | int], github_token: str | None = None) -> GithubPrMetadata:
     payload = await github_fetch(
-        f"/repos/{parsed_pr['owner']}/{parsed_pr['repo']}/pulls/{parsed_pr['pull_number']}"
+        f"/repos/{parsed_pr['owner']}/{parsed_pr['repo']}/pulls/{parsed_pr['pull_number']}",
+        github_token=github_token,
+        action_name="fetch the pull request metadata",
     )
 
     return GithubPrMetadata(
@@ -120,6 +178,7 @@ async def fetch_pr_metadata(parsed_pr: dict[str, str | int]) -> GithubPrMetadata
 async def fetch_pr_files(
     parsed_pr: dict[str, str | int],
     expected_file_count: int | None = None,
+    github_token: str | None = None,
 ) -> tuple[list[ChangedFile], list[str]]:
     collected_files: list[ChangedFile] = []
     partial_reasons: list[str] = []
@@ -127,7 +186,9 @@ async def fetch_pr_files(
 
     while page <= max_pr_file_pages:
         payload = await github_fetch(
-            f"/repos/{parsed_pr['owner']}/{parsed_pr['repo']}/pulls/{parsed_pr['pull_number']}/files?per_page=100&page={page}"
+            f"/repos/{parsed_pr['owner']}/{parsed_pr['repo']}/pulls/{parsed_pr['pull_number']}/files?per_page=100&page={page}",
+            github_token=github_token,
+            action_name="fetch the pull request files",
         )
 
         if not payload:
@@ -168,6 +229,7 @@ async def fetch_pr_files(
 async def fetch_pr_commits(
     parsed_pr: dict[str, str | int],
     expected_commit_count: int | None = None,
+    github_token: str | None = None,
 ) -> tuple[list[GithubCommitSummary], list[str]]:
     commits: list[GithubCommitSummary] = []
     partial_reasons: list[str] = []
@@ -175,7 +237,9 @@ async def fetch_pr_commits(
 
     while page <= settings.max_pr_commit_pages:
         payload = await github_fetch(
-            f"/repos/{parsed_pr['owner']}/{parsed_pr['repo']}/pulls/{parsed_pr['pull_number']}/commits?per_page=100&page={page}"
+            f"/repos/{parsed_pr['owner']}/{parsed_pr['repo']}/pulls/{parsed_pr['pull_number']}/commits?per_page=100&page={page}",
+            github_token=github_token,
+            action_name="fetch the pull request commits",
         )
 
         if not payload:
@@ -214,13 +278,15 @@ async def fetch_pr_commits(
     return commits, partial_reasons
 
 
-async def fetch_commit_check_runs(parsed_pr: dict[str, str | int], head_sha: str) -> tuple[list[CheckRunSummary], list[str]]:
+async def fetch_commit_check_runs(parsed_pr: dict[str, str | int], head_sha: str, github_token: str | None = None) -> tuple[list[CheckRunSummary], list[str]]:
     if not head_sha:
         return [], ["GitHub did not return a PR head SHA, so CI check status could not be verified."]
 
     try:
         payload = await github_fetch(
-            f"/repos/{parsed_pr['owner']}/{parsed_pr['repo']}/commits/{head_sha}/check-runs?per_page=100"
+            f"/repos/{parsed_pr['owner']}/{parsed_pr['repo']}/commits/{head_sha}/check-runs?per_page=100",
+            github_token=github_token,
+            action_name="fetch the pull request check runs",
         )
     except FileNotFoundError:
         return [], ["GitHub did not expose check runs for this commit, so CI status could not be verified."]
@@ -251,6 +317,83 @@ async def fetch_commit_check_runs(parsed_pr: dict[str, str | int], head_sha: str
         )
 
     return check_runs, partial_reasons
+
+
+async def fetch_issue_comments(parsed_pr: dict[str, str | int], github_token: str | None = None) -> list[dict[str, Any]]:
+    payload = await github_fetch(
+        f"/repos/{parsed_pr['owner']}/{parsed_pr['repo']}/issues/{parsed_pr['pull_number']}/comments?per_page=100",
+        github_token=github_token,
+        action_name="fetch existing Reviewer comments",
+    )
+
+    return payload if isinstance(payload, list) else []
+
+
+async def create_issue_comment(parsed_pr: dict[str, str | int], body: str, github_token: str | None = None) -> dict[str, Any]:
+    payload = await github_send(
+        "POST",
+        f"/repos/{parsed_pr['owner']}/{parsed_pr['repo']}/issues/{parsed_pr['pull_number']}/comments",
+        {"body": body},
+        "publish the GitHub review comment",
+        github_token=github_token,
+    )
+
+    return payload if isinstance(payload, dict) else {}
+
+
+async def update_issue_comment(parsed_pr: dict[str, str | int], comment_id: int, body: str, github_token: str | None = None) -> dict[str, Any]:
+    payload = await github_send(
+        "PATCH",
+        f"/repos/{parsed_pr['owner']}/{parsed_pr['repo']}/issues/comments/{comment_id}",
+        {"body": body},
+        "update the GitHub review comment",
+        github_token=github_token,
+    )
+
+    return payload if isinstance(payload, dict) else {}
+
+
+async def upsert_review_summary_comment(parsed_pr: dict[str, str | int], body: str, github_token: str | None = None) -> dict[str, Any]:
+    comments = await fetch_issue_comments(parsed_pr, github_token=github_token)
+
+    existing_comment = None
+    if github_token:
+        existing_comment = next(
+            (
+                comment for comment in comments
+                if reviewer_comment_marker in str(comment.get("body") or "")
+            ),
+            None,
+        )
+    else:
+        viewer = await fetch_viewer(github_token)
+        viewer_login = str(viewer.get("login") or "").lower()
+        existing_comment = next(
+            (
+                comment for comment in comments
+                if reviewer_comment_marker in str(comment.get("body") or "")
+                and str(comment.get("user", {}).get("login") or "").lower() == viewer_login
+            ),
+            None,
+        )
+
+    if existing_comment and existing_comment.get("id"):
+        try:
+            payload = await update_issue_comment(parsed_pr, int(existing_comment["id"]), body, github_token=github_token)
+        except (PermissionError, ValueError, FileNotFoundError):
+            payload = await create_issue_comment(parsed_pr, body, github_token=github_token)
+            if isinstance(payload, dict):
+                payload["reviewer_action"] = "created"
+            return payload
+
+        if isinstance(payload, dict):
+            payload["reviewer_action"] = "updated"
+        return payload
+
+    payload = await create_issue_comment(parsed_pr, body, github_token=github_token)
+    if isinstance(payload, dict):
+        payload["reviewer_action"] = "created"
+    return payload
 
 
 async def fetch_repo_stars(owner: str, repo: str) -> int:

@@ -31,6 +31,7 @@
 - [Important product files](#important-product-files)
 - [Tech stack](#tech-stack)
 - [Local setup](#local-setup)
+- [CLI](#cli)
 - [Environment](#environment)
 - [Quality checks](#quality-checks)
 - [Current direction](#current-direction)
@@ -197,7 +198,7 @@ pnpm install
 Copy `.env.example` to `.env` and set at least:
 
 ```bash
-GITHUB_TOKEN=your_token_here
+GITHUB_CLIENT_ID=your_client_id_here
 VITE_BACKEND_URL=http://localhost:8000
 ```
 
@@ -226,11 +227,51 @@ Use the repository root as the Docker build context:
 docker build -f backend/Dockerfile -t reviewer-backend backend
 ```
 
+## CLI
+
+Install the published CLI with `pipx` for the cleanest global command setup:
+
+```bash
+pipx install reviewer-cli
+```
+
+You can also install it with `pip`:
+
+```bash
+pip install reviewer-cli
+```
+
+For local development in this repository:
+
+```bash
+pip install -e backend
+```
+
+Preferred setup uses GitHub device login with `GITHUB_CLIENT_ID` configured in your environment.
+
+Then run Reviewer directly from your terminal:
+
+```bash
+reviewer login
+reviewer whoami
+reviewer analyze https://github.com/owner/repo/pull/123
+reviewer publish-summary https://github.com/owner/repo/pull/123
+reviewer logout
+```
+
+The CLI now guides users step by step during login, reuses the saved GitHub session automatically, and renders reports in readable sections so the next action is clear. `GITHUB_TOKEN` is still supported as an advanced fallback.
+
+Set `REVIEWER_BACKEND_API_BASE` to let the CLI hand off `publish-summary` to your hosted Reviewer backend. For bot comments, configure `GITHUB_APP_ID` and `GITHUB_APP_PRIVATE_KEY` on that backend. `REVIEWER_PUBLISH_GITHUB_TOKEN` remains available as a fallback.
+
 ## Environment
 
 ### Shared
 
+- `GITHUB_CLIENT_ID`
+- `GITHUB_APP_ID`
+- `GITHUB_APP_PRIVATE_KEY`
 - `GITHUB_TOKEN`
+- `REVIEWER_BACKEND_API_BASE`
 
 ### Frontend
 
@@ -239,7 +280,9 @@ docker build -f backend/Dockerfile -t reviewer-backend backend
 ### Backend
 
 - `GITHUB_API_BASE`
+- `REVIEWER_CONFIG_DIR`
 - `BACKEND_PORT`
+- `REVIEWER_PUBLISH_GITHUB_TOKEN`
 - `CACHE_TTL_SECONDS`
 - `CORS_ALLOW_ORIGINS`
 - `CORS_ALLOW_ORIGIN_REGEX`
@@ -276,5 +319,3 @@ Reviewer is being built to feel credible the moment a developer opens it:
 ## Builder
 
 Built by [Shalvi](https://shalvirajpura.xyz).
-
-

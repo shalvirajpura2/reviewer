@@ -1,0 +1,53 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "reviewer-cli"
+version = "0.1.6"
+description = "Deterministic pull request review for public GitHub pull requests"
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [
+  { name = "Shalvi" },
+]
+keywords = ["github", "pull-request", "review", "cli", "developer-tools"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Environment :: Console",
+  "Intended Audience :: Developers",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.11",
+  "Topic :: Software Development :: Quality Assurance",
+  "Topic :: Software Development :: Version Control :: Git",
+]
+dependencies = [
+  "fastapi==0.115.12",
+  "uvicorn[standard]==0.34.0",
+  "httpx==0.28.1",
+  "pydantic==2.11.3",
+  "PyJWT==2.8.0",
+  "tree-sitter==0.24.0",
+  "tree-sitter-javascript==0.23.1",
+  "tree-sitter-python==0.23.6",
+  "psycopg[binary]==3.2.9",
+]
+
+[project.urls]
+Documentation = "https://github.com/shalvirajpura2/reviewer"
+Source = "https://github.com/shalvirajpura2/reviewer"
+Issues = "https://github.com/shalvirajpura2/reviewer/issues"
+
+[project.scripts]
+reviewer = "app.cli.main:main"
+
+[tool.setuptools]
+include-package-data = false
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["app*"]
+
+
+
