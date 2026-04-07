@@ -354,3 +354,4 @@ async def fetch_repo_stars(owner: str, repo: str) -> int:
     payload = await github_fetch(f"/repos/{owner}/{repo}")
     return int(payload.get("stargazers_count", 0))
 
+
