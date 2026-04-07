@@ -79,7 +79,7 @@ def test_build_headers_uses_runtime_github_token(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_fetch_viewer_uses_explicit_token(monkeypatch):
-    async def fake_github_fetch(path: str, github_token: str | None = None):
+    async def fake_github_fetch(path: str, github_token: str | None = None, action_name: str | None = None):
         assert path == "/user"
         assert github_token == "explicit-token"
         return {"login": "shalv", "id": 7}
@@ -93,7 +93,7 @@ async def test_fetch_viewer_uses_explicit_token(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_fetch_commit_check_runs_normalizes_payload(monkeypatch):
-    async def fake_github_fetch(path, github_token=None):
+    async def fake_github_fetch(path, github_token=None, action_name=None):
         assert path == "/repos/acme/reviewer/commits/abc1234/check-runs?per_page=100"
         return {
             "total_count": 2,
@@ -176,4 +176,62 @@ async def test_upsert_review_summary_comment_creates_when_missing(monkeypatch):
     )
 
     assert result["id"] == 100
+    assert result["reviewer_action"] == "created"
+
+
+@pytest.mark.asyncio
+async def test_upsert_review_summary_comment_skips_viewer_lookup_for_app_token(monkeypatch):
+    async def fake_fetch_issue_comments(parsed_pr, github_token=None):
+        assert github_token == "installation-token"
+        return [{"id": 101, "body": f"{reviewer_comment_marker}\nold comment", "user": {"login": "reviewer-live[bot]"}}]
+
+    async def fake_fetch_viewer(github_token=None):
+        raise AssertionError("fetch_viewer should not be called for installation-token publishing")
+
+    async def fake_update_issue_comment(parsed_pr, comment_id: int, body: str, github_token=None):
+        assert github_token == "installation-token"
+        assert comment_id == 101
+        return {"id": 101, "html_url": "https://github.com/acme/reviewer/pull/9#issuecomment-101", "body": body}
+
+    monkeypatch.setattr(github_client, "fetch_issue_comments", fake_fetch_issue_comments)
+    monkeypatch.setattr(github_client, "fetch_viewer", fake_fetch_viewer)
+    monkeypatch.setattr(github_client, "update_issue_comment", fake_update_issue_comment)
+
+    result = await github_client.upsert_review_summary_comment(
+        {"owner": "acme", "repo": "reviewer", "pull_number": 9},
+        f"{reviewer_comment_marker}\nnew comment",
+        github_token="installation-token",
+    )
+
+    assert result["id"] == 101
+    assert result["reviewer_action"] == "updated"
+
+
+@pytest.mark.asyncio
+async def test_upsert_review_summary_comment_falls_back_to_create_when_app_update_fails(monkeypatch):
+    async def fake_fetch_issue_comments(parsed_pr, github_token=None):
+        return [{"id": 102, "body": f"{reviewer_comment_marker}\nold comment", "user": {"login": "someone-else"}}]
+
+    async def fake_fetch_viewer(github_token=None):
+        raise AssertionError("fetch_viewer should not be called for installation-token publishing")
+
+    async def fake_update_issue_comment(parsed_pr, comment_id: int, body: str, github_token=None):
+        raise ValueError("GitHub could not update the GitHub review comment: Resource not accessible by integration")
+
+    async def fake_create_issue_comment(parsed_pr, body: str, github_token=None):
+        assert github_token == "installation-token"
+        return {"id": 202, "html_url": "https://github.com/acme/reviewer/pull/9#issuecomment-202", "body": body}
+
+    monkeypatch.setattr(github_client, "fetch_issue_comments", fake_fetch_issue_comments)
+    monkeypatch.setattr(github_client, "fetch_viewer", fake_fetch_viewer)
+    monkeypatch.setattr(github_client, "update_issue_comment", fake_update_issue_comment)
+    monkeypatch.setattr(github_client, "create_issue_comment", fake_create_issue_comment)
+
+    result = await github_client.upsert_review_summary_comment(
+        {"owner": "acme", "repo": "reviewer", "pull_number": 9},
+        f"{reviewer_comment_marker}\nnew comment",
+        github_token="installation-token",
+    )
+
+    assert result["id"] == 202
     assert result["reviewer_action"] == "created"

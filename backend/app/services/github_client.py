@@ -101,7 +101,7 @@ async def handle_github_response(response: httpx.Response, action_name: str) -> 
     return response.json()
 
 
-async def github_fetch(path: str, github_token: str | None = None) -> Any:
+async def github_fetch(path: str, github_token: str | None = None, action_name: str = "fetch GitHub data") -> Any:
     last_error: Exception | None = None
 
     for attempt_number in range(1, github_retry_attempts + 1):
@@ -116,7 +116,7 @@ async def github_fetch(path: str, github_token: str | None = None) -> Any:
             if response.status_code in {502, 503, 504}:
                 last_error = ConnectionError("GitHub is temporarily unavailable. Please try again.")
             else:
-                return await handle_github_response(response, "fetch the pull request")
+                return await handle_github_response(response, action_name)
 
         if attempt_number < github_retry_attempts:
             await asyncio.sleep(github_retry_backoff_seconds * attempt_number)
@@ -140,7 +140,7 @@ async def github_send(method: str, path: str, payload: dict[str, Any], action_na
 
 
 async def fetch_viewer(github_token: str | None = None) -> dict[str, Any]:
-    payload = await github_fetch("/user", github_token=github_token)
+    payload = await github_fetch("/user", github_token=github_token, action_name="fetch the authenticated GitHub user")
     return payload if isinstance(payload, dict) else {}
 
 
@@ -148,6 +148,7 @@ async def fetch_pr_metadata(parsed_pr: dict[str, str | int], github_token: str |
     payload = await github_fetch(
         f"/repos/{parsed_pr['owner']}/{parsed_pr['repo']}/pulls/{parsed_pr['pull_number']}",
         github_token=github_token,
+        action_name="fetch the pull request metadata",
     )
 
     return GithubPrMetadata(
@@ -187,6 +188,7 @@ async def fetch_pr_files(
         payload = await github_fetch(
             f"/repos/{parsed_pr['owner']}/{parsed_pr['repo']}/pulls/{parsed_pr['pull_number']}/files?per_page=100&page={page}",
             github_token=github_token,
+            action_name="fetch the pull request files",
         )
 
         if not payload:
@@ -237,6 +239,7 @@ async def fetch_pr_commits(
         payload = await github_fetch(
             f"/repos/{parsed_pr['owner']}/{parsed_pr['repo']}/pulls/{parsed_pr['pull_number']}/commits?per_page=100&page={page}",
             github_token=github_token,
+            action_name="fetch the pull request commits",
         )
 
         if not payload:
@@ -283,6 +286,7 @@ async def fetch_commit_check_runs(parsed_pr: dict[str, str | int], head_sha: str
         payload = await github_fetch(
             f"/repos/{parsed_pr['owner']}/{parsed_pr['repo']}/commits/{head_sha}/check-runs?per_page=100",
             github_token=github_token,
+            action_name="fetch the pull request check runs",
         )
     except FileNotFoundError:
         return [], ["GitHub did not expose check runs for this commit, so CI status could not be verified."]
@@ -319,6 +323,7 @@ async def fetch_issue_comments(parsed_pr: dict[str, str | int], github_token: st
     payload = await github_fetch(
         f"/repos/{parsed_pr['owner']}/{parsed_pr['repo']}/issues/{parsed_pr['pull_number']}/comments?per_page=100",
         github_token=github_token,
+        action_name="fetch existing Reviewer comments",
     )
 
     return payload if isinstance(payload, list) else []
@@ -350,20 +355,37 @@ async def update_issue_comment(parsed_pr: dict[str, str | int], comment_id: int,
 
 async def upsert_review_summary_comment(parsed_pr: dict[str, str | int], body: str, github_token: str | None = None) -> dict[str, Any]:
     comments = await fetch_issue_comments(parsed_pr, github_token=github_token)
-    viewer = await fetch_viewer(github_token)
-    viewer_login = str(viewer.get("login") or "").lower()
 
-    existing_comment = next(
-        (
-            comment for comment in comments
-            if reviewer_comment_marker in str(comment.get("body") or "")
-            and str(comment.get("user", {}).get("login") or "").lower() == viewer_login
-        ),
-        None,
-    )
+    existing_comment = None
+    if github_token:
+        existing_comment = next(
+            (
+                comment for comment in comments
+                if reviewer_comment_marker in str(comment.get("body") or "")
+            ),
+            None,
+        )
+    else:
+        viewer = await fetch_viewer(github_token)
+        viewer_login = str(viewer.get("login") or "").lower()
+        existing_comment = next(
+            (
+                comment for comment in comments
+                if reviewer_comment_marker in str(comment.get("body") or "")
+                and str(comment.get("user", {}).get("login") or "").lower() == viewer_login
+            ),
+            None,
+        )
 
     if existing_comment and existing_comment.get("id"):
-        payload = await update_issue_comment(parsed_pr, int(existing_comment["id"]), body, github_token=github_token)
+        try:
+            payload = await update_issue_comment(parsed_pr, int(existing_comment["id"]), body, github_token=github_token)
+        except (PermissionError, ValueError, FileNotFoundError):
+            payload = await create_issue_comment(parsed_pr, body, github_token=github_token)
+            if isinstance(payload, dict):
+                payload["reviewer_action"] = "created"
+            return payload
+
         if isinstance(payload, dict):
             payload["reviewer_action"] = "updated"
         return payload
