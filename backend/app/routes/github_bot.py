@@ -6,6 +6,7 @@ from app.models.github_bot import (
     GithubBotRepositoriesResponse,
     GithubBotRepositorySettings,
     GithubBotRepositorySettingsUpdate,
+    GithubBotWebhookResult,
 )
 from app.models.review_domain import ReviewCommentPublication
 from app.routes.analyze import error_response, resolve_client_key
@@ -16,6 +17,7 @@ from app.services.github_bot_service import (
     trigger_manual_review,
     update_repository_settings,
 )
+from app.services.github_webhook_service import handle_github_webhook
 
 
 router = APIRouter(prefix="/api/github-bot", tags=["github-bot"])
@@ -69,5 +71,25 @@ async def trigger_manual_review_route(owner: str, repo: str, payload: GithubBotM
         return error_response(request, 404, "not_found", str(error))
     except ValueError as error:
         return error_response(request, 400, "invalid_request", str(error))
+    except ConnectionError as error:
+        return error_response(request, 503, "upstream_unavailable", str(error))
+
+
+@router.post("/webhooks/github", response_model=GithubBotWebhookResult)
+async def github_webhook_route(request: Request):
+    try:
+        payload = await request.body()
+        return await handle_github_webhook(
+            payload,
+            request.headers.get("x-github-event", ""),
+            request.headers.get("x-hub-signature-256", ""),
+            request.headers.get("x-github-delivery", ""),
+        )
+    except PermissionError as error:
+        return error_response(request, 403, "forbidden", str(error))
+    except ValueError as error:
+        return error_response(request, 400, "invalid_request", str(error))
+    except FileNotFoundError as error:
+        return error_response(request, 404, "not_found", str(error))
     except ConnectionError as error:
         return error_response(request, 503, "upstream_unavailable", str(error))

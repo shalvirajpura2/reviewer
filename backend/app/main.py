@@ -128,9 +128,12 @@ async def health_check() -> dict[str, str | bool | int]:
         "status": "ok",
         "github_token_configured": bool(settings.github_token),
         "github_app_configured": bool(settings.github_app_id and settings.github_app_private_key),
+        "github_webhook_configured": bool(settings.github_webhook_secret),
         "reviewer_publish_github_token_configured": bool(settings.reviewer_publish_github_token),
         "database_configured": bool(settings.database_url),
         "uptime_seconds": int(time.time() - started_at),
         "cache_ttl_seconds": settings.cache_ttl_seconds,
         "stale_cache_ttl_seconds": settings.stale_cache_ttl_seconds,
     }
+
+

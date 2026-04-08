@@ -24,6 +24,7 @@ class Settings:
     github_client_id = os.getenv("GITHUB_CLIENT_ID", "Iv23lica2ffEV55D1BqG")
     github_app_id = os.getenv("GITHUB_APP_ID", "")
     github_app_private_key = os.getenv("GITHUB_APP_PRIVATE_KEY", "")
+    github_webhook_secret = os.getenv("GITHUB_WEBHOOK_SECRET", "")
     github_api_base = os.getenv("GITHUB_API_BASE", "https://api.github.com")
     reviewer_config_dir = os.getenv("REVIEWER_CONFIG_DIR", "")
     reviewer_publish_github_token = os.getenv("REVIEWER_PUBLISH_GITHUB_TOKEN", "")

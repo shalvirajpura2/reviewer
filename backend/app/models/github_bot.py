@@ -47,3 +47,10 @@ class GithubBotRepositorySettingsUpdate(BaseModel):
 
 class GithubBotManualReviewRequest(BaseModel):
     pull_number: int
+
+
+class GithubBotWebhookResult(BaseModel):
+    status: str
+    event: str
+    action: str | None = None
+    detail: str

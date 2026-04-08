@@ -1,3 +1,5 @@
+import json
+
 from fastapi.testclient import TestClient
 
 from app.main import app
@@ -118,3 +120,53 @@ def test_trigger_manual_review_route(monkeypatch):
     assert response.status_code == 200
     assert response.headers["X-Request-Id"] == "req-bot-review"
     assert response.json()["comment_id"] == 501
+
+
+def test_github_webhook_route(monkeypatch):
+    async def fake_handle_github_webhook(payload: bytes, event_name: str, signature_header: str, delivery_id: str = ""):
+        assert json.loads(payload.decode("utf-8"))["action"] == "opened"
+        assert event_name == "pull_request"
+        assert signature_header == "sha256=test"
+        assert delivery_id == "delivery-1"
+        return {
+            "status": "processed",
+            "event": "pull_request",
+            "action": "opened",
+            "detail": "Reviewer posted an automated GitHub summary for acme/reviewer#18.",
+        }
+
+    monkeypatch.setattr("app.routes.github_bot.handle_github_webhook", fake_handle_github_webhook)
+
+    response = client.post(
+        "/api/github-bot/webhooks/github",
+        content=b'{"action":"opened"}',
+        headers={
+            "x-request-id": "req-bot-webhook",
+            "x-github-event": "pull_request",
+            "x-hub-signature-256": "sha256=test",
+            "x-github-delivery": "delivery-1",
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.headers["X-Request-Id"] == "req-bot-webhook"
+    assert response.json()["status"] == "processed"
+
+
+def test_github_webhook_route_maps_signature_errors(monkeypatch):
+    async def fake_handle_github_webhook(payload: bytes, event_name: str, signature_header: str, delivery_id: str = ""):
+        raise PermissionError("GitHub webhook signature is invalid.")
+
+    monkeypatch.setattr("app.routes.github_bot.handle_github_webhook", fake_handle_github_webhook)
+
+    response = client.post(
+        "/api/github-bot/webhooks/github",
+        content=b'{}',
+        headers={
+            "x-github-event": "pull_request",
+            "x-hub-signature-256": "sha256=test",
+        },
+    )
+
+    assert response.status_code == 403
+    assert response.json()["error_code"] == "forbidden"
