@@ -3,6 +3,30 @@ import { Link } from "react-router-dom";
 
 import { SiteFooter } from "../components/site_footer";
 
+const product_surfaces = [
+  {
+    eyebrow: "Review in browser",
+    title: "Web Review Workspace",
+    detail:
+      "Paste a public pull request URL and move through the verdict, signals, top files, and next steps in one guided workspace.",
+    points: ["Paste PR URL", "Inspect risks and verdict", "Follow the top-file path"],
+  },
+  {
+    eyebrow: "Review in GitHub",
+    title: "GitHub Review Bot",
+    detail:
+      "Install the Reviewer app on a repository, pick an open pull request, and choose whether review should run manually or automatically.",
+    points: ["Manual Review", "Automatic Review", "Review New Pushes"],
+  },
+  {
+    eyebrow: "Review in terminal",
+    title: "CLI",
+    detail:
+      "Use Reviewer from the terminal when you want a fast local workflow, then publish the summary through the hosted bot path.",
+    points: ["reviewer login", "reviewer analyze <pr-url>", "reviewer publish-summary <pr-url>"],
+  },
+];
+
 const pipeline_steps = [
   {
     number: "01",
@@ -82,6 +106,12 @@ const trust_points = [
   "Built for fast review",
 ];
 
+const bot_modes = [
+  "Manual Review for one selected open pull request",
+  "Automatic Review when a new pull request opens",
+  "Review New Pushes when new commits are added",
+];
+
 const reliability_points = [
   "Shows when analysis is cached, partial, or using a saved fallback.",
   "Uses GitHub metadata, changed files, commits, and patch hints instead of invented context.",
@@ -104,14 +134,52 @@ export function AboutPage() {
             <span className="hero-dot" />
             <span>How Reviewer works</span>
           </div>
-          <h1 className="how-h1">A faster review flow built around real pull request signals.</h1>
+          <h1 className="how-h1">One review engine, delivered across the website, GitHub, and the terminal.</h1>
           <p className="how-sub">
-            Reviewer turns a public GitHub pull request into a structured review workspace so engineers know where to look before they approve.
+            Reviewer turns a public GitHub pull request into structured review output, then delivers it through the <b>Web Review Workspace</b>, the <b>GitHub Review Bot</b>, and the <b>CLI</b> so teams can work where they already review code.
           </p>
           <div className="how-trust-row">
             {trust_points.map((trust_point) => (
               <div key={trust_point} className="how-trust-chip">{trust_point}</div>
             ))}
+          </div>
+        </div>
+
+        <div className="surfaces-section">
+          <div className="section-label">Product surfaces</div>
+          <div className="surface-grid">
+            {product_surfaces.map((product_surface) => (
+              <div key={product_surface.title} className="surface-card">
+                <div className="surface-topline">{product_surface.eyebrow}</div>
+                <div className="surface-title">{product_surface.title}</div>
+                <div className="surface-detail">{product_surface.detail}</div>
+                <div className="surface-points">
+                  {product_surface.points.map((point) => (
+                    <div key={point} className="surface-point">{point}</div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="bot-flow-section">
+          <div className="section-label">GitHub bot behavior</div>
+          <div className="bot-flow-card">
+            <div className="bot-flow-copy">
+              <div className="bot-flow-title">Connect a repository, select an open pull request, then decide how hands-on Reviewer should be.</div>
+              <div className="bot-flow-detail">
+                The website should guide users through repository selection, open pull request selection, and the two operating styles that matter: trigger a review yourself or let the GitHub bot handle it automatically.
+              </div>
+            </div>
+            <div className="bot-flow-steps">
+              {bot_modes.map((mode, index) => (
+                <div key={mode} className="bot-flow-step">
+                  <div className="bot-flow-step-number">0{index + 1}</div>
+                  <div className="bot-flow-step-label">{mode}</div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
 
@@ -188,6 +256,7 @@ export function AboutPage() {
 
           <div className="how-footer-actions">
             <Link to="/" className="history-action history-action-primary">Analyze a PR</Link>
+            <a href="https://github.com/apps/reviewer-live" className="history-action" target="_blank" rel="noreferrer">Install GitHub App</a>
           </div>
         </div>
       </div>
@@ -196,4 +265,3 @@ export function AboutPage() {
     </div>
   );
 }
-
