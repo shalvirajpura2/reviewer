@@ -28,10 +28,21 @@ def build_github_app_jwt(now_timestamp: int | None = None) -> str:
     return jwt.encode(payload, private_key, algorithm="RS256")
 
 
+async def fetch_app_installations() -> list[dict[str, object]]:
+    payload = await github_fetch(
+        "/app/installations?per_page=100",
+        github_token=build_github_app_jwt(),
+        action_name="fetch GitHub App installations",
+    )
+
+    return payload if isinstance(payload, list) else []
+
+
 async def fetch_repo_installation_id(parsed_pr: dict[str, str | int]) -> int:
     payload = await github_fetch(
         f"/repos/{parsed_pr['owner']}/{parsed_pr['repo']}/installation",
         github_token=build_github_app_jwt(),
+        action_name="fetch the repository installation",
     )
 
     installation_id = payload.get("id") if isinstance(payload, dict) else None
@@ -41,8 +52,7 @@ async def fetch_repo_installation_id(parsed_pr: dict[str, str | int]) -> int:
     return int(installation_id)
 
 
-async def fetch_installation_access_token(parsed_pr: dict[str, str | int]) -> str:
-    installation_id = await fetch_repo_installation_id(parsed_pr)
+async def fetch_installation_access_token_by_id(installation_id: int) -> str:
     payload = await github_send(
         "POST",
         f"/app/installations/{installation_id}/access_tokens",
@@ -56,3 +66,22 @@ async def fetch_installation_access_token(parsed_pr: dict[str, str | int]) -> st
         raise PermissionError("Reviewer GitHub App could not create an installation token for this repository.")
 
     return str(installation_token)
+
+
+async def fetch_installation_repositories(installation_id: int) -> list[dict[str, object]]:
+    payload = await github_fetch(
+        "/installation/repositories?per_page=100",
+        github_token=await fetch_installation_access_token_by_id(installation_id),
+        action_name="fetch installation repositories",
+    )
+
+    if not isinstance(payload, dict):
+        return []
+
+    repositories = payload.get("repositories", [])
+    return repositories if isinstance(repositories, list) else []
+
+
+async def fetch_installation_access_token(parsed_pr: dict[str, str | int]) -> str:
+    installation_id = await fetch_repo_installation_id(parsed_pr)
+    return await fetch_installation_access_token_by_id(installation_id)

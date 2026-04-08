@@ -37,7 +37,7 @@ def test_build_github_app_jwt_uses_settings_and_private_key(monkeypatch):
 async def test_fetch_installation_access_token_uses_repo_installation(monkeypatch):
     monkeypatch.setattr(github_app_auth, "build_github_app_jwt", lambda: "jwt-token")
 
-    async def fake_github_fetch(path: str, github_token=None):
+    async def fake_github_fetch(path: str, github_token=None, action_name=None):
         assert path == "/repos/acme/reviewer/installation"
         assert github_token == "jwt-token"
         return {"id": 44}
@@ -55,3 +55,38 @@ async def test_fetch_installation_access_token_uses_repo_installation(monkeypatc
     token = await github_app_auth.fetch_installation_access_token({"owner": "acme", "repo": "reviewer", "pull_number": 9})
 
     assert token == "installation-token"
+
+
+@pytest.mark.asyncio
+async def test_fetch_app_installations_uses_app_jwt(monkeypatch):
+    monkeypatch.setattr(github_app_auth, "build_github_app_jwt", lambda: "jwt-token")
+
+    async def fake_github_fetch(path: str, github_token=None, action_name=None):
+        assert path == "/app/installations?per_page=100"
+        assert github_token == "jwt-token"
+        return [{"id": 44}, {"id": 45}]
+
+    monkeypatch.setattr(github_app_auth, "github_fetch", fake_github_fetch)
+
+    payload = await github_app_auth.fetch_app_installations()
+
+    assert len(payload) == 2
+
+
+@pytest.mark.asyncio
+async def test_fetch_installation_repositories_uses_installation_token(monkeypatch):
+    async def fake_fetch_installation_access_token_by_id(installation_id: int):
+        assert installation_id == 44
+        return "installation-token"
+
+    async def fake_github_fetch(path: str, github_token=None, action_name=None):
+        assert path == "/installation/repositories?per_page=100"
+        assert github_token == "installation-token"
+        return {"repositories": [{"full_name": "acme/reviewer"}]}
+
+    monkeypatch.setattr(github_app_auth, "fetch_installation_access_token_by_id", fake_fetch_installation_access_token_by_id)
+    monkeypatch.setattr(github_app_auth, "github_fetch", fake_github_fetch)
+
+    payload = await github_app_auth.fetch_installation_repositories(44)
+
+    assert payload == [{"full_name": "acme/reviewer"}]

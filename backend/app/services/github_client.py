@@ -399,3 +399,13 @@ async def upsert_review_summary_comment(parsed_pr: dict[str, str | int], body: s
 async def fetch_repo_stars(owner: str, repo: str) -> int:
     payload = await github_fetch(f"/repos/{owner}/{repo}")
     return int(payload.get("stargazers_count", 0))
+
+
+async def fetch_open_pull_requests(owner: str, repo: str, github_token: str | None = None) -> list[dict[str, Any]]:
+    payload = await github_fetch(
+        f"/repos/{owner}/{repo}/pulls?state=open&per_page=100",
+        github_token=github_token,
+        action_name="fetch open pull requests",
+    )
+
+    return payload if isinstance(payload, list) else []
