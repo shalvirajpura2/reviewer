@@ -4,6 +4,7 @@ import { BrandLogo } from "./brand_logo";
 
 const footer_links = [
   { label: "Home", to: "/", external: false },
+  { label: "GitHub Bot", to: "/github", external: false },
   { label: "How it works", to: "/about", external: false },
   { label: "Install App", to: "https://github.com/apps/reviewer-live", external: true },
   { label: "GitHub", to: "https://github.com/shalvirajpura2/reviewer", external: true },
