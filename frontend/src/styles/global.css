@@ -9009,3 +9009,33 @@ nav {
   gap: 10px;
   margin-top: 16px;
 }
+.gb-surface-message {
+  margin-bottom: 18px;
+  padding: 14px 16px;
+  border: 1px solid rgba(var(--border2), 0.2);
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.gb-surface-success {
+  background: rgba(92, 255, 138, 0.08);
+  color: rgb(var(--text));
+}
+
+.gb-surface-error {
+  background: rgba(255, 122, 89, 0.08);
+  color: rgb(var(--text));
+}
+
+.gb-panel-note {
+  margin-top: 18px;
+  color: rgb(var(--text2));
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.gb-inline-action:disabled,
+.gb-toggle-button:disabled {
+  cursor: wait;
+  opacity: 0.72;
+}

@@ -1,4 +1,10 @@
 import type { BackendAnalysisResult, BackendMetadata } from "../types/review";
+import type {
+  GithubBotPullRequestsResponse,
+  GithubBotRepositoriesResponse,
+  GithubBotRepositorySettings,
+  ReviewCommentPublication,
+} from "../types/github_bot";
 import { normalize_pr_url, pr_url_validation_message } from "./pr_url";
 
 const configured_backend_url = import.meta.env.VITE_BACKEND_URL?.replace(/\/$/, "");
@@ -187,4 +193,59 @@ export async function record_site_visit(client_id: string): Promise<SiteStats> {
 
 export async function get_repo_stars(): Promise<RepoStars> {
   return request_json<RepoStars>("/api/stats/repo-stars", undefined, "Reviewer repo stars are unavailable.");
+}
+
+export async function get_github_bot_repositories(signal?: AbortSignal): Promise<GithubBotRepositoriesResponse> {
+  return request_json<GithubBotRepositoriesResponse>(
+    "/api/github-bot/repositories",
+    {
+      method: "GET",
+      signal,
+    },
+    "Reviewer could not load connected GitHub repositories."
+  );
+}
+
+export async function get_github_bot_pull_requests(owner: string, repo: string, signal?: AbortSignal): Promise<GithubBotPullRequestsResponse> {
+  return request_json<GithubBotPullRequestsResponse>(
+    `/api/github-bot/repositories/${owner}/${repo}/pulls`,
+    {
+      method: "GET",
+      signal,
+    },
+    "Reviewer could not load open pull requests for that repository."
+  );
+}
+
+export async function update_github_bot_settings(
+  owner: string,
+  repo: string,
+  settings: GithubBotRepositorySettings,
+): Promise<GithubBotRepositorySettings> {
+  return request_json<GithubBotRepositorySettings>(
+    `/api/github-bot/repositories/${owner}/${repo}/settings`,
+    {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(settings),
+    },
+    "Reviewer could not save repository review settings."
+  );
+}
+
+export async function trigger_github_bot_review(owner: string, repo: string, pull_number: number): Promise<ReviewCommentPublication> {
+  return request_json<ReviewCommentPublication>(
+    `/api/github-bot/repositories/${owner}/${repo}/review`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Reviewer-Client-Id": get_or_create_client_id(),
+      },
+      body: JSON.stringify({ pull_number }),
+    },
+    "Reviewer could not trigger a manual GitHub review for that pull request."
+  );
 }
