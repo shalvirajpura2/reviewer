@@ -20,6 +20,12 @@ type PullRequestCard = {
   summary: string;
 };
 
+type RepositorySettings = {
+  manual_review: boolean;
+  automatic_review: boolean;
+  review_new_pushes: boolean;
+};
+
 const repositories: RepositoryCard[] = [
   {
     name: "shalvirajpura2/reviewer",
@@ -36,6 +42,19 @@ const repositories: RepositoryCard[] = [
     review_mode: "manual review",
   },
 ];
+
+const initial_settings: Record<string, RepositorySettings> = {
+  "shalvirajpura2/reviewer": {
+    manual_review: true,
+    automatic_review: true,
+    review_new_pushes: true,
+  },
+  "shalvirajpura2/reviewer-docs": {
+    manual_review: true,
+    automatic_review: false,
+    review_new_pushes: false,
+  },
+};
 
 const open_pull_requests: PullRequestCard[] = [
   {
@@ -74,18 +93,21 @@ const open_pull_requests: PullRequestCard[] = [
 
 const automation_modes = [
   {
+    key: "manual_review",
     title: "Manual Review",
     detail: "Pick one open pull request and ask Reviewer to post a summary right now.",
   },
   {
+    key: "automatic_review",
     title: "Automatic Review",
     detail: "Post a Reviewer summary automatically whenever a new pull request opens.",
   },
   {
+    key: "review_new_pushes",
     title: "Review New Pushes",
     detail: "Re-run the summary when additional commits are pushed to the same open pull request.",
   },
-];
+] as const;
 
 const activity_items = [
   "Last bot summary posted 6 minutes ago on reviewer#18",
@@ -101,8 +123,22 @@ function repo_state_class(state: RepositoryCard["state"]) {
   return "gb-state gb-state-manual";
 }
 
+function mode_copy(settings: RepositorySettings) {
+  if (settings.automatic_review && settings.review_new_pushes) {
+    return "automatic review";
+  }
+
+  if (settings.automatic_review) {
+    return "automatic review";
+  }
+
+  return "manual review";
+}
+
 export function GithubBotPage() {
   const [selected_repository, set_selected_repository] = useState(repositories[0]?.name ?? "");
+  const [selected_pull_request, set_selected_pull_request] = useState<number | null>(null);
+  const [repo_settings, set_repo_settings] = useState<Record<string, RepositorySettings>>(initial_settings);
 
   const filtered_pull_requests = useMemo(
     () => open_pull_requests.filter((pull_request) => pull_request.repo === selected_repository),
@@ -110,6 +146,18 @@ export function GithubBotPage() {
   );
 
   const selected_repository_card = repositories.find((repository) => repository.name === selected_repository) ?? repositories[0];
+  const selected_repository_settings = repo_settings[selected_repository] ?? initial_settings[selected_repository];
+  const selected_pull_request_card = filtered_pull_requests.find((pull_request) => pull_request.number === selected_pull_request) ?? filtered_pull_requests[0] ?? null;
+
+  function toggle_setting(setting_key: keyof RepositorySettings) {
+    set_repo_settings((current) => ({
+      ...current,
+      [selected_repository]: {
+        ...(current[selected_repository] ?? initial_settings[selected_repository]),
+        [setting_key]: !(current[selected_repository] ?? initial_settings[selected_repository])[setting_key],
+      },
+    }));
+  }
 
   return (
     <div className="github-bot-page">
@@ -143,7 +191,7 @@ export function GithubBotPage() {
           </div>
           <div className="gb-summary-card">
             <div className="gb-summary-label">active repository</div>
-            <div className="gb-summary-value gb-summary-value-small">{selected_repository_card?.review_mode ?? "manual review"}</div>
+            <div className="gb-summary-value gb-summary-value-small">{mode_copy(selected_repository_settings)}</div>
             <div className="gb-summary-copy">Current selection: {selected_repository_card?.name ?? "No repository selected"}</div>
           </div>
         </div>
@@ -161,27 +209,34 @@ export function GithubBotPage() {
               Choose where the GitHub bot should be active. Repository settings control whether reviews stay manual or become automatic.
             </div>
             <div className="gb-repo-list">
-              {repositories.map((repository) => (
-                <button
-                  key={repository.name}
-                  type="button"
-                  className={`gb-repo-card ${selected_repository === repository.name ? "gb-repo-card-active" : ""}`}
-                  onClick={() => set_selected_repository(repository.name)}
-                >
-                  <div className="gb-repo-top">
-                    <div>
-                      <div className="gb-repo-name">{repository.name}</div>
-                      <div className="gb-repo-meta">{repository.open_prs} open PRs</div>
+              {repositories.map((repository) => {
+                const repository_settings = repo_settings[repository.name] ?? initial_settings[repository.name];
+
+                return (
+                  <button
+                    key={repository.name}
+                    type="button"
+                    className={`gb-repo-card ${selected_repository === repository.name ? "gb-repo-card-active" : ""}`}
+                    onClick={() => {
+                      set_selected_repository(repository.name);
+                      set_selected_pull_request(null);
+                    }}
+                  >
+                    <div className="gb-repo-top">
+                      <div>
+                        <div className="gb-repo-name">{repository.name}</div>
+                        <div className="gb-repo-meta">{repository.open_prs} open PRs</div>
+                      </div>
+                      <span className={repo_state_class(repository.state)}>{mode_copy(repository_settings)}</span>
                     </div>
-                    <span className={repo_state_class(repository.state)}>{repository.review_mode}</span>
-                  </div>
-                  <div className="gb-repo-copy">{repository.summary}</div>
-                  <div className="gb-repo-actions">
-                    <span className="history-action history-action-primary">Selected repository</span>
-                    <span className="history-action">Adjust settings</span>
-                  </div>
-                </button>
-              ))}
+                    <div className="gb-repo-copy">{repository.summary}</div>
+                    <div className="gb-repo-actions">
+                      <span className="history-action history-action-primary">Selected repository</span>
+                      <span className="history-action">Adjust settings</span>
+                    </div>
+                  </button>
+                );
+              })}
             </div>
           </div>
 
@@ -198,7 +253,12 @@ export function GithubBotPage() {
             </div>
             <div className="gb-pr-list">
               {filtered_pull_requests.map((pull_request) => (
-                <div key={`${pull_request.repo}-${pull_request.number}`} className="gb-pr-card">
+                <button
+                  key={`${pull_request.repo}-${pull_request.number}`}
+                  type="button"
+                  className={`gb-pr-card ${selected_pull_request_card?.number === pull_request.number ? "gb-pr-card-active" : ""}`}
+                  onClick={() => set_selected_pull_request(pull_request.number)}
+                >
                   <div className="gb-pr-top">
                     <div>
                       <div className="gb-pr-repo">{pull_request.repo} #{pull_request.number}</div>
@@ -209,9 +269,9 @@ export function GithubBotPage() {
                   <div className="gb-pr-summary">{pull_request.summary}</div>
                   <div className="gb-pr-footer">
                     <span className="gb-pr-mode">{pull_request.mode}</span>
-                    <button type="button" className="history-action history-action-primary">Review now</button>
+                    <span className="history-action history-action-primary">Review now</span>
                   </div>
-                </div>
+                </button>
               ))}
             </div>
           </div>
@@ -222,32 +282,62 @@ export function GithubBotPage() {
             <div className="gb-panel-top">
               <div>
                 <div className="gb-panel-label">automation</div>
-                <div className="gb-panel-title">Review modes</div>
+                <div className="gb-panel-title">Repository review settings</div>
               </div>
               <Bot className="gb-panel-icon" />
             </div>
-            <div className="gb-mode-list">
-              {automation_modes.map((mode) => (
-                <div key={mode.title} className="gb-mode-card">
-                  <div className="gb-mode-title">{mode.title}</div>
-                  <div className="gb-mode-copy">{mode.detail}</div>
-                  <div className="gb-mode-toggle-row">
-                    <span className="gb-mode-status">Available in repo settings</span>
-                    <span className="gb-mode-toggle">Toggle</span>
+            <div className="gb-panel-copy">
+              These toggles should be stored per repository. For now, they update the UI state so the product behavior is understandable before we wire the backend settings API.
+            </div>
+            <div className="gb-settings-grid">
+              {automation_modes.map((mode) => {
+                const setting_key = mode.key;
+                const is_enabled = selected_repository_settings?.[setting_key] ?? false;
+
+                return (
+                  <div key={mode.title} className={`gb-mode-card ${is_enabled ? "gb-mode-card-active" : ""}`}>
+                    <div className="gb-mode-title">{mode.title}</div>
+                    <div className="gb-mode-copy">{mode.detail}</div>
+                    <div className="gb-mode-toggle-row">
+                      <span className="gb-mode-status">{is_enabled ? "Enabled on this repository" : "Disabled on this repository"}</span>
+                      <button type="button" className={`gb-toggle-button ${is_enabled ? "gb-toggle-button-active" : ""}`} onClick={() => toggle_setting(setting_key)}>
+                        {is_enabled ? "On" : "Off"}
+                      </button>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
 
           <div className="gb-panel">
             <div className="gb-panel-top">
               <div>
-                <div className="gb-panel-label">activity</div>
-                <div className="gb-panel-title">Bot status snapshot</div>
+                <div className="gb-panel-label">selection</div>
+                <div className="gb-panel-title">Current bot focus</div>
               </div>
               <History className="gb-panel-icon" />
             </div>
+            <div className="gb-focus-card">
+              <div className="gb-focus-label">Repository</div>
+              <div className="gb-focus-title">{selected_repository_card?.name}</div>
+              <div className="gb-focus-copy">{selected_repository_card?.summary}</div>
+              <div className="gb-focus-row">
+                <span className="gb-pr-mode">{mode_copy(selected_repository_settings)}</span>
+                <span className="gb-mode-status">{filtered_pull_requests.length} open PRs available</span>
+              </div>
+            </div>
+            {selected_pull_request_card ? (
+              <div className="gb-focus-card gb-focus-card-secondary">
+                <div className="gb-focus-label">Selected pull request</div>
+                <div className="gb-focus-title">{selected_pull_request_card.title}</div>
+                <div className="gb-focus-copy">{selected_pull_request_card.summary}</div>
+                <div className="gb-focus-row">
+                  <span className="gb-pr-mode">{selected_pull_request_card.mode}</span>
+                  <span className="gb-mode-status">Updated {selected_pull_request_card.updated}</span>
+                </div>
+              </div>
+            ) : null}
             <div className="gb-activity-list">
               {activity_items.map((activity_item) => (
                 <div key={activity_item} className="gb-activity-item">
@@ -271,3 +361,4 @@ export function GithubBotPage() {
     </div>
   );
 }
+

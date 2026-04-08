@@ -8843,3 +8843,92 @@ nav {
   border-color: rgba(92, 255, 138, 0.28);
   background: rgba(92, 255, 138, 0.06);
 }
+
+.gb-pr-card {
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+}
+
+.gb-pr-card-active {
+  border-color: rgba(92, 255, 138, 0.28);
+  background: rgba(92, 255, 138, 0.05);
+}
+
+.gb-settings-grid {
+  display: grid;
+  gap: 14px;
+  margin-top: 18px;
+}
+
+.gb-mode-card-active {
+  border-color: rgba(92, 255, 138, 0.24);
+  background: rgba(92, 255, 138, 0.05);
+}
+
+.gb-toggle-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 56px;
+  min-height: 32px;
+  padding: 0 12px;
+  border: 1px solid rgba(var(--border2), 0.22);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.03);
+  color: rgb(var(--text2));
+  font-family: "JetBrains Mono", monospace;
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.gb-toggle-button-active {
+  border-color: rgba(92, 255, 138, 0.3);
+  background: rgba(92, 255, 138, 0.12);
+  color: rgb(var(--green));
+}
+
+.gb-focus-card {
+  margin-top: 18px;
+  padding: 16px;
+  border: 1px solid rgba(var(--border2), 0.18);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.gb-focus-card-secondary {
+  margin-top: 14px;
+}
+
+.gb-focus-label {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: rgb(var(--text2));
+}
+
+.gb-focus-title {
+  margin-top: 8px;
+  font-family: "Plus Jakarta Sans", sans-serif;
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.3;
+  color: rgb(var(--text));
+}
+
+.gb-focus-copy {
+  margin-top: 8px;
+  color: rgb(var(--text2));
+  font-size: 14px;
+  line-height: 1.72;
+}
+
+.gb-focus-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  margin-top: 14px;
+}
