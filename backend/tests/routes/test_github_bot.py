@@ -90,3 +90,31 @@ def test_repository_settings_routes(monkeypatch):
     assert get_response.status_code == 200
     assert put_response.status_code == 200
     assert put_response.json()["automatic_review"] is True
+
+
+def test_trigger_manual_review_route(monkeypatch):
+    from app.models.review_domain import ReviewCommentPublication
+
+    async def fake_trigger_manual_review(owner: str, repo: str, pull_number: int, client_key: str):
+        assert owner == "acme"
+        assert repo == "reviewer"
+        assert pull_number == 18
+        assert client_key == "testclient"
+        return ReviewCommentPublication(
+            action="created",
+            comment_id=501,
+            html_url="https://github.com/acme/reviewer/pull/18#issuecomment-501",
+            body="comment body",
+        )
+
+    monkeypatch.setattr("app.routes.github_bot.trigger_manual_review", fake_trigger_manual_review)
+
+    response = client.post(
+        "/api/github-bot/repositories/acme/reviewer/review",
+        json={"pull_number": 18},
+        headers={"x-request-id": "req-bot-review"},
+    )
+
+    assert response.status_code == 200
+    assert response.headers["X-Request-Id"] == "req-bot-review"
+    assert response.json()["comment_id"] == 501

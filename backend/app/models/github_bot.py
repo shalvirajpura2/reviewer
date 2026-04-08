@@ -43,3 +43,7 @@ class GithubBotRepositorySettingsUpdate(BaseModel):
     manual_review: bool = True
     automatic_review: bool = False
     review_new_pushes: bool = False
+
+
+class GithubBotManualReviewRequest(BaseModel):
+    pull_number: int

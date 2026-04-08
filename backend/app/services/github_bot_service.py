@@ -14,6 +14,7 @@ from app.services.github_app_auth import (
 )
 from app.services.github_bot_settings_store import load_repository_settings, save_repository_settings
 from app.services.github_client import fetch_open_pull_requests
+from app.services.review_publish_service import publish_review_summary
 
 
 async def list_connected_repositories() -> GithubBotRepositoriesResponse:
@@ -108,3 +109,15 @@ def get_repository_settings(owner: str, repo: str) -> GithubBotRepositorySetting
 
 def update_repository_settings(owner: str, repo: str, settings: GithubBotRepositorySettings) -> GithubBotRepositorySettings:
     return save_repository_settings(owner, repo, settings)
+
+
+def build_pull_request_url(owner: str, repo: str, pull_number: int) -> str:
+    return f"https://github.com/{owner}/{repo}/pull/{pull_number}"
+
+
+async def trigger_manual_review(owner: str, repo: str, pull_number: int, client_key: str):
+    return await publish_review_summary(
+        build_pull_request_url(owner, repo, pull_number),
+        client_key,
+        use_backend_publish_token=True,
+    )

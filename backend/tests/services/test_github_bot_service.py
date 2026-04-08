@@ -103,3 +103,25 @@ def test_update_repository_settings_delegates_to_store(monkeypatch):
     assert captured["owner"] == "acme"
     assert captured["repo"] == "reviewer"
     assert settings.manual_review is True
+
+
+
+@pytest.mark.asyncio
+async def test_trigger_manual_review_reuses_publish_summary(monkeypatch):
+    captured = {}
+
+    async def fake_publish_review_summary(pr_url: str, client_key: str, use_backend_publish_token: bool = False):
+        captured["pr_url"] = pr_url
+        captured["client_key"] = client_key
+        captured["use_backend_publish_token"] = use_backend_publish_token
+        return {"ok": True}
+
+    monkeypatch.setattr(github_bot_service, "publish_review_summary", fake_publish_review_summary)
+
+    result = await github_bot_service.trigger_manual_review("acme", "reviewer", 18, "testclient")
+
+    assert result == {"ok": True}
+    assert captured["pr_url"] == "https://github.com/acme/reviewer/pull/18"
+    assert captured["client_key"] == "testclient"
+    assert captured["use_backend_publish_token"] is True
+
