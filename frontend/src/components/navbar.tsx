@@ -12,6 +12,7 @@ const nav_items = [
 ] as const;
 
 const repo_url = "https://github.com/shalvirajpura2/reviewer";
+const install_app_url = "https://github.com/apps/reviewer-live";
 const builder_url = "https://shalvirajpura.xyz";
 
 function format_star_count(stars: number) {
@@ -88,6 +89,9 @@ export function Navbar() {
                 {nav_item.label}
               </NavLink>
             ))}
+            <a href={install_app_url} target="_blank" rel="noreferrer" className="nav-tab">
+              Install App
+            </a>
             <a href={builder_url} target="_blank" rel="noreferrer" className="nav-tab">
               Builder
             </a>
