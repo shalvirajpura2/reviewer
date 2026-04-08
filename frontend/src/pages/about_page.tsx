@@ -3,30 +3,6 @@ import { Link } from "react-router-dom";
 
 import { SiteFooter } from "../components/site_footer";
 
-const product_surfaces = [
-  {
-    eyebrow: "Review in browser",
-    title: "Web Review Workspace",
-    detail:
-      "Paste a public pull request URL and move through the verdict, signals, top files, and next steps in one guided workspace.",
-    points: ["Paste PR URL", "Inspect risks and verdict", "Follow the top-file path"],
-  },
-  {
-    eyebrow: "Review in GitHub",
-    title: "GitHub Review Bot",
-    detail:
-      "Install the Reviewer app on a repository, pick an open pull request, and choose whether review should run manually or automatically.",
-    points: ["Manual Review", "Automatic Review", "Review New Pushes"],
-  },
-  {
-    eyebrow: "Review in terminal",
-    title: "CLI",
-    detail:
-      "Use Reviewer from the terminal when you want a fast local workflow, then publish the summary through the hosted bot path.",
-    points: ["reviewer login", "reviewer analyze <pr-url>", "reviewer publish-summary <pr-url>"],
-  },
-];
-
 const pipeline_steps = [
   {
     number: "01",
@@ -106,10 +82,10 @@ const trust_points = [
   "Built for fast review",
 ];
 
-const bot_modes = [
-  "Manual Review for one selected open pull request",
-  "Automatic Review when a new pull request opens",
-  "Review New Pushes when new commits are added",
+const delivery_channels = [
+  "Web Review Workspace for guided browser review",
+  "GitHub Review Bot for repository-native feedback",
+  "CLI for terminal-first workflows",
 ];
 
 const reliability_points = [
@@ -145,44 +121,6 @@ export function AboutPage() {
           </div>
         </div>
 
-        <div className="surfaces-section">
-          <div className="section-label">Product surfaces</div>
-          <div className="surface-grid">
-            {product_surfaces.map((product_surface) => (
-              <div key={product_surface.title} className="surface-card">
-                <div className="surface-topline">{product_surface.eyebrow}</div>
-                <div className="surface-title">{product_surface.title}</div>
-                <div className="surface-detail">{product_surface.detail}</div>
-                <div className="surface-points">
-                  {product_surface.points.map((point) => (
-                    <div key={point} className="surface-point">{point}</div>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="bot-flow-section">
-          <div className="section-label">GitHub bot behavior</div>
-          <div className="bot-flow-card">
-            <div className="bot-flow-copy">
-              <div className="bot-flow-title">Connect a repository, select an open pull request, then decide how hands-on Reviewer should be.</div>
-              <div className="bot-flow-detail">
-                The website should guide users through repository selection, open pull request selection, and the two operating styles that matter: trigger a review yourself or let the GitHub bot handle it automatically.
-              </div>
-            </div>
-            <div className="bot-flow-steps">
-              {bot_modes.map((mode, index) => (
-                <div key={mode} className="bot-flow-step">
-                  <div className="bot-flow-step-number">0{index + 1}</div>
-                  <div className="bot-flow-step-label">{mode}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-
         <div className="how-overview-grid">
           <div className="how-overview-card how-overview-system-card">
             <div className="a-panel-title">system view</div>
@@ -192,6 +130,14 @@ export function AboutPage() {
               <span>Review context</span>
               <span>Scoring</span>
               <span>Review workspace</span>
+            </div>
+          </div>
+          <div className="how-overview-card how-overview-output-card">
+            <div className="a-panel-title">delivery channels</div>
+            <div className="how-step-points">
+              {delivery_channels.map((channel) => (
+                <div key={channel} className="how-step-point">{channel}</div>
+              ))}
             </div>
           </div>
           <div className="how-overview-card how-overview-output-card">
