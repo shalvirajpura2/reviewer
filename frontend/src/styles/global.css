@@ -8932,3 +8932,19 @@ nav {
   align-items: center;
   margin-top: 14px;
 }
+.gb-inline-action {
+  border: none;
+  cursor: pointer;
+}
+
+.gb-focus-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.gb-panel-callout-queued {
+  background: rgba(92, 255, 138, 0.09);
+  border-color: rgba(92, 255, 138, 0.26);
+}

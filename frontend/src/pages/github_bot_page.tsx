@@ -138,6 +138,7 @@ function mode_copy(settings: RepositorySettings) {
 export function GithubBotPage() {
   const [selected_repository, set_selected_repository] = useState(repositories[0]?.name ?? "");
   const [selected_pull_request, set_selected_pull_request] = useState<number | null>(null);
+  const [queued_pull_request, set_queued_pull_request] = useState<number | null>(null);
   const [repo_settings, set_repo_settings] = useState<Record<string, RepositorySettings>>(initial_settings);
 
   const filtered_pull_requests = useMemo(
@@ -157,6 +158,11 @@ export function GithubBotPage() {
         [setting_key]: !(current[selected_repository] ?? initial_settings[selected_repository])[setting_key],
       },
     }));
+  }
+
+  function queue_manual_review(pull_request_number: number) {
+    set_selected_pull_request(pull_request_number);
+    set_queued_pull_request(pull_request_number);
   }
 
   return (
@@ -220,6 +226,7 @@ export function GithubBotPage() {
                     onClick={() => {
                       set_selected_repository(repository.name);
                       set_selected_pull_request(null);
+                      set_queued_pull_request(null);
                     }}
                   >
                     <div className="gb-repo-top">
@@ -269,7 +276,9 @@ export function GithubBotPage() {
                   <div className="gb-pr-summary">{pull_request.summary}</div>
                   <div className="gb-pr-footer">
                     <span className="gb-pr-mode">{pull_request.mode}</span>
-                    <span className="history-action history-action-primary">Review now</span>
+                    <button type="button" className="history-action history-action-primary gb-inline-action" onClick={() => queue_manual_review(pull_request.number)}>
+                      Review now
+                    </button>
                   </div>
                 </button>
               ))}
@@ -336,6 +345,23 @@ export function GithubBotPage() {
                   <span className="gb-pr-mode">{selected_pull_request_card.mode}</span>
                   <span className="gb-mode-status">Updated {selected_pull_request_card.updated}</span>
                 </div>
+                <div className="gb-focus-actions">
+                  <button type="button" className="history-action history-action-primary gb-inline-action" onClick={() => queue_manual_review(selected_pull_request_card.number)}>
+                    Review now
+                  </button>
+                  <span className="history-action">Manual Review</span>
+                </div>
+              </div>
+            ) : null}
+            {selected_pull_request_card && queued_pull_request === selected_pull_request_card.number ? (
+              <div className="gb-panel-callout gb-panel-callout-queued">
+                <Sparkles className="gb-callout-icon" />
+                <div>
+                  <div className="gb-callout-title">Manual review queued</div>
+                  <div className="gb-callout-copy">
+                    Reviewer is ready to post a GitHub summary for {selected_pull_request_card.repo} #{selected_pull_request_card.number}. This will map cleanly to the backend manual trigger in the next slice.
+                  </div>
+                </div>
               </div>
             ) : null}
             <div className="gb-activity-list">
@@ -361,4 +387,3 @@ export function GithubBotPage() {
     </div>
   );
 }
-
