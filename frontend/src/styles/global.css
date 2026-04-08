@@ -8826,3 +8826,20 @@ nav {
     width: 100%;
   }
 }
+
+.gb-summary-value-small {
+  font-size: 24px;
+  line-height: 1.2;
+  text-transform: capitalize;
+}
+
+.gb-repo-card {
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+}
+
+.gb-repo-card-active {
+  border-color: rgba(92, 255, 138, 0.28);
+  background: rgba(92, 255, 138, 0.06);
+}

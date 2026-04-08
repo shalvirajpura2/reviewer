@@ -1,8 +1,26 @@
 import { Bot, CheckCircle2, Github, GitPullRequest, History, Sparkles } from "lucide-react";
+import { useMemo, useState } from "react";
 
 import { SiteFooter } from "../components/site_footer";
 
-const repositories = [
+type RepositoryCard = {
+  name: string;
+  state: "installed" | "manual";
+  summary: string;
+  open_prs: number;
+  review_mode: string;
+};
+
+type PullRequestCard = {
+  title: string;
+  repo: string;
+  number: number;
+  updated: string;
+  mode: string;
+  summary: string;
+};
+
+const repositories: RepositoryCard[] = [
   {
     name: "shalvirajpura2/reviewer",
     state: "installed",
@@ -12,14 +30,14 @@ const repositories = [
   },
   {
     name: "shalvirajpura2/reviewer-docs",
-    state: "manual only",
+    state: "manual",
     summary: "Keep the bot quiet by default, then trigger a single review when a PR needs a deeper pass.",
     open_prs: 1,
     review_mode: "manual review",
   },
 ];
 
-const open_pull_requests = [
+const open_pull_requests: PullRequestCard[] = [
   {
     title: "Ship GitHub App bot publishing",
     repo: "shalvirajpura2/reviewer",
@@ -35,6 +53,14 @@ const open_pull_requests = [
     updated: "18m ago",
     mode: "Manual Review",
     summary: "Ready for a one-click review now from the website before merge.",
+  },
+  {
+    title: "Refine bot repository settings UX",
+    repo: "shalvirajpura2/reviewer",
+    number: 20,
+    updated: "31m ago",
+    mode: "Review New Pushes",
+    summary: "Configured to run again whenever a new commit lands on this open pull request.",
   },
   {
     title: "Tighten CLI onboarding copy",
@@ -67,7 +93,7 @@ const activity_items = [
   "Review New Pushes is enabled on 2 open pull requests",
 ];
 
-function repo_state_class(state: string) {
+function repo_state_class(state: RepositoryCard["state"]) {
   if (state === "installed") {
     return "gb-state gb-state-live";
   }
@@ -76,6 +102,15 @@ function repo_state_class(state: string) {
 }
 
 export function GithubBotPage() {
+  const [selected_repository, set_selected_repository] = useState(repositories[0]?.name ?? "");
+
+  const filtered_pull_requests = useMemo(
+    () => open_pull_requests.filter((pull_request) => pull_request.repo === selected_repository),
+    [selected_repository]
+  );
+
+  const selected_repository_card = repositories.find((repository) => repository.name === selected_repository) ?? repositories[0];
+
   return (
     <div className="github-bot-page">
       <section className="github-bot-hero">
@@ -98,18 +133,18 @@ export function GithubBotPage() {
         <div className="gb-summary-grid">
           <div className="gb-summary-card">
             <div className="gb-summary-label">connected repositories</div>
-            <div className="gb-summary-value">2</div>
+            <div className="gb-summary-value">{repositories.length}</div>
             <div className="gb-summary-copy">Repositories where the Reviewer app is already available.</div>
           </div>
           <div className="gb-summary-card">
             <div className="gb-summary-label">open pull requests</div>
-            <div className="gb-summary-value">4</div>
-            <div className="gb-summary-copy">Only open pull requests appear in the bot workspace.</div>
+            <div className="gb-summary-value">{filtered_pull_requests.length}</div>
+            <div className="gb-summary-copy">Only open pull requests appear in the bot workspace for the selected repository.</div>
           </div>
           <div className="gb-summary-card">
-            <div className="gb-summary-label">automation state</div>
-            <div className="gb-summary-value">hybrid</div>
-            <div className="gb-summary-copy">Manual and automatic review can both exist across repositories.</div>
+            <div className="gb-summary-label">active repository</div>
+            <div className="gb-summary-value gb-summary-value-small">{selected_repository_card?.review_mode ?? "manual review"}</div>
+            <div className="gb-summary-copy">Current selection: {selected_repository_card?.name ?? "No repository selected"}</div>
           </div>
         </div>
 
@@ -127,7 +162,12 @@ export function GithubBotPage() {
             </div>
             <div className="gb-repo-list">
               {repositories.map((repository) => (
-                <div key={repository.name} className="gb-repo-card">
+                <button
+                  key={repository.name}
+                  type="button"
+                  className={`gb-repo-card ${selected_repository === repository.name ? "gb-repo-card-active" : ""}`}
+                  onClick={() => set_selected_repository(repository.name)}
+                >
                   <div className="gb-repo-top">
                     <div>
                       <div className="gb-repo-name">{repository.name}</div>
@@ -137,10 +177,10 @@ export function GithubBotPage() {
                   </div>
                   <div className="gb-repo-copy">{repository.summary}</div>
                   <div className="gb-repo-actions">
-                    <button type="button" className="history-action history-action-primary">Open repository</button>
-                    <button type="button" className="history-action">Adjust settings</button>
+                    <span className="history-action history-action-primary">Selected repository</span>
+                    <span className="history-action">Adjust settings</span>
                   </div>
-                </div>
+                </button>
               ))}
             </div>
           </div>
@@ -157,7 +197,7 @@ export function GithubBotPage() {
               Users should only see open pull requests here. The manual trigger path starts from this queue, not from closed or merged work.
             </div>
             <div className="gb-pr-list">
-              {open_pull_requests.map((pull_request) => (
+              {filtered_pull_requests.map((pull_request) => (
                 <div key={`${pull_request.repo}-${pull_request.number}`} className="gb-pr-card">
                   <div className="gb-pr-top">
                     <div>
