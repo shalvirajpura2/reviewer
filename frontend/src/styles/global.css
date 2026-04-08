@@ -8364,6 +8364,12 @@ nav {
   gap: 18px;
 }
 
+.surfaces-section {
+  width: min(100%, var(--page-width));
+  margin: 0 auto;
+  padding: 0 var(--space-7) 80px;
+}
+
 .surface-card {
   position: relative;
   padding: 26px;
@@ -8424,9 +8430,9 @@ nav {
 }
 
 .bot-flow-section {
-  max-width: var(--page-max);
+  width: min(100%, var(--page-width));
   margin: 0 auto;
-  padding: 0 var(--page-pad) 96px;
+  padding: 0 var(--space-7) 96px;
 }
 
 .bot-flow-card {
@@ -8536,3 +8542,15 @@ nav {
     grid-template-columns: 1fr;
   }
 }
+
+
+
+
+@media (max-width: 720px) {
+  .surfaces-section,
+  .bot-flow-section {
+    padding-left: var(--space-5);
+    padding-right: var(--space-5);
+  }
+}
+

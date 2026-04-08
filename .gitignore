@@ -45,3 +45,7 @@ Thumbs.db
 .idea/
 *.egg-info/
 
+# Local-only assets
+docs/*.excalidraw
+backend/*.private-key.pem
+
