@@ -1,5 +1,5 @@
 import { useEffect, useState, type ElementType } from "react";
-import { Activity, Eye, ShieldCheck, Sparkles } from "lucide-react";
+import { Activity, Bot, Eye, ShieldCheck, Sparkles, TerminalSquare } from "lucide-react";
 
 import { BackgroundBoxes } from "../components/background_boxes";
 import { PrInputBar } from "../components/pr_input_bar";
@@ -37,6 +37,40 @@ const feature_items = [
       "Every report shows when the analysis is partial, cached, or live so the output stays useful without overclaiming.",
     tag: "Honest",
   },
+];
+
+const surface_items = [
+  {
+    icon: Eye,
+    eyebrow: "Review in browser",
+    title: "Web Review Workspace",
+    detail:
+      "Paste a public pull request URL, inspect the verdict, follow the top files, and understand exactly what pushed risk up or down.",
+    points: ["Paste PR URL", "Guided review workspace", "Explainable verdict"],
+  },
+  {
+    icon: Bot,
+    eyebrow: "Review in GitHub",
+    title: "GitHub Review Bot",
+    detail:
+      "Install the Reviewer app on a repository, select an open pull request, and choose whether reviews should run manually or automatically.",
+    points: ["Manual Review", "Automatic Review", "Review New Pushes"],
+  },
+  {
+    icon: TerminalSquare,
+    eyebrow: "Review in terminal",
+    title: "CLI",
+    detail:
+      "Install Reviewer locally, sign in once, analyze pull requests from the terminal, and publish summaries through the hosted backend flow.",
+    points: ["reviewer login", "reviewer analyze <pr-url>", "reviewer publish-summary <pr-url>"],
+  },
+];
+
+const bot_steps = [
+  "Connect GitHub",
+  "Choose repository",
+  "Select an open PR",
+  "Review now or enable automation",
 ];
 
 function format_avg_time(value: number | null) {
@@ -85,7 +119,7 @@ export function HomePage() {
         <div className="home-hero">
           <div className="hero-eyebrow">
             <span className="hero-dot" />
-            <span>Rule-based pull request review</span>
+            <span>Three review surfaces, one shared engine</span>
           </div>
 
           <div className="hero-lottie-shell" aria-hidden="true">
@@ -100,12 +134,10 @@ export function HomePage() {
           </div>
 
           <h1 className="hero-h1">
-            Paste a PR. <br />
-            Start the review <span className="hl">faster</span>.
+            Review on the <span className="hl">website</span>, in <span className="hl">GitHub</span>, or from the <span className="hl">terminal</span>.
           </h1>
           <p className="hero-sub">
-            Paste a <b>public GitHub pull request</b> to see where review should start, what raised risk, and
-            how much confidence to place in the result.
+            Reviewer is no longer just a web report. Use the <b>Web Review Workspace</b>, the <b>GitHub Review Bot</b>, or the <b>CLI</b> depending on where your team wants review feedback to land.
           </p>
 
           <div className="hero-input-shell">
@@ -157,8 +189,57 @@ export function HomePage() {
         </div>
       </div>
 
+      <div className="surfaces-section">
+        <div className="section-label">Choose your surface</div>
+        <div className="surface-grid">
+          {surface_items.map((surface_item) => {
+            const Icon = surface_item.icon;
+
+            return (
+              <div key={surface_item.title} className="surface-card">
+                <div className="surface-topline">{surface_item.eyebrow}</div>
+                <div className="surface-icon">
+                  <Icon className="h-5 w-5" strokeWidth={1.9} />
+                </div>
+                <div className="surface-title">{surface_item.title}</div>
+                <div className="surface-detail">{surface_item.detail}</div>
+                <div className="surface-points">
+                  {surface_item.points.map((point) => (
+                    <div key={point} className="surface-point">{point}</div>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="bot-flow-section">
+        <div className="section-label">GitHub Review Bot flow</div>
+        <div className="bot-flow-card">
+          <div className="bot-flow-copy">
+            <div className="bot-flow-title">Install once, choose how Reviewer should behave on each repository.</div>
+            <div className="bot-flow-detail">
+              The website should guide users through repository selection, open pull request selection, and the two bot modes that matter: <b>Manual Review</b> and <b>Automatic Review</b>.
+            </div>
+          </div>
+          <div className="bot-flow-steps">
+            {bot_steps.map((step, index) => (
+              <div key={step} className="bot-flow-step">
+                <div className="bot-flow-step-number">0{index + 1}</div>
+                <div className="bot-flow-step-label">{step}</div>
+              </div>
+            ))}
+          </div>
+          <div className="bot-flow-modes">
+            <div className="bot-mode-chip">Manual Review</div>
+            <div className="bot-mode-chip">Automatic Review</div>
+            <div className="bot-mode-chip">Review New Pushes</div>
+          </div>
+        </div>
+      </div>
+
       <SiteFooter />
     </div>
   );
 }
-
