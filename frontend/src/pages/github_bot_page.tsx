@@ -115,6 +115,12 @@ const activity_items = [
   "Review New Pushes is enabled on 2 open pull requests",
 ];
 
+const setup_steps = [
+  "Install the Reviewer GitHub App on the repository you want to manage.",
+  "Choose one connected repository and inspect only its open pull requests.",
+  "Trigger a manual review now or turn on automation for future pull requests.",
+];
+
 function repo_state_class(state: RepositoryCard["state"]) {
   if (state === "installed") {
     return "gb-state gb-state-live";
@@ -322,6 +328,36 @@ export function GithubBotPage() {
           <div className="gb-panel">
             <div className="gb-panel-top">
               <div>
+                <div className="gb-panel-label">setup</div>
+                <div className="gb-panel-title">Bot setup and repository status</div>
+              </div>
+              <CheckCircle2 className="gb-panel-icon" />
+            </div>
+            <div className="gb-status-stack">
+              <div className="gb-focus-card">
+                <div className="gb-focus-label">Install status</div>
+                <div className="gb-focus-title">GitHub App connected</div>
+                <div className="gb-focus-copy">
+                  Reviewer is already installed for {selected_repository_card?.name}, so this repository can use Manual Review, Automatic Review, and Review New Pushes.
+                </div>
+              </div>
+              <div className="gb-focus-card gb-focus-card-secondary">
+                <div className="gb-focus-label">What happens next</div>
+                <div className="gb-step-list">
+                  {setup_steps.map((step, index) => (
+                    <div key={step} className="gb-step-item">
+                      <span className="gb-step-number">{index + 1}</span>
+                      <span>{step}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="gb-panel">
+            <div className="gb-panel-top">
+              <div>
                 <div className="gb-panel-label">selection</div>
                 <div className="gb-panel-title">Current bot focus</div>
               </div>
@@ -387,3 +423,4 @@ export function GithubBotPage() {
     </div>
   );
 }
+

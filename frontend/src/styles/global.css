@@ -8948,3 +8948,37 @@ nav {
   background: rgba(92, 255, 138, 0.09);
   border-color: rgba(92, 255, 138, 0.26);
 }
+.gb-status-stack {
+  display: grid;
+  gap: 14px;
+  margin-top: 18px;
+}
+
+.gb-step-list {
+  display: grid;
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.gb-step-item {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 12px;
+  align-items: flex-start;
+  color: rgb(var(--text2));
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.gb-step-number {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  background: rgba(92, 255, 138, 0.1);
+  color: rgb(var(--green));
+  font-family: "JetBrains Mono", monospace;
+  font-size: 11px;
+}
