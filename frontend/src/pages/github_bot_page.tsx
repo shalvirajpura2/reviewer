@@ -41,6 +41,13 @@ const repositories: RepositoryCard[] = [
     open_prs: 1,
     review_mode: "manual review",
   },
+  {
+    name: "shalvirajpura2/reviewer-marketing",
+    state: "manual",
+    summary: "This repository is connected, but there are no open pull requests waiting for the bot right now.",
+    open_prs: 0,
+    review_mode: "manual review",
+  },
 ];
 
 const initial_settings: Record<string, RepositorySettings> = {
@@ -50,6 +57,11 @@ const initial_settings: Record<string, RepositorySettings> = {
     review_new_pushes: true,
   },
   "shalvirajpura2/reviewer-docs": {
+    manual_review: true,
+    automatic_review: false,
+    review_new_pushes: false,
+  },
+  "shalvirajpura2/reviewer-marketing": {
     manual_review: true,
     automatic_review: false,
     review_new_pushes: false,
@@ -265,29 +277,42 @@ export function GithubBotPage() {
               Users should only see open pull requests here. The manual trigger path starts from this queue, not from closed or merged work.
             </div>
             <div className="gb-pr-list">
-              {filtered_pull_requests.map((pull_request) => (
-                <button
-                  key={`${pull_request.repo}-${pull_request.number}`}
-                  type="button"
-                  className={`gb-pr-card ${selected_pull_request_card?.number === pull_request.number ? "gb-pr-card-active" : ""}`}
-                  onClick={() => set_selected_pull_request(pull_request.number)}
-                >
-                  <div className="gb-pr-top">
-                    <div>
-                      <div className="gb-pr-repo">{pull_request.repo} #{pull_request.number}</div>
-                      <div className="gb-pr-title">{pull_request.title}</div>
+              {filtered_pull_requests.length > 0 ? (
+                filtered_pull_requests.map((pull_request) => (
+                  <button
+                    key={`${pull_request.repo}-${pull_request.number}`}
+                    type="button"
+                    className={`gb-pr-card ${selected_pull_request_card?.number === pull_request.number ? "gb-pr-card-active" : ""}`}
+                    onClick={() => set_selected_pull_request(pull_request.number)}
+                  >
+                    <div className="gb-pr-top">
+                      <div>
+                        <div className="gb-pr-repo">{pull_request.repo} #{pull_request.number}</div>
+                        <div className="gb-pr-title">{pull_request.title}</div>
+                      </div>
+                      <span className="gb-pr-updated">{pull_request.updated}</span>
                     </div>
-                    <span className="gb-pr-updated">{pull_request.updated}</span>
+                    <div className="gb-pr-summary">{pull_request.summary}</div>
+                    <div className="gb-pr-footer">
+                      <span className="gb-pr-mode">{pull_request.mode}</span>
+                      <button type="button" className="history-action history-action-primary gb-inline-action" onClick={() => queue_manual_review(pull_request.number)}>
+                        Review now
+                      </button>
+                    </div>
+                  </button>
+                ))
+              ) : (
+                <div className="gb-empty-state">
+                  <div className="gb-empty-title">No open pull requests</div>
+                  <div className="gb-empty-copy">
+                    {selected_repository_card?.name} is connected, but there is nothing for the bot to review right now. When a new pull request opens, it will appear here for manual or automatic review.
                   </div>
-                  <div className="gb-pr-summary">{pull_request.summary}</div>
-                  <div className="gb-pr-footer">
-                    <span className="gb-pr-mode">{pull_request.mode}</span>
-                    <button type="button" className="history-action history-action-primary gb-inline-action" onClick={() => queue_manual_review(pull_request.number)}>
-                      Review now
-                    </button>
+                  <div className="gb-empty-actions">
+                    <span className="history-action history-action-primary">Repository connected</span>
+                    <span className="history-action">Waiting for open PRs</span>
                   </div>
-                </button>
-              ))}
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -423,4 +448,5 @@ export function GithubBotPage() {
     </div>
   );
 }
+
 

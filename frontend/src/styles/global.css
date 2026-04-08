@@ -8982,3 +8982,30 @@ nav {
   font-family: "JetBrains Mono", monospace;
   font-size: 11px;
 }
+.gb-empty-state {
+  margin-top: 18px;
+  padding: 22px;
+  border: 1px dashed rgba(var(--border2), 0.24);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.gb-empty-title {
+  font-family: "Plus Jakarta Sans", sans-serif;
+  font-size: 18px;
+  font-weight: 600;
+  color: rgb(var(--text));
+}
+
+.gb-empty-copy {
+  margin-top: 10px;
+  color: rgb(var(--text2));
+  font-size: 14px;
+  line-height: 1.72;
+}
+
+.gb-empty-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 16px;
+}
