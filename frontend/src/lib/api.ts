@@ -21,6 +21,17 @@ export type RepoStars = {
   stars: number;
 };
 
+export type BackendHealth = {
+  status: string;
+  github_token_configured: boolean;
+  github_app_configured: boolean;
+  github_webhook_configured: boolean;
+  reviewer_publish_github_token_configured: boolean;
+  database_configured: boolean;
+  uptime_seconds: number;
+  cache_ttl_seconds: number;
+  stale_cache_ttl_seconds: number;
+};
 export type RecentAnalysis = {
   repo_name: string;
   pr_number: number;
@@ -248,4 +259,8 @@ export async function trigger_github_bot_review(owner: string, repo: string, pul
     },
     "Reviewer could not trigger a manual GitHub review for that pull request."
   );
+}
+
+export async function get_backend_health(): Promise<BackendHealth> {
+  return request_json<BackendHealth>("/health", undefined, "Reviewer backend health is unavailable.");
 }

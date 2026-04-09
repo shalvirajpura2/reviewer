@@ -3,11 +3,13 @@ import { useEffect, useMemo, useState } from "react";
 
 import { SiteFooter } from "../components/site_footer";
 import {
+  get_backend_health,
   get_github_bot_pull_requests,
   get_github_bot_repositories,
   trigger_github_bot_review,
   update_github_bot_settings,
 } from "../lib/api";
+import type { BackendHealth } from "../lib/api";
 import type { GithubBotPullRequestSummary, GithubBotRepositorySettings, GithubBotRepositorySummary } from "../types/github_bot";
 
 const default_repository_settings: GithubBotRepositorySettings = {
@@ -105,6 +107,7 @@ export function GithubBotPage() {
   const [selected_pull_request, set_selected_pull_request] = useState<number | null>(null);
   const [queued_pull_request, set_queued_pull_request] = useState<number | null>(null);
   const [repo_settings, set_repo_settings] = useState<Record<string, GithubBotRepositorySettings>>({});
+  const [backend_health, set_backend_health] = useState<BackendHealth | null>(null);
   const [is_loading_repositories, set_is_loading_repositories] = useState(true);
   const [is_loading_pull_requests, set_is_loading_pull_requests] = useState(false);
   const [is_saving_settings, set_is_saving_settings] = useState(false);
@@ -120,15 +123,19 @@ export function GithubBotPage() {
       set_surface_error(null);
 
       try {
-        const response = await get_github_bot_repositories(request_controller.signal);
-        set_repositories(response.repositories);
-        set_repo_settings(Object.fromEntries(response.repositories.map((repository) => [repository.full_name, repository.settings])));
+        const [repository_response, health_response] = await Promise.all([
+          get_github_bot_repositories(request_controller.signal),
+          get_backend_health(),
+        ]);
+        set_repositories(repository_response.repositories);
+        set_repo_settings(Object.fromEntries(repository_response.repositories.map((repository) => [repository.full_name, repository.settings])));
+        set_backend_health(health_response);
         set_selected_repository((current) => {
-          if (current && response.repositories.some((repository) => repository.full_name === current)) {
+          if (current && repository_response.repositories.some((repository) => repository.full_name === current)) {
             return current;
           }
 
-          return response.repositories[0]?.full_name ?? "";
+          return repository_response.repositories[0]?.full_name ?? "";
         });
       } catch (error) {
         if (request_controller.signal.aborted) {
@@ -228,6 +235,8 @@ export function GithubBotPage() {
     [pull_requests, selected_pull_request],
   );
 
+  const automation_ready = Boolean(backend_health?.github_app_configured && backend_health?.github_webhook_configured);
+
   const activity_items = useMemo(() => {
     const automatic_repository_count = repositories.filter((repository) => {
       const settings = repo_settings[repository.full_name] ?? repository.settings;
@@ -242,8 +251,9 @@ export function GithubBotPage() {
       `${repositories.length} connected repositories available for the bot workspace`,
       `${automatic_repository_count} repositories currently have Automatic Review enabled`,
       `${push_repository_count} repositories currently re-run reviews on new pushes`,
+      automation_ready ? "Backend webhook automation is live for connected repositories" : "Backend webhook automation still needs final setup",
     ];
-  }, [repo_settings, repositories]);
+  }, [automation_ready, repo_settings, repositories]);
 
   async function handle_toggle(setting_key: keyof GithubBotRepositorySettings) {
     if (!selected_repository_card || is_saving_settings) {
@@ -365,9 +375,9 @@ export function GithubBotPage() {
             <div className="gb-summary-copy">Only open pull requests appear in the bot workspace for the selected repository.</div>
           </div>
           <div className="gb-summary-card">
-            <div className="gb-summary-label">active repository</div>
-            <div className="gb-summary-value gb-summary-value-small">{selected_repository_card ? mode_copy(selected_repository_settings) : "waiting"}</div>
-            <div className="gb-summary-copy">Current selection: {selected_repository_card?.full_name ?? "No repository selected"}</div>
+            <div className="gb-summary-label">automation status</div>
+            <div className="gb-summary-value gb-summary-value-small">{backend_health ? (automation_ready ? "live" : "partial") : "checking"}</div>
+            <div className="gb-summary-copy">{automation_ready ? "GitHub App publish and webhook automation are configured." : "Repository settings are available, but backend automation still needs final setup."}</div>
           </div>
         </div>
 
@@ -500,7 +510,7 @@ export function GithubBotPage() {
               <Bot className="gb-panel-icon" />
             </div>
             <div className="gb-panel-copy">
-              These toggles are now backed by the bot-management API and saved per repository.
+              These toggles are backed by the bot-management API and will drive webhook automation when the backend is fully configured.
             </div>
             <div className="gb-settings-grid">
               {automation_modes.map((mode) => {
@@ -532,7 +542,7 @@ export function GithubBotPage() {
             <div className="gb-panel-top">
               <div>
                 <div className="gb-panel-label">setup</div>
-                <div className="gb-panel-title">Bot setup and repository status</div>
+                <div className="gb-panel-title">Bot setup and automation status</div>
               </div>
               <CheckCircle2 className="gb-panel-icon" />
             </div>
@@ -544,6 +554,10 @@ export function GithubBotPage() {
                   {selected_repository_card
                     ? `Reviewer is installed for ${selected_repository_card.full_name}, so this repository can use Manual Review, Automatic Review, and Review New Pushes.`
                     : "Install the GitHub App on at least one repository to unlock the bot workspace."}
+                </div>
+                <div className="gb-focus-row">
+                  <span className={repo_state_class(automation_ready)}>{automation_ready ? "automation live" : "webhook setup needed"}</span>
+                  <span className="gb-mode-status">{backend_health ? `uptime ${backend_health.uptime_seconds}s` : "checking backend health"}</span>
                 </div>
               </div>
               <div className="gb-focus-card gb-focus-card-secondary">
@@ -627,8 +641,8 @@ export function GithubBotPage() {
             <div className="gb-panel-callout">
               <Sparkles className="gb-callout-icon" />
               <div>
-                <div className="gb-callout-title">Next backend slice</div>
-                <div className="gb-callout-copy">Add webhook automation so Automatic Review and Review New Pushes run without manual clicks.</div>
+                <div className="gb-callout-title">Automation status</div>
+                <div className="gb-callout-copy">{automation_ready ? "Automatic Review and Review New Pushes can now be driven by GitHub webhooks." : "Finish backend webhook setup to turn saved repository automation settings into live bot behavior."}</div>
               </div>
             </div>
           </div>
@@ -639,4 +653,3 @@ export function GithubBotPage() {
     </div>
   );
 }
-
