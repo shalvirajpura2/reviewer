@@ -8,11 +8,12 @@ from app.services import github_webhook_service
 async def test_handle_github_webhook_processes_opened_pull_request(monkeypatch):
     monkeypatch.setattr(github_webhook_service.settings, "github_webhook_secret", "secret")
 
-    async def fake_trigger_manual_review(owner: str, repo: str, pull_number: int, client_key: str):
+    async def fake_trigger_manual_review(owner: str, repo: str, pull_number: int, client_key: str, trigger_source: str = "manual_review"):
         assert owner == "acme"
         assert repo == "reviewer"
         assert pull_number == 18
         assert client_key == "github_webhook:delivery-1"
+        assert trigger_source == "automatic_review"
         return {"ok": True}
 
     monkeypatch.setattr(github_webhook_service, "trigger_manual_review", fake_trigger_manual_review)
@@ -40,7 +41,8 @@ async def test_handle_github_webhook_processes_synchronize_when_enabled(monkeypa
         lambda owner, repo: GithubBotRepositorySettings(manual_review=True, automatic_review=False, review_new_pushes=True),
     )
 
-    async def fake_trigger_manual_review(owner: str, repo: str, pull_number: int, client_key: str):
+    async def fake_trigger_manual_review(owner: str, repo: str, pull_number: int, client_key: str, trigger_source: str = "manual_review"):
+        assert trigger_source == "review_new_pushes"
         return {"ok": True}
 
     monkeypatch.setattr(github_webhook_service, "trigger_manual_review", fake_trigger_manual_review)
@@ -63,7 +65,7 @@ async def test_handle_github_webhook_ignores_event_when_settings_do_not_match(mo
         lambda owner, repo: GithubBotRepositorySettings(manual_review=True, automatic_review=False, review_new_pushes=False),
     )
 
-    async def fake_trigger_manual_review(owner: str, repo: str, pull_number: int, client_key: str):
+    async def fake_trigger_manual_review(owner: str, repo: str, pull_number: int, client_key: str, trigger_source: str = "manual_review"):
         raise AssertionError("trigger_manual_review should not be called")
 
     monkeypatch.setattr(github_webhook_service, "trigger_manual_review", fake_trigger_manual_review)

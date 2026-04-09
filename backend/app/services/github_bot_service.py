@@ -1,10 +1,14 @@
+from datetime import datetime, timezone
+
 from app.models.github_bot import (
     GithubBotPullRequestSummary,
     GithubBotPullRequestsResponse,
     GithubBotRepositoriesResponse,
+    GithubBotRepositoryActivity,
     GithubBotRepositorySettings,
     GithubBotRepositorySummary,
 )
+from app.models.review_domain import ReviewCommentPublication
 from app.services.github_app_auth import (
     fetch_app_installations,
     fetch_installation_access_token_by_id,
@@ -12,7 +16,12 @@ from app.services.github_app_auth import (
     fetch_repo_installation_id,
     github_app_is_configured,
 )
-from app.services.github_bot_settings_store import load_repository_settings, save_repository_settings
+from app.services.github_bot_settings_store import (
+    load_repository_activity,
+    load_repository_settings,
+    save_repository_activity,
+    save_repository_settings,
+)
 from app.services.github_client import fetch_open_pull_requests
 from app.services.review_publish_service import publish_review_summary
 
@@ -40,6 +49,7 @@ async def list_connected_repositories() -> GithubBotRepositoriesResponse:
             owner_login = str(repository.get("owner", {}).get("login") or full_name.split("/")[0])
             repo_name = str(repository.get("name") or full_name.split("/")[-1])
             settings = load_repository_settings(owner_login, repo_name)
+            activity = load_repository_activity(owner_login, repo_name)
             open_pull_requests = await fetch_open_pull_requests(owner_login, repo_name, github_token=installation_token)
             repositories.append(
                 GithubBotRepositorySummary(
@@ -50,6 +60,7 @@ async def list_connected_repositories() -> GithubBotRepositoriesResponse:
                     default_branch=str(repository.get("default_branch") or "main"),
                     open_pull_requests=len(open_pull_requests),
                     settings=settings,
+                    activity=activity,
                 )
             )
             seen_full_names.add(full_name.lower())
@@ -62,6 +73,7 @@ async def list_repository_pull_requests(owner: str, repo: str) -> GithubBotPullR
     installation_id = await fetch_repo_installation_id({"owner": owner, "repo": repo, "pull_number": 0})
     installation_token = await fetch_installation_access_token_by_id(installation_id)
     settings = load_repository_settings(owner, repo)
+    activity = load_repository_activity(owner, repo)
     pull_requests = await fetch_open_pull_requests(owner, repo, github_token=installation_token)
 
     repository = GithubBotRepositorySummary(
@@ -72,6 +84,7 @@ async def list_repository_pull_requests(owner: str, repo: str) -> GithubBotPullR
         default_branch="main",
         open_pull_requests=len(pull_requests),
         settings=settings,
+        activity=activity,
     )
 
     return GithubBotPullRequestsResponse(
@@ -115,9 +128,41 @@ def build_pull_request_url(owner: str, repo: str, pull_number: int) -> str:
     return f"https://github.com/{owner}/{repo}/pull/{pull_number}"
 
 
-async def trigger_manual_review(owner: str, repo: str, pull_number: int, client_key: str):
-    return await publish_review_summary(
+def build_repository_activity(
+    pull_number: int,
+    trigger_source: str,
+    publication: ReviewCommentPublication,
+) -> GithubBotRepositoryActivity:
+    return GithubBotRepositoryActivity(
+        last_review_at=datetime.now(timezone.utc).isoformat(),
+        last_pull_number=pull_number,
+        last_trigger=trigger_source,
+        last_action=publication.action,
+        last_comment_url=publication.html_url,
+    )
+
+
+def record_repository_activity(
+    owner: str,
+    repo: str,
+    pull_number: int,
+    trigger_source: str,
+    publication: ReviewCommentPublication,
+) -> GithubBotRepositoryActivity:
+    return save_repository_activity(owner, repo, build_repository_activity(pull_number, trigger_source, publication))
+
+
+async def trigger_manual_review(
+    owner: str,
+    repo: str,
+    pull_number: int,
+    client_key: str,
+    trigger_source: str = "manual_review",
+):
+    publication = await publish_review_summary(
         build_pull_request_url(owner, repo, pull_number),
         client_key,
         use_backend_publish_token=True,
     )
+    record_repository_activity(owner, repo, pull_number, trigger_source, publication)
+    return publication

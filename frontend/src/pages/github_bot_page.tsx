@@ -66,6 +66,14 @@ function format_mode_label(mode: string) {
   return mode.split("_").join(" ");
 }
 
+function format_trigger_label(trigger: string) {
+  if (!trigger) {
+    return "manual review";
+  }
+
+  return format_mode_label(trigger);
+}
+
 function format_updated_label(updated_at: string) {
   if (!updated_at) {
     return "just now";
@@ -229,6 +237,7 @@ export function GithubBotPage() {
   const selected_repository_settings = selected_repository_card
     ? (repo_settings[selected_repository_card.full_name] ?? selected_repository_card.settings)
     : default_repository_settings;
+  const selected_repository_activity = selected_repository_card?.activity ?? null;
 
   const selected_pull_request_card = useMemo(
     () => pull_requests.find((pull_request) => pull_request.number === selected_pull_request) ?? pull_requests[0] ?? null,
@@ -328,6 +337,22 @@ export function GithubBotPage() {
         selected_repository_card.owner,
         selected_repository_card.repo,
         pull_request_number,
+      );
+      set_repositories((current) =>
+        current.map((repository) =>
+          repository.full_name === selected_repository_card.full_name
+            ? {
+                ...repository,
+                activity: {
+                  last_review_at: new Date().toISOString(),
+                  last_pull_number: pull_request_number,
+                  last_trigger: "manual_review",
+                  last_action: publication.action,
+                  last_comment_url: publication.html_url,
+                },
+              }
+            : repository,
+        ),
       );
       set_surface_feedback(
         publication.action === "updated"
@@ -595,6 +620,26 @@ export function GithubBotPage() {
                 <span className="gb-mode-status">{selected_repository_card?.open_pull_requests ?? 0} open PRs available</span>
               </div>
             </div>
+            {selected_repository_activity?.last_review_at ? (
+              <div className="gb-focus-card gb-focus-card-secondary">
+                <div className="gb-focus-label">Latest bot activity</div>
+                <div className="gb-focus-title">Last reviewed PR #{selected_repository_activity.last_pull_number}</div>
+                <div className="gb-focus-copy">
+                  Reviewer last {selected_repository_activity.last_action || "updated"} a GitHub summary through {format_trigger_label(selected_repository_activity.last_trigger)}.
+                </div>
+                <div className="gb-focus-row">
+                  <span className="gb-pr-mode">{format_trigger_label(selected_repository_activity.last_trigger)}</span>
+                  <span className="gb-mode-status">Updated {format_updated_label(selected_repository_activity.last_review_at)}</span>
+                </div>
+                {selected_repository_activity.last_comment_url ? (
+                  <div className="gb-focus-actions">
+                    <a href={selected_repository_activity.last_comment_url} target="_blank" rel="noreferrer" className="history-action">
+                      Open summary comment
+                    </a>
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
             {selected_pull_request_card ? (
               <div className="gb-focus-card gb-focus-card-secondary">
                 <div className="gb-focus-label">Selected pull request</div>

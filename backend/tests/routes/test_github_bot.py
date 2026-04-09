@@ -3,7 +3,14 @@ import json
 from fastapi.testclient import TestClient
 
 from app.main import app
-from app.models.github_bot import GithubBotPullRequestsResponse, GithubBotRepositoriesResponse, GithubBotRepositorySettings, GithubBotRepositorySummary, GithubBotPullRequestSummary
+from app.models.github_bot import (
+    GithubBotPullRequestsResponse,
+    GithubBotRepositoriesResponse,
+    GithubBotRepositoryActivity,
+    GithubBotRepositorySettings,
+    GithubBotRepositorySummary,
+    GithubBotPullRequestSummary,
+)
 
 client = TestClient(app)
 
@@ -20,6 +27,7 @@ def test_list_connected_repositories_route(monkeypatch):
                     default_branch="main",
                     open_pull_requests=2,
                     settings=GithubBotRepositorySettings(manual_review=True, automatic_review=True, review_new_pushes=False),
+                    activity=GithubBotRepositoryActivity(last_review_at="", last_pull_number=0, last_trigger="", last_action="", last_comment_url=None),
                 )
             ]
         )
@@ -46,6 +54,7 @@ def test_list_repository_pull_requests_route(monkeypatch):
                 default_branch="main",
                 open_pull_requests=1,
                 settings=GithubBotRepositorySettings(manual_review=True, automatic_review=False, review_new_pushes=False),
+                activity=GithubBotRepositoryActivity(last_review_at="", last_pull_number=0, last_trigger="", last_action="", last_comment_url=None),
             ),
             pull_requests=[
                 GithubBotPullRequestSummary(

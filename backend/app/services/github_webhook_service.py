@@ -51,6 +51,13 @@ def should_trigger_automatic_review(action: str, automatic_review_enabled: bool,
     return False
 
 
+def webhook_trigger_source(action: str) -> str:
+    if action == "synchronize":
+        return "review_new_pushes"
+
+    return "automatic_review"
+
+
 async def handle_github_webhook(payload: bytes, event_name: str, signature_header: str, delivery_id: str = "") -> GithubBotWebhookResult:
     verify_github_webhook_signature(payload, signature_header)
 
@@ -85,7 +92,13 @@ async def handle_github_webhook(payload: bytes, event_name: str, signature_heade
     if not should_trigger_automatic_review(action, repository_settings.automatic_review, repository_settings.review_new_pushes):
         return GithubBotWebhookResult(status="ignored", event=event_name, action=action, detail="Repository automation settings do not trigger a review for this event.")
 
-    await trigger_manual_review(owner, repo, pull_number, f"github_webhook:{delivery_id or f'{owner}/{repo}#{pull_number}:{action}'}")
+    await trigger_manual_review(
+        owner,
+        repo,
+        pull_number,
+        f"github_webhook:{delivery_id or f'{owner}/{repo}#{pull_number}:{action}'}",
+        trigger_source=webhook_trigger_source(action),
+    )
     return GithubBotWebhookResult(
         status="processed",
         event=event_name,

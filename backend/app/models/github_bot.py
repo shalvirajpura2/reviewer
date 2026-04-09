@@ -7,6 +7,14 @@ class GithubBotRepositorySettings(BaseModel):
     review_new_pushes: bool = False
 
 
+class GithubBotRepositoryActivity(BaseModel):
+    last_review_at: str = ""
+    last_pull_number: int = 0
+    last_trigger: str = ""
+    last_action: str = ""
+    last_comment_url: str | None = None
+
+
 class GithubBotRepositorySummary(BaseModel):
     owner: str
     repo: str
@@ -16,6 +24,7 @@ class GithubBotRepositorySummary(BaseModel):
     app_installed: bool = True
     open_pull_requests: int = 0
     settings: GithubBotRepositorySettings
+    activity: GithubBotRepositoryActivity
 
 
 class GithubBotPullRequestSummary(BaseModel):

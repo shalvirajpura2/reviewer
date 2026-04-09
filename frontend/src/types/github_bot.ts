@@ -4,6 +4,14 @@ export type GithubBotRepositorySettings = {
   review_new_pushes: boolean;
 };
 
+export type GithubBotRepositoryActivity = {
+  last_review_at: string;
+  last_pull_number: number;
+  last_trigger: string;
+  last_action: string;
+  last_comment_url: string | null;
+};
+
 export type GithubBotRepositorySummary = {
   owner: string;
   repo: string;
@@ -13,6 +21,7 @@ export type GithubBotRepositorySummary = {
   app_installed: boolean;
   open_pull_requests: number;
   settings: GithubBotRepositorySettings;
+  activity: GithubBotRepositoryActivity;
 };
 
 export type GithubBotPullRequestSummary = {
