@@ -10,6 +10,7 @@ from fastapi.responses import JSONResponse
 
 from app.core.settings import settings
 from app.routes.analyze import router as analyze_router
+from app.routes.auth import router as auth_router
 from app.routes.github_bot import router as github_bot_router
 from app.routes.publish import router as publish_router
 from app.routes.stats import router as stats_router
@@ -40,7 +41,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_allow_origins,
     allow_origin_regex=settings.cors_allow_origin_regex,
-    allow_credentials=False,
+    allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "OPTIONS"],
     allow_headers=["*"],
 )
@@ -117,6 +118,7 @@ async def unhandled_exception_handler(request: Request, error: Exception):
 
 
 app.include_router(analyze_router)
+app.include_router(auth_router)
 app.include_router(github_bot_router)
 app.include_router(publish_router)
 app.include_router(stats_router)
@@ -128,6 +130,7 @@ async def health_check() -> dict[str, str | bool | int]:
         "status": "ok",
         "github_token_configured": bool(settings.github_token),
         "github_app_configured": bool(settings.github_app_id and settings.github_app_private_key),
+        "github_web_auth_configured": bool(settings.github_client_id and settings.github_client_secret),
         "github_webhook_configured": bool(settings.github_webhook_secret),
         "reviewer_publish_github_token_configured": bool(settings.reviewer_publish_github_token),
         "database_configured": bool(settings.database_url),

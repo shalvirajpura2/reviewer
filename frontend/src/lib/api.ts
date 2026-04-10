@@ -25,6 +25,7 @@ export type BackendHealth = {
   status: string;
   github_token_configured: boolean;
   github_app_configured: boolean;
+  github_web_auth_configured: boolean;
   github_webhook_configured: boolean;
   reviewer_publish_github_token_configured: boolean;
   database_configured: boolean;
@@ -51,6 +52,13 @@ export type PrPreview = {
 type ApiErrorPayload = {
   message?: string;
   detail?: string;
+};
+
+export type GithubWebSession = {
+  authenticated: boolean;
+  configured: boolean;
+  login: string;
+  user_id: number;
 };
 
 function resolve_backend_url() {
@@ -86,6 +94,7 @@ async function request_json<T>(path: string, init?: RequestInit, fallback_messag
   try {
     response = await fetch(`${resolve_backend_url()}${path}`, {
       ...init,
+      credentials: "include",
       signal: request_controller.signal,
     });
   } catch (error) {
@@ -215,6 +224,31 @@ export async function get_github_bot_repositories(signal?: AbortSignal): Promise
     },
     "Reviewer could not load connected GitHub repositories."
   );
+}
+
+export async function get_github_web_session(signal?: AbortSignal): Promise<GithubWebSession> {
+  return request_json<GithubWebSession>(
+    "/api/auth/session",
+    {
+      method: "GET",
+      signal,
+    },
+    "Reviewer could not load the GitHub dashboard session."
+  );
+}
+
+export async function logout_github_web_session(): Promise<void> {
+  await request_json<{ ok: boolean }>(
+    "/api/auth/logout",
+    {
+      method: "POST",
+    },
+    "Reviewer could not clear the GitHub dashboard session."
+  );
+}
+
+export function build_github_auth_start_url(next_path = "/github") {
+  return `${resolve_backend_url()}/api/auth/github/start?next=${encodeURIComponent(next_path)}`;
 }
 
 export async function get_github_bot_pull_requests(owner: string, repo: string, signal?: AbortSignal): Promise<GithubBotPullRequestsResponse> {
