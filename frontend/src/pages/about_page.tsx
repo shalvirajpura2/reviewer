@@ -83,9 +83,9 @@ const trust_points = [
 ];
 
 const delivery_channels = [
-  "Web workspace for guided browser review",
-  "GitHub bot for repository-native summaries",
-  "CLI for terminal-first review workflows",
+  "Browser workspace",
+  "GitHub bot",
+  "CLI",
 ];
 
 const reliability_points = [
@@ -108,11 +108,11 @@ export function AboutPage() {
         <div className="how-hero how-hero-upgraded">
           <div className="hero-eyebrow">
             <span className="hero-dot" />
-            <span>The review engine</span>
+            <span>How Reviewer works</span>
           </div>
           <h1 className="how-h1">One engine turns pull requests into usable review output.</h1>
           <p className="how-sub">
-            This page is about the engine itself: how Reviewer reads pull request data, builds structured review context, scores risk, and packages the result for the website, GitHub, and the terminal.
+            Reviewer reads pull request data from GitHub, builds structured review context, scores risk, and returns a review flow that helps you decide where to look first.
           </p>
           <div className="how-trust-row">
             {trust_points.map((trust_point) => (
@@ -133,7 +133,7 @@ export function AboutPage() {
             </div>
           </div>
           <div className="how-overview-card how-overview-output-card">
-            <div className="a-panel-title">delivery surfaces</div>
+            <div className="a-panel-title">where the output can appear</div>
             <div className="how-step-points">
               {delivery_channels.map((channel) => (
                 <div key={channel} className="how-step-point">{channel}</div>
@@ -186,7 +186,7 @@ export function AboutPage() {
 
           <div className="how-bottom-grid how-bottom-grid-balanced">
             <div className="how-limit-panel">
-              <div className="a-panel-title">why teams trust it</div>
+              <div className="a-panel-title">why the output stays useful</div>
               {reliability_points.map((point) => (
                 <div key={point} className="limit-item">{point}</div>
               ))}
@@ -202,7 +202,7 @@ export function AboutPage() {
 
           <div className="how-footer-actions">
             <Link to="/" className="history-action history-action-primary">Analyze a PR</Link>
-            <a href="https://github.com/apps/reviewer-live" className="history-action" target="_blank" rel="noreferrer">Install GitHub App</a>
+            <Link to="/github" className="history-action">Open GitHub Bot</Link>
           </div>
         </div>
       </div>

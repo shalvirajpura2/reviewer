@@ -1,4 +1,4 @@
-import { Bot, CheckCircle2, Github, GitPullRequest, History, LogOut, Rocket, Sparkles } from "lucide-react";
+import { Bot, CheckCircle2, Github, GitPullRequest, LogOut, Rocket, Sparkles } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 import { SiteFooter } from "../components/site_footer";
@@ -66,20 +66,6 @@ const onboarding_modes = [
     detail: "Keep Reviewer live on the same PR when additional commits are pushed.",
   },
 ] as const;
-
-const setup_steps = [
-  "Install the Reviewer GitHub App on the repository you want to manage.",
-  "Choose one repository and inspect only its open pull requests.",
-  "Trigger a manual review now or turn on automation for future pull requests.",
-];
-
-function repo_state_class(app_installed: boolean) {
-  if (app_installed) {
-    return "gb-state gb-state-live";
-  }
-
-  return "gb-state gb-state-manual";
-}
 
 function mode_copy(settings: GithubBotRepositorySettings) {
   if (settings.automatic_review && settings.review_new_pushes) {
@@ -431,24 +417,6 @@ export function GithubBotPage() {
       && backend_health?.github_webhook_configured,
   );
 
-  const activity_items = useMemo(() => {
-    const automatic_repository_count = repositories.filter((repository) => {
-      const settings = repo_settings[repository.full_name] ?? repository.settings;
-      return settings.automatic_review;
-    }).length;
-    const push_repository_count = repositories.filter((repository) => {
-      const settings = repo_settings[repository.full_name] ?? repository.settings;
-      return settings.review_new_pushes;
-    }).length;
-
-    return [
-      `${repositories.length} repositories visible for your GitHub account`,
-      `${automatic_repository_count} repositories currently have Automatic Review enabled`,
-      `${push_repository_count} repositories currently re-run reviews on new pushes`,
-      automation_ready ? "Backend webhook automation is live for your visible repositories" : "Backend webhook automation still needs final setup",
-    ];
-  }, [automation_ready, repo_settings, repositories]);
-
   const configured_repository_count = Object.keys(configured_onboarding_modes).length;
   const current_repository_saved_mode = selected_repository_card ? configured_onboarding_modes[selected_repository_card.full_name] : undefined;
   const current_repository_saved = Boolean(selected_repository_card && current_repository_saved_mode === onboarding_mode);
@@ -657,16 +625,13 @@ export function GithubBotPage() {
           <div className="gb-onboarding-shell gb-onboarding-shell-wide">
             <div className="gb-onboarding-hero">
               <span className="gb-pill">GitHub Review Bot</span>
-              <h1 className="gb-onboarding-title">Run Reviewer where you already review code.</h1>
+              <h1 className="gb-onboarding-title">Set up Reviewer for GitHub in a few steps.</h1>
               <p className="gb-onboarding-copy">
-                Connect GitHub, choose a repository, save the review mode for that repo, and let Reviewer guide the setup before you move into the dashboard.
+                Connect GitHub, choose a repository, save the review mode for that repo, and move into a dashboard built around open pull requests.
               </p>
               <div className="gb-onboarding-actions">
                 <a href={build_github_auth_start_url("/github")} className="gb-onboarding-primary">
                   Connect GitHub
-                </a>
-                <a href="https://github.com/apps/reviewer-live" target="_blank" rel="noreferrer" className="gb-onboarding-secondary">
-                  Install GitHub App
                 </a>
               </div>
             </div>
@@ -675,7 +640,7 @@ export function GithubBotPage() {
                 <span className="gb-preview-step-number">01</span>
                 <div>
                   <div className="gb-preview-step-title">Connect GitHub</div>
-                  <div className="gb-preview-step-copy">Start from your identity so Reviewer can guide setup only for repositories you can actually manage.</div>
+                  <div className="gb-preview-step-copy">Start from your identity so Reviewer only shows repositories you can actually manage.</div>
                 </div>
               </div>
               <div className="gb-preview-step">
@@ -689,7 +654,7 @@ export function GithubBotPage() {
                 <span className="gb-preview-step-number">03</span>
                 <div>
                   <div className="gb-preview-step-title">Save the mode</div>
-                  <div className="gb-preview-step-copy">Store Manual Review, Automatic Review, or Review New Pushes for each repository you configure.</div>
+                  <div className="gb-preview-step-copy">Save Manual Review, Automatic Review, or Review New Pushes for that repository.</div>
                 </div>
               </div>
             </div>
@@ -730,8 +695,8 @@ export function GithubBotPage() {
                 {is_loading_repositories ? <div className="gb-panel-note">Loading repositories...</div> : null}
                 {!is_loading_repositories && repositories.length === 0 ? (
                   <div className="gb-empty-state">
-                    <div className="gb-empty-title">No repositories ready yet</div>
-                    <div className="gb-empty-copy">Install the Reviewer GitHub App on a public repository, then come back here to finish setup.</div>
+                    <div className="gb-empty-title">No repositories available yet</div>
+                    <div className="gb-empty-copy">Reviewer could not find a public repository that is ready for setup yet.</div>
                   </div>
                 ) : null}
                 <div className="gb-onboarding-repo-list">
@@ -769,7 +734,7 @@ export function GithubBotPage() {
                   <span className="gb-section-kicker">Step 2</span>
                   <h2 className="gb-section-title">Choose the review mode</h2>
                 </div>
-                <p className="gb-section-copy">Each repository can remember its own mode, so save the behavior you want before entering the dashboard.</p>
+                <p className="gb-section-copy">Save the behavior you want for this repository before entering the dashboard.</p>
                 <div className="gb-onboarding-mode-grid">
                   {onboarding_modes.map((mode) => (
                     <button
@@ -869,20 +834,15 @@ export function GithubBotPage() {
             <div className="gb-panel-top">
               <div>
                 <div className="gb-panel-label">repositories</div>
-                <div className="gb-panel-title">Visible repos</div>
+                <div className="gb-panel-title">Repositories</div>
               </div>
               <Github className="gb-panel-icon" />
             </div>
             {is_loading_repositories ? <div className="gb-panel-note">Loading repositories you can manage...</div> : null}
             {!is_loading_repositories && repositories.length === 0 ? (
               <div className="gb-empty-state">
-                <div className="gb-empty-title">No visible repositories yet</div>
-                <div className="gb-empty-copy">Install the Reviewer GitHub App on a repository your GitHub account can access, then come back here to manage open pull requests and automation settings.</div>
-                <div className="gb-empty-actions">
-                  <a href="https://github.com/apps/reviewer-live" target="_blank" rel="noreferrer" className="history-action history-action-primary">
-                    Install GitHub App
-                  </a>
-                </div>
+                <div className="gb-empty-title">No repositories available</div>
+                <div className="gb-empty-copy">Reviewer could not find a public repository connected to your account yet.</div>
               </div>
             ) : null}
             <div className="gb-repo-list gb-repo-list-compact">
@@ -921,7 +881,7 @@ export function GithubBotPage() {
             <div className="gb-panel-top">
               <div>
                 <div className="gb-panel-label">pull requests</div>
-                <div className="gb-panel-title">Review queue</div>
+                <div className="gb-panel-title">Open pull requests</div>
               </div>
               <GitPullRequest className="gb-panel-icon" />
             </div>
@@ -985,7 +945,7 @@ export function GithubBotPage() {
             <div className="gb-panel-top">
               <div>
                 <div className="gb-panel-label">automation</div>
-                <div className="gb-panel-title">Live controls</div>
+                <div className="gb-panel-title">Automation</div>
               </div>
               <Bot className="gb-panel-icon" />
             </div>
@@ -1019,7 +979,7 @@ export function GithubBotPage() {
             <div className="gb-panel-top">
               <div>
                 <div className="gb-panel-label">status</div>
-                <div className="gb-panel-title">Current focus</div>
+              <div className="gb-panel-title">Status</div>
               </div>
               <CheckCircle2 className="gb-panel-icon" />
             </div>
@@ -1053,14 +1013,6 @@ export function GithubBotPage() {
                   </div>
                 </div>
               ) : null}
-              <div className="gb-activity-list gb-activity-list-tight">
-                {activity_items.map((activity_item) => (
-                  <div key={activity_item} className="gb-activity-item">
-                    <Sparkles className="gb-activity-icon" />
-                    <span>{activity_item}</span>
-                  </div>
-                ))}
-              </div>
               <div className="gb-panel-callout">
                 <Sparkles className="gb-callout-icon" />
                 <div>

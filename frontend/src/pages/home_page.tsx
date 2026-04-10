@@ -1,6 +1,6 @@
 import { useEffect, useState, type ElementType } from "react";
 import { Link } from "react-router-dom";
-import { Activity, Bot, Eye, ShieldCheck, Sparkles, TerminalSquare } from "lucide-react";
+import { Bot, Eye, TerminalSquare } from "lucide-react";
 
 import { BackgroundBoxes } from "../components/background_boxes";
 import { PrInputBar } from "../components/pr_input_bar";
@@ -9,92 +9,46 @@ import { get_site_stats, type SiteStats } from "../lib/api";
 
 const LottiePlayer = "lottie-player" as ElementType;
 
-const feature_items = [
-  {
-    icon: ShieldCheck,
-    title: "Decide faster",
-    detail:
-      "Get a deterministic risk score, a plain-language verdict, and a clear sense of how much confidence to place in the review.",
-    tag: "Verdict",
-  },
-  {
-    icon: Eye,
-    title: "Open the right files first",
-    detail:
-      "Reviewer ranks the files worth opening first so you can start with the highest-impact part of the pull request.",
-    tag: "Focus",
-  },
-  {
-    icon: Activity,
-    title: "See what is driving risk",
-    detail:
-      "Review signals stay legible: sensitive code, dependencies, config, migrations, tests, and blast radius.",
-    tag: "Signals",
-  },
-  {
-    icon: Sparkles,
-    title: "Trust the output",
-    detail:
-      "Every report shows when analysis is live, cached, or partial so the result stays useful without pretending to know more than it does.",
-    tag: "Source-aware",
-  },
-];
-
 const surface_items = [
   {
     icon: Eye,
     eyebrow: "Browser",
     title: "Web Review Workspace",
     detail:
-      "Paste a pull request URL and move through a guided review workspace built for humans, not just raw output.",
-    points: ["Read the verdict first", "Follow a guided review path", "Understand what needs attention"],
+      "Paste a pull request URL, get a verdict, and move through a guided review flow without hunting for where to start.",
+    points: ["Paste a PR URL", "See the verdict first", "Open the right files"],
+    action: "Analyze a pull request",
+    href: "#review-input",
+    external: false,
   },
   {
     icon: Bot,
     eyebrow: "GitHub",
     title: "GitHub Review Bot",
     detail:
-      "Connect GitHub, choose a repository, and let Reviewer post summaries directly inside the pull request.",
-    points: ["Set up the repo once", "Manual or automatic", "Re-review on new pushes"],
+      "Connect GitHub, choose a repository, and let Reviewer post summaries directly inside the pull request dashboard you already use.",
+    points: ["Guided setup", "Manual or automatic", "Re-review on new pushes"],
+    action: "Open GitHub Bot",
+    href: "/github",
+    external: false,
   },
   {
     icon: TerminalSquare,
     eyebrow: "CLI",
     title: "CLI",
     detail:
-      "Bring Reviewer into your local workflow with a terminal-first experience for analyzing and publishing review summaries.",
-    points: ["Terminal-first workflow", "`reviewer analyze`", "`reviewer publish-summary`"],
-  },
-];
-
-const launch_paths = [
-  {
-    title: "Start in the browser",
-    detail: "Use Reviewer like a guided review desk. Paste a PR, read the verdict, and follow the review path.",
-    action: "Analyze a pull request",
-    href: "/",
-    external: false,
-  },
-  {
-    title: "Install the bot",
-    detail: "Connect GitHub, choose the repository you want to use, and let Reviewer guide the setup before you reach the dashboard.",
-    action: "Set up GitHub Bot",
-    href: "/github",
-    external: false,
-  },
-  {
-    title: "Bring it to the terminal",
-    detail: "Use the CLI when review belongs in shell scripts, local workflows, or an engineer's usual toolkit.",
-    action: "See CLI setup",
+      "Use Reviewer from the terminal when you want review inside local workflows, scripts, or your usual engineering toolkit.",
+    points: ["Install the CLI", "`reviewer analyze`", "`reviewer publish-summary`"],
+    action: "View CLI setup",
     href: "https://github.com/shalvirajpura2/reviewer",
     external: true,
   },
 ];
 
 const proof_points = [
-  "Clear verdict, risk signals, and next steps",
-  "One product across web, GitHub, and CLI",
-  "Review output built for real pull requests",
+  "Verdict, risk signals, and next steps in one view",
+  "GitHub bot and CLI support when you need another surface",
+  "Review output designed around real pull requests",
 ];
 
 function format_avg_time(value: number | null) {
@@ -161,10 +115,10 @@ export function HomePage() {
             Review <span className="hl">pull requests</span> with a workspace, a bot, or a CLI.
           </h1>
           <p className="hero-sub">
-            Reviewer gives you three ways to work: a <b>guided web review workspace</b>, a <b>GitHub review bot</b>, and a <b>CLI</b> for terminal-first workflows. Choose the path that fits how you review code.
+            Reviewer helps you inspect pull requests in the browser, inside GitHub, or from the terminal. Start with the web workspace, or jump straight to the surface that fits your workflow.
           </p>
 
-          <div className="hero-input-shell">
+          <div id="review-input" className="hero-input-shell">
             <PrInputBar />
           </div>
 
@@ -199,28 +153,8 @@ export function HomePage() {
         </div>
       </div>
 
-      <div className="features-section">
-        <div className="section-label">What you get</div>
-        <div className="features-grid">
-          {feature_items.map((feature_item) => {
-            const Icon = feature_item.icon;
-
-            return (
-              <div key={feature_item.title} className="feature-card">
-                <div className="feat-icon">
-                  <Icon className="h-4 w-4" strokeWidth={1.9} />
-                </div>
-                <div className="feat-title">{feature_item.title}</div>
-                <div className="feat-desc">{feature_item.detail}</div>
-                <div className="feat-tag">{feature_item.tag}</div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
       <div className="surfaces-section">
-        <div className="section-label">Pick your path</div>
+        <div className="section-label">Pick how you want to use Reviewer</div>
         <div className="surface-grid">
           {surface_items.map((surface_item) => {
             const Icon = surface_item.icon;
@@ -238,30 +172,18 @@ export function HomePage() {
                     <div key={point} className="surface-point">{point}</div>
                   ))}
                 </div>
+                {surface_item.external ? (
+                  <a href={surface_item.href} target="_blank" rel="noreferrer" className="surface-action">
+                    {surface_item.action}
+                  </a>
+                ) : (
+                  <Link to={surface_item.href} className="surface-action">
+                    {surface_item.action}
+                  </Link>
+                )}
               </div>
             );
           })}
-        </div>
-      </div>
-
-      <div className="launch-paths-section">
-        <div className="section-label">How to start</div>
-        <div className="launch-paths-grid">
-          {launch_paths.map((launch_path) => (
-            <div key={launch_path.title} className="launch-path-card">
-              <div className="launch-path-title">{launch_path.title}</div>
-              <div className="launch-path-detail">{launch_path.detail}</div>
-              {launch_path.external ? (
-                <a href={launch_path.href} target="_blank" rel="noreferrer" className="launch-path-action">
-                  {launch_path.action}
-                </a>
-              ) : (
-                <Link to={launch_path.href} className="launch-path-action">
-                  {launch_path.action}
-                </Link>
-              )}
-            </div>
-          ))}
         </div>
       </div>
 
