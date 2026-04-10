@@ -4,6 +4,7 @@ import json
 
 from app.core.settings import settings
 from app.models.github_bot import GithubBotWebhookResult
+from app.services.github_webhook_delivery_store import has_processed_delivery, mark_processed_delivery
 from app.services.github_bot_settings_store import load_repository_settings
 from app.services.github_bot_service import trigger_manual_review
 
@@ -61,6 +62,9 @@ def webhook_trigger_source(action: str) -> str:
 async def handle_github_webhook(payload: bytes, event_name: str, signature_header: str, delivery_id: str = "") -> GithubBotWebhookResult:
     verify_github_webhook_signature(payload, signature_header)
 
+    if delivery_id and has_processed_delivery(delivery_id):
+        return GithubBotWebhookResult(status="ignored", event=event_name, detail="GitHub webhook delivery was already processed.")
+
     if event_name == "ping":
         return GithubBotWebhookResult(status="ignored", event=event_name, detail="GitHub webhook ping received.")
 
@@ -99,6 +103,7 @@ async def handle_github_webhook(payload: bytes, event_name: str, signature_heade
         f"github_webhook:{delivery_id or f'{owner}/{repo}#{pull_number}:{action}'}",
         trigger_source=webhook_trigger_source(action),
     )
+    mark_processed_delivery(delivery_id, event_name, action, owner, repo, pull_number)
     return GithubBotWebhookResult(
         status="processed",
         event=event_name,

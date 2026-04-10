@@ -1,10 +1,12 @@
 from pathlib import Path
+from threading import Lock
 
 from app.models.github_bot import GithubBotRepositoryActivity, GithubBotRepositorySettings
 from app.services.json_file_store import read_json_object, write_json_object
 
 
 settings_store_file = Path(__file__).resolve().parents[2] / "data" / "github_bot_settings.json"
+settings_store_lock = Lock()
 
 
 def repository_key(owner: str, repo: str) -> str:
@@ -20,14 +22,15 @@ def default_repository_activity() -> GithubBotRepositoryActivity:
 
 
 def load_repository_record(owner: str, repo: str) -> tuple[GithubBotRepositorySettings, GithubBotRepositoryActivity]:
-    payload = read_json_object(settings_store_file, {"repositories": {}})
-    repositories = payload.get("repositories", {})
-    if not isinstance(repositories, dict):
-        return default_repository_settings(), default_repository_activity()
+    with settings_store_lock:
+        payload = read_json_object(settings_store_file, {"repositories": {}})
+        repositories = payload.get("repositories", {})
+        if not isinstance(repositories, dict):
+            return default_repository_settings(), default_repository_activity()
 
-    repository_payload = repositories.get(repository_key(owner, repo), {})
-    if not isinstance(repository_payload, dict):
-        return default_repository_settings(), default_repository_activity()
+        repository_payload = repositories.get(repository_key(owner, repo), {})
+        if not isinstance(repository_payload, dict):
+            return default_repository_settings(), default_repository_activity()
 
     settings_payload = repository_payload.get("settings", repository_payload)
     activity_payload = repository_payload.get("activity", {})
@@ -49,16 +52,17 @@ def save_repository_record(
     settings: GithubBotRepositorySettings,
     activity: GithubBotRepositoryActivity,
 ) -> tuple[GithubBotRepositorySettings, GithubBotRepositoryActivity]:
-    payload = read_json_object(settings_store_file, {"repositories": {}})
-    repositories = payload.get("repositories", {})
-    if not isinstance(repositories, dict):
-        repositories = {}
+    with settings_store_lock:
+        payload = read_json_object(settings_store_file, {"repositories": {}})
+        repositories = payload.get("repositories", {})
+        if not isinstance(repositories, dict):
+            repositories = {}
 
-    repositories[repository_key(owner, repo)] = {
-        "settings": settings.model_dump(),
-        "activity": activity.model_dump(),
-    }
-    write_json_object(settings_store_file, {"repositories": repositories})
+        repositories[repository_key(owner, repo)] = {
+            "settings": settings.model_dump(),
+            "activity": activity.model_dump(),
+        }
+        write_json_object(settings_store_file, {"repositories": repositories})
     return settings, activity
 
 
