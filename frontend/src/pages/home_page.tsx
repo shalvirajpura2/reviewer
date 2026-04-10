@@ -47,15 +47,15 @@ const surface_items = [
     title: "Web Review Workspace",
     detail:
       "Paste a pull request URL and move through a guided review workspace built for humans, not just raw output.",
-    points: ["Best for deep inspection", "Guided review path", "Explainable verdict"],
+    points: ["Read the verdict first", "Follow a guided review path", "Understand what needs attention"],
   },
   {
     icon: Bot,
     eyebrow: "GitHub",
     title: "GitHub Review Bot",
     detail:
-      "Install the app on a repository and let Reviewer post summaries where your team already discusses code.",
-    points: ["Best for team workflow", "Manual or automatic", "Re-review on new pushes"],
+      "Connect GitHub, choose a repository, and let Reviewer post summaries directly inside the pull request.",
+    points: ["Set up the repo once", "Manual or automatic", "Re-review on new pushes"],
   },
   {
     icon: TerminalSquare,
@@ -63,7 +63,7 @@ const surface_items = [
     title: "CLI",
     detail:
       "Bring Reviewer into your local workflow with a terminal-first experience for analyzing and publishing review summaries.",
-    points: ["Best for power users", "`reviewer analyze`", "`reviewer publish-summary`"],
+    points: ["Terminal-first workflow", "`reviewer analyze`", "`reviewer publish-summary`"],
   },
 ];
 
@@ -77,24 +77,24 @@ const launch_paths = [
   },
   {
     title: "Install the bot",
-    detail: "Connect GitHub, choose a repository, decide the review mode, and let summaries land in the pull request itself.",
-    action: "Open GitHub Bot",
+    detail: "Connect GitHub, choose the repository you want to use, and let Reviewer guide the setup before you reach the dashboard.",
+    action: "Set up GitHub Bot",
     href: "/github",
     external: false,
   },
   {
     title: "Bring it to the terminal",
     detail: "Use the CLI when review belongs in shell scripts, local workflows, or an engineer's usual toolkit.",
-    action: "Use the CLI",
+    action: "See CLI setup",
     href: "https://github.com/shalvirajpura2/reviewer",
     external: true,
   },
 ];
 
 const proof_points = [
-  "Deterministic scoring, not vague AI-only opinions",
-  "One engine shared across web, GitHub, and CLI",
-  "Review output that explains why attention is needed",
+  "Clear verdict, risk signals, and next steps",
+  "One product across web, GitHub, and CLI",
+  "Review output built for real pull requests",
 ];
 
 function format_avg_time(value: number | null) {
@@ -143,7 +143,7 @@ export function HomePage() {
         <div className="home-hero">
           <div className="hero-eyebrow">
             <span className="hero-dot" />
-            <span>AI code review for pull requests</span>
+            <span>Review pull requests on the web, in GitHub, or from the terminal</span>
           </div>
 
           <div className="hero-lottie-shell" aria-hidden="true">
@@ -158,10 +158,10 @@ export function HomePage() {
           </div>
 
           <h1 className="hero-h1">
-            Catch pull request risk before it lands.
+            Review <span className="hl">pull requests</span> with a workspace, a bot, or a CLI.
           </h1>
           <p className="hero-sub">
-            Reviewer helps teams review code in three places: a <b>guided browser workspace</b>, a <b>GitHub review bot</b>, and a <b>CLI</b> for terminal-first workflows. One review engine, three delivery surfaces.
+            Reviewer gives you three ways to work: a <b>guided web review workspace</b>, a <b>GitHub review bot</b>, and a <b>CLI</b> for terminal-first workflows. Choose the path that fits how you review code.
           </p>
 
           <div className="hero-input-shell">
@@ -220,7 +220,7 @@ export function HomePage() {
       </div>
 
       <div className="surfaces-section">
-        <div className="section-label">Choose where Reviewer lives</div>
+        <div className="section-label">Pick your path</div>
         <div className="surface-grid">
           {surface_items.map((surface_item) => {
             const Icon = surface_item.icon;
@@ -245,7 +245,7 @@ export function HomePage() {
       </div>
 
       <div className="launch-paths-section">
-        <div className="section-label">How teams start</div>
+        <div className="section-label">How to start</div>
         <div className="launch-paths-grid">
           {launch_paths.map((launch_path) => (
             <div key={launch_path.title} className="launch-path-card">

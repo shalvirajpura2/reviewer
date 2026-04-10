@@ -657,9 +657,9 @@ export function GithubBotPage() {
           <div className="gb-onboarding-shell gb-onboarding-shell-wide">
             <div className="gb-onboarding-hero">
               <span className="gb-pill">GitHub Review Bot</span>
-              <h1 className="gb-onboarding-title">Run Reviewer where your team already reviews code.</h1>
+              <h1 className="gb-onboarding-title">Run Reviewer where you already review code.</h1>
               <p className="gb-onboarding-copy">
-                Connect GitHub, choose a repository, save the review mode for that repo, and move into a dashboard built for pull request workflow.
+                Connect GitHub, choose a repository, save the review mode for that repo, and let Reviewer guide the setup before you move into the dashboard.
               </p>
               <div className="gb-onboarding-actions">
                 <a href={build_github_auth_start_url("/github")} className="gb-onboarding-primary">
@@ -675,7 +675,7 @@ export function GithubBotPage() {
                 <span className="gb-preview-step-number">01</span>
                 <div>
                   <div className="gb-preview-step-title">Connect GitHub</div>
-                  <div className="gb-preview-step-copy">Start from your identity so Reviewer only shows repositories you can actually manage.</div>
+                  <div className="gb-preview-step-copy">Start from your identity so Reviewer can guide setup only for repositories you can actually manage.</div>
                 </div>
               </div>
               <div className="gb-preview-step">

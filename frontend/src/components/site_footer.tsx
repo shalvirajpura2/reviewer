@@ -5,9 +5,9 @@ import { BrandLogo } from "./brand_logo";
 const footer_links = [
   { label: "Product", to: "/", external: false },
   { label: "GitHub Bot", to: "/github", external: false },
-  { label: "Engine", to: "/about", external: false },
-  { label: "Install App", to: "https://github.com/apps/reviewer-live", external: true },
+  { label: "How it works", to: "/about", external: false },
   { label: "GitHub", to: "https://github.com/shalvirajpura2/reviewer", external: true },
+  { label: "Builder", to: "https://shalvirajpura.xyz", external: true },
 ] as const;
 
 export function SiteFooter() {
