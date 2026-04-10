@@ -809,7 +809,7 @@ export function GithubBotPage() {
             <div className="gb-panel-top">
               <div>
                 <div className="gb-panel-label">repositories</div>
-                <div className="gb-panel-title">Configured repos</div>
+                <div className="gb-panel-title">Visible repos</div>
               </div>
               <Github className="gb-panel-icon" />
             </div>
@@ -848,7 +848,7 @@ export function GithubBotPage() {
                       </div>
                       <span className="gb-status-pill">{mode_label(repository_settings)}</span>
                     </div>
-                    <div className="gb-repo-copy gb-repo-copy-compact">{repository.open_pull_requests} open PRs · {repository.default_branch}</div>
+                    <div className="gb-repo-copy gb-repo-copy-compact">{repository.open_pull_requests} open PRs - {repository.default_branch}</div>
                   </button>
                 );
               })}
@@ -887,7 +887,7 @@ export function GithubBotPage() {
                           <span className="gb-pr-updated">{format_updated_label(pull_request.updated_at)}</span>
                         </div>
                         <div className="gb-pr-summary">
-                          {pull_request.author} · {pull_request.head_branch} → {pull_request.base_branch}
+                          {pull_request.author} - {pull_request.head_branch} {"->"} {pull_request.base_branch}
                         </div>
                       </button>
                       <div className="gb-pr-footer">
@@ -966,14 +966,14 @@ export function GithubBotPage() {
               <div className="gb-focus-card gb-focus-card-first">
                 <div className="gb-focus-label">Repository</div>
                 <div className="gb-focus-title">{selected_repository_card?.full_name ?? "No repository selected"}</div>
-                <div className="gb-focus-copy">{mode_copy(selected_repository_settings)} · {selected_repository_card?.open_pull_requests ?? 0} open PRs</div>
+                <div className="gb-focus-copy">{mode_copy(selected_repository_settings)} - {selected_repository_card?.open_pull_requests ?? 0} open PRs</div>
               </div>
               {selected_repository_activity?.last_review_at ? (
                 <div className="gb-focus-card gb-focus-card-secondary">
                   <div className="gb-focus-label">Latest activity</div>
                   <div className="gb-focus-title">PR #{selected_repository_activity.last_pull_number}</div>
                   <div className="gb-focus-copy">
-                    {selected_repository_activity.last_action || "updated"} via {format_trigger_label(selected_repository_activity.last_trigger)} · {format_updated_label(selected_repository_activity.last_review_at)}
+                    {selected_repository_activity.last_action || "updated"} via {format_trigger_label(selected_repository_activity.last_trigger)} - {format_updated_label(selected_repository_activity.last_review_at)}
                   </div>
                   {selected_repository_activity.last_comment_url ? (
                     <div className="gb-focus-actions">
@@ -989,7 +989,7 @@ export function GithubBotPage() {
                   <div className="gb-focus-label">Selected PR</div>
                   <div className="gb-focus-title">{selected_pull_request_card.title}</div>
                   <div className="gb-focus-copy">
-                    {selected_pull_request_card.author} · updated {format_updated_label(selected_pull_request_card.updated_at)}
+                    {selected_pull_request_card.author} - updated {format_updated_label(selected_pull_request_card.updated_at)}
                   </div>
                 </div>
               ) : null}
