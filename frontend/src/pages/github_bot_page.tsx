@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { SiteFooter } from "../components/site_footer";
 import {
+  build_github_app_install_url,
   build_github_auth_start_url,
   get_backend_health,
   get_github_bot_pull_requests,
@@ -231,6 +232,31 @@ export function GithubBotPage() {
   const [configured_onboarding_modes, set_configured_onboarding_modes] = useState<Record<string, OnboardingModeKey>>({});
   const [surface_error, set_surface_error] = useState<string | null>(null);
   const [surface_feedback, set_surface_feedback] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const params = new URLSearchParams(window.location.search);
+    const setup_action = params.get("setup_action");
+    const installation_id = params.get("installation_id");
+
+    if (!setup_action && !installation_id) {
+      return;
+    }
+
+    if (setup_action === "install" && installation_id) {
+      set_surface_feedback("GitHub App installed. Select a repository and continue setup.");
+    }
+
+    params.delete("setup_action");
+    params.delete("installation_id");
+    params.delete("state");
+    const next_query = params.toString();
+    const next_url = `${window.location.pathname}${next_query ? `?${next_query}` : ""}${window.location.hash}`;
+    window.history.replaceState({}, "", next_url);
+  }, []);
 
   useEffect(() => {
     const request_controller = new AbortController();
@@ -696,7 +722,12 @@ export function GithubBotPage() {
                 {!is_loading_repositories && repositories.length === 0 ? (
                   <div className="gb-empty-state">
                     <div className="gb-empty-title">No repositories available yet</div>
-                    <div className="gb-empty-copy">Reviewer could not find a public repository that is ready for setup yet.</div>
+                    <div className="gb-empty-copy">Install the Reviewer GitHub App on at least one repository, then return here to finish setup.</div>
+                    <div className="gb-onboarding-actions">
+                      <a href={build_github_app_install_url("/github")} className="gb-onboarding-primary" target="_self" rel="noreferrer">
+                        Install GitHub App
+                      </a>
+                    </div>
                   </div>
                 ) : null}
                 <div className="gb-onboarding-repo-list">

@@ -97,7 +97,7 @@ export function HomePage() {
         <div className="home-hero">
           <div className="hero-eyebrow">
             <span className="hero-dot" />
-            <span>Review pull requests on the web, in GitHub, or from the terminal</span>
+            <span>One reviewer, three ways to ship better pull requests</span>
           </div>
 
           <div className="hero-lottie-shell" aria-hidden="true">
@@ -112,7 +112,7 @@ export function HomePage() {
           </div>
 
           <h1 className="hero-h1">
-            Review <span className="hl">pull requests</span> with a workspace, a bot, or a CLI.
+            Review <span className="hl hl-doodle">pull requests</span> with a workspace, a bot, or a CLI.
           </h1>
           <p className="hero-sub">
             Reviewer helps you inspect pull requests in the browser, inside GitHub, or from the terminal. Start with the web workspace, or jump straight to the surface that fits your workflow.

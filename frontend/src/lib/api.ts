@@ -8,6 +8,7 @@ import type {
 import { normalize_pr_url, pr_url_validation_message } from "./pr_url";
 
 const configured_backend_url = import.meta.env.VITE_BACKEND_URL?.replace(/\/$/, "");
+const configured_github_app_slug = import.meta.env.VITE_GITHUB_APP_SLUG?.trim() || "reviewer-live";
 const request_timeout_ms = 30000;
 
 export type SiteStats = {
@@ -249,6 +250,14 @@ export async function logout_github_web_session(): Promise<void> {
 
 export function build_github_auth_start_url(next_path = "/github") {
   return `${resolve_backend_url()}/api/auth/github/start?next=${encodeURIComponent(next_path)}`;
+}
+
+export function build_github_app_install_url(next_path = "/github") {
+  const normalized_next_path = next_path.startsWith("/") ? next_path : `/${next_path}`;
+  const return_target = `${window.location.origin}${normalized_next_path}`;
+  const encoded_state = encodeURIComponent(return_target);
+  const encoded_slug = encodeURIComponent(configured_github_app_slug);
+  return `https://github.com/apps/${encoded_slug}/installations/new?state=${encoded_state}`;
 }
 
 export async function get_github_bot_pull_requests(owner: string, repo: string, signal?: AbortSignal): Promise<GithubBotPullRequestsResponse> {
