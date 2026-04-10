@@ -30,6 +30,10 @@ def resolve_public_base_url(request: Request) -> str:
     return str(request.base_url).rstrip("/")
 
 
+def use_secure_cookies(request: Request) -> bool:
+    return resolve_public_base_url(request).startswith("https://")
+
+
 @router.get("/session", response_model=GithubWebSessionStatus)
 async def github_session_route(request: Request):
     session = load_web_auth_session(request.cookies.get(github_session_cookie_name))
@@ -41,8 +45,8 @@ async def github_auth_start_route(request: Request, next: str = "/github"):
     try:
         state = create_oauth_state_token()
         response = RedirectResponse(build_github_authorize_redirect(resolve_public_base_url(request), state), status_code=302)
-        response.set_cookie(github_oauth_state_cookie_name, state, httponly=True, samesite="lax")
-        response.set_cookie(github_oauth_next_cookie_name, normalize_next_path(next), httponly=True, samesite="lax")
+        response.set_cookie(github_oauth_state_cookie_name, state, httponly=True, samesite="lax", secure=use_secure_cookies(request), path="/")
+        response.set_cookie(github_oauth_next_cookie_name, normalize_next_path(next), httponly=True, samesite="lax", secure=use_secure_cookies(request), path="/")
         return response
     except PermissionError as error:
         return error_response(request, 403, "forbidden", str(error))
@@ -61,9 +65,9 @@ async def github_auth_callback_route(request: Request, code: str = "", state: st
             resolve_frontend_redirect(request.cookies.get(github_oauth_next_cookie_name)),
             status_code=302,
         )
-        redirect_response.set_cookie(github_session_cookie_name, session_id, httponly=True, samesite="lax")
-        redirect_response.delete_cookie(github_oauth_state_cookie_name)
-        redirect_response.delete_cookie(github_oauth_next_cookie_name)
+        redirect_response.set_cookie(github_session_cookie_name, session_id, httponly=True, samesite="lax", secure=use_secure_cookies(request), path="/")
+        redirect_response.delete_cookie(github_oauth_state_cookie_name, path="/")
+        redirect_response.delete_cookie(github_oauth_next_cookie_name, path="/")
         return redirect_response
     except PermissionError as error:
         return error_response(request, 403, "forbidden", str(error))
@@ -75,7 +79,7 @@ async def github_auth_callback_route(request: Request, code: str = "", state: st
 async def github_logout_route(request: Request):
     clear_web_auth_session(request.cookies.get(github_session_cookie_name))
     response = JSONResponse({"ok": True})
-    response.delete_cookie(github_session_cookie_name)
-    response.delete_cookie(github_oauth_state_cookie_name)
-    response.delete_cookie(github_oauth_next_cookie_name)
+    response.delete_cookie(github_session_cookie_name, path="/")
+    response.delete_cookie(github_oauth_state_cookie_name, path="/")
+    response.delete_cookie(github_oauth_next_cookie_name, path="/")
     return response

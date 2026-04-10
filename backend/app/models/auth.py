@@ -10,6 +10,8 @@ class GithubAuthSession(BaseModel):
     login: str
     user_id: int
     source: Literal["device", "env", "web"] = "device"
+    created_at: str = ""
+    expires_at: str = ""
 
 
 class GithubDeviceCode(BaseModel):

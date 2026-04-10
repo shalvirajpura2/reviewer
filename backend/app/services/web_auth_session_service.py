@@ -1,4 +1,5 @@
 import secrets
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from threading import Lock
 from urllib.parse import urlencode
@@ -74,6 +75,31 @@ def create_web_session_id() -> str:
     return secrets.token_urlsafe(32)
 
 
+def utc_now() -> datetime:
+    return datetime.now(timezone.utc)
+
+
+def parse_session_timestamp(value: str) -> datetime | None:
+    if not value:
+        return None
+
+    try:
+        return datetime.fromisoformat(value)
+    except ValueError:
+        return None
+
+
+def build_session_expiry() -> str:
+    return (utc_now() + timedelta(seconds=settings.web_session_ttl_seconds)).isoformat()
+
+
+def is_session_expired(session: GithubAuthSession) -> bool:
+    expires_at = parse_session_timestamp(session.expires_at)
+    if expires_at is None:
+        return True
+    return expires_at <= utc_now()
+
+
 def load_session_store() -> dict[str, object]:
     return read_json_object(session_store_file, {"sessions": {}})
 
@@ -82,12 +108,42 @@ def save_session_store(payload: dict[str, object]) -> None:
     write_json_object(session_store_file, payload)
 
 
+def prune_expired_sessions(payload: dict[str, object]) -> tuple[dict[str, object], bool]:
+    sessions = payload.get("sessions", {})
+    if not isinstance(sessions, dict):
+        return {"sessions": {}}, True
+
+    next_sessions: dict[str, object] = {}
+    changed = False
+
+    for session_id, session_payload in sessions.items():
+        if not isinstance(session_payload, dict):
+            changed = True
+            continue
+
+        try:
+            session = GithubAuthSession(**session_payload)
+        except Exception:
+            changed = True
+            continue
+
+        if is_session_expired(session):
+            changed = True
+            continue
+
+        next_sessions[session_id] = session.model_dump()
+
+    return {"sessions": next_sessions}, changed
+
+
 def load_web_auth_session(session_id: str | None) -> GithubAuthSession | None:
     if not session_id:
         return None
 
     with session_store_lock:
-        payload = load_session_store()
+        payload, changed = prune_expired_sessions(load_session_store())
+        if changed:
+            save_session_store(payload)
         sessions = payload.get("sessions", {})
         if not isinstance(sessions, dict):
             return None
@@ -97,9 +153,15 @@ def load_web_auth_session(session_id: str | None) -> GithubAuthSession | None:
             return None
 
     try:
-        return GithubAuthSession(**session_payload)
+        session = GithubAuthSession(**session_payload)
     except Exception:
         return None
+
+    if is_session_expired(session):
+        clear_web_auth_session(session_id)
+        return None
+
+    return session
 
 
 def require_web_auth_session(session_id: str | None) -> GithubAuthSession:
@@ -111,14 +173,22 @@ def require_web_auth_session(session_id: str | None) -> GithubAuthSession:
 
 def save_web_auth_session(session: GithubAuthSession) -> str:
     session_id = create_web_session_id()
+    session_payload = session.model_copy(
+        update={
+            "created_at": utc_now().isoformat(),
+            "expires_at": build_session_expiry(),
+        }
+    )
 
     with session_store_lock:
-        payload = load_session_store()
+        payload, changed = prune_expired_sessions(load_session_store())
+        if changed:
+            save_session_store(payload)
         sessions = payload.get("sessions", {})
         if not isinstance(sessions, dict):
             sessions = {}
 
-        sessions[session_id] = session.model_dump()
+        sessions[session_id] = session_payload.model_dump()
         payload["sessions"] = sessions
         save_session_store(payload)
 
