@@ -657,9 +657,9 @@ export function GithubBotPage() {
           <div className="gb-onboarding-shell gb-onboarding-shell-wide">
             <div className="gb-onboarding-hero">
               <span className="gb-pill">GitHub Review Bot</span>
-              <h1 className="gb-onboarding-title">Connect GitHub, pick a repo, choose the review mode, then land in the dashboard.</h1>
+              <h1 className="gb-onboarding-title">Run Reviewer where your team already reviews code.</h1>
               <p className="gb-onboarding-copy">
-                Reviewer only shows repositories your GitHub account can access and where the app is already installed.
+                Connect GitHub, choose a repository, save the review mode for that repo, and move into a dashboard built for pull request workflow.
               </p>
               <div className="gb-onboarding-actions">
                 <a href={build_github_auth_start_url("/github")} className="gb-onboarding-primary">
@@ -675,21 +675,21 @@ export function GithubBotPage() {
                 <span className="gb-preview-step-number">01</span>
                 <div>
                   <div className="gb-preview-step-title">Connect GitHub</div>
-                  <div className="gb-preview-step-copy">Start from your GitHub identity, not from a noisy global repo list.</div>
+                  <div className="gb-preview-step-copy">Start from your identity so Reviewer only shows repositories you can actually manage.</div>
                 </div>
               </div>
               <div className="gb-preview-step">
                 <span className="gb-preview-step-number">02</span>
                 <div>
-                  <div className="gb-preview-step-title">Select a repository</div>
-                  <div className="gb-preview-step-copy">Choose one repo first, then let Reviewer show only its open pull requests.</div>
+                  <div className="gb-preview-step-title">Choose a repository</div>
+                  <div className="gb-preview-step-copy">Pick the repo first, then let Reviewer narrow the experience to its open pull requests.</div>
                 </div>
               </div>
               <div className="gb-preview-step">
                 <span className="gb-preview-step-number">03</span>
                 <div>
-                  <div className="gb-preview-step-title">Choose the mode</div>
-                  <div className="gb-preview-step-copy">Manual Review, Automatic Review, or Review New Pushes.</div>
+                  <div className="gb-preview-step-title">Save the mode</div>
+                  <div className="gb-preview-step-copy">Store Manual Review, Automatic Review, or Review New Pushes for each repository you configure.</div>
                 </div>
               </div>
             </div>
@@ -769,7 +769,7 @@ export function GithubBotPage() {
                   <span className="gb-section-kicker">Step 2</span>
                   <h2 className="gb-section-title">Choose the review mode</h2>
                 </div>
-                <p className="gb-section-copy">Start with manual review, or turn on automatic PR review and push re-reviews now.</p>
+                <p className="gb-section-copy">Each repository can remember its own mode, so save the behavior you want before entering the dashboard.</p>
                 <div className="gb-onboarding-mode-grid">
                   {onboarding_modes.map((mode) => (
                     <button
@@ -811,7 +811,7 @@ export function GithubBotPage() {
                       disabled={!selected_repository_card || configured_repository_count === 0}
                     >
                       <Rocket size={14} />
-                      Open dashboard
+                      Continue to dashboard
                     </button>
                   </div>
                 </div>

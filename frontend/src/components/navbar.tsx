@@ -7,14 +7,13 @@ import { cn } from "../lib/cn";
 import { BrandLogo } from "./brand_logo";
 
 const nav_items = [
-  { to: "/", label: "Home" },
+  { to: "/", label: "Product" },
   { to: "/github", label: "GitHub Bot" },
-  { to: "/about", label: "How it works" },
+  { to: "/about", label: "Engine" },
 ] as const;
 
 const repo_url = "https://github.com/shalvirajpura2/reviewer";
 const install_app_url = "https://github.com/apps/reviewer-live";
-const builder_url = "https://shalvirajpura.xyz";
 
 function format_star_count(stars: number) {
   if (stars >= 1000) {
@@ -92,9 +91,6 @@ export function Navbar() {
             ))}
             <a href={install_app_url} target="_blank" rel="noreferrer" className="nav-tab">
               Install App
-            </a>
-            <a href={builder_url} target="_blank" rel="noreferrer" className="nav-tab">
-              Builder
             </a>
           </div>
         </div>

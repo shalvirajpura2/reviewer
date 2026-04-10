@@ -83,9 +83,9 @@ const trust_points = [
 ];
 
 const delivery_channels = [
-  "Web Review Workspace for guided browser review",
-  "GitHub Review Bot for repository-native feedback",
-  "CLI for terminal-first workflows",
+  "Web workspace for guided browser review",
+  "GitHub bot for repository-native summaries",
+  "CLI for terminal-first review workflows",
 ];
 
 const reliability_points = [
@@ -108,11 +108,11 @@ export function AboutPage() {
         <div className="how-hero how-hero-upgraded">
           <div className="hero-eyebrow">
             <span className="hero-dot" />
-            <span>How Reviewer works</span>
+            <span>The review engine</span>
           </div>
-          <h1 className="how-h1">One review engine, delivered across the website, GitHub, and the terminal.</h1>
+          <h1 className="how-h1">One engine turns pull requests into usable review output.</h1>
           <p className="how-sub">
-            Reviewer turns a public GitHub pull request into structured review output, then delivers it through the <b>Web Review Workspace</b>, the <b>GitHub Review Bot</b>, and the <b>CLI</b> so teams can work where they already review code.
+            This page is about the engine itself: how Reviewer reads pull request data, builds structured review context, scores risk, and packages the result for the website, GitHub, and the terminal.
           </p>
           <div className="how-trust-row">
             {trust_points.map((trust_point) => (
@@ -133,7 +133,7 @@ export function AboutPage() {
             </div>
           </div>
           <div className="how-overview-card how-overview-output-card">
-            <div className="a-panel-title">delivery channels</div>
+            <div className="a-panel-title">delivery surfaces</div>
             <div className="how-step-points">
               {delivery_channels.map((channel) => (
                 <div key={channel} className="how-step-point">{channel}</div>
@@ -141,7 +141,7 @@ export function AboutPage() {
             </div>
           </div>
           <div className="how-overview-card how-overview-output-card">
-            <div className="a-panel-title">what comes back</div>
+            <div className="a-panel-title">what a review returns</div>
             <div className="output-fields output-fields-compact how-overview-output-grid">
               {output_fields.map((output_field) => (
                 <div key={output_field.label} className="output-field how-output-field">
@@ -186,7 +186,7 @@ export function AboutPage() {
 
           <div className="how-bottom-grid how-bottom-grid-balanced">
             <div className="how-limit-panel">
-              <div className="a-panel-title">why this feels trustworthy</div>
+              <div className="a-panel-title">why teams trust it</div>
               {reliability_points.map((point) => (
                 <div key={point} className="limit-item">{point}</div>
               ))}

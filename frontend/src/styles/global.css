@@ -8365,6 +8365,26 @@ nav {
   gap: 18px;
 }
 
+.hero-proof-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+  width: min(100%, 920px);
+  margin: 0 auto;
+}
+
+.hero-proof-chip {
+  padding: 11px 16px;
+  border-radius: 999px;
+  border: 1px solid rgba(var(--border2), 0.22);
+  background: rgba(17, 24, 39, 0.58);
+  color: rgb(var(--text));
+  font-size: 13px;
+  letter-spacing: 0.01em;
+  backdrop-filter: blur(14px);
+}
+
 .surfaces-section {
   width: min(100%, var(--page-width));
   margin: 0 auto;
@@ -8430,86 +8450,71 @@ nav {
   font-size: 14px;
 }
 
-.bot-flow-section {
+.launch-paths-section {
   width: min(100%, var(--page-width));
   margin: 0 auto;
   padding: 0 var(--space-7) 96px;
 }
 
-.bot-flow-card {
+.launch-paths-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
-  gap: 22px;
-  padding: 30px;
-  border-radius: 28px;
-  border: 1px solid rgba(var(--border2), 0.24);
-  background:
-    radial-gradient(circle at top left, rgba(92, 255, 138, 0.12), transparent 34%),
-    linear-gradient(180deg, rgba(13, 18, 28, 0.92), rgba(10, 14, 24, 0.98));
-  box-shadow: 0 28px 80px rgba(0, 0, 0, 0.24);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
 }
 
-.bot-flow-copy {
+.launch-path-card {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 16px;
+  min-height: 100%;
+  padding: 26px;
+  border-radius: 24px;
+  border: 1px solid rgba(var(--border2), 0.24);
+  background:
+    radial-gradient(circle at top right, rgba(92, 255, 138, 0.08), transparent 34%),
+    linear-gradient(180deg, rgba(13, 18, 28, 0.92), rgba(10, 14, 24, 0.98));
+  box-shadow: 0 22px 60px rgba(0, 0, 0, 0.2);
 }
 
-.bot-flow-title {
+.launch-path-title {
   color: rgb(var(--text));
-  font-size: 34px;
-  line-height: 1.1;
+  font-size: 26px;
+  line-height: 1.2;
   letter-spacing: -0.03em;
 }
 
-.bot-flow-detail {
+.launch-path-detail {
+  flex: 1;
   color: rgb(var(--text2));
-  font-size: 16px;
-  line-height: 1.8;
+  font-size: 15px;
+  line-height: 1.75;
 }
 
-.bot-flow-steps {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px;
-}
-
-.bot-flow-step {
-  min-height: 110px;
-  padding: 18px;
-  border-radius: 18px;
-  border: 1px solid rgba(var(--border2), 0.2);
-  background: rgba(18, 24, 36, 0.62);
-}
-
-.bot-flow-step-number {
-  margin-bottom: 12px;
+.launch-path-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: fit-content;
+  min-height: 42px;
+  padding: 0 16px;
+  border-radius: 999px;
+  border: 1px solid rgba(var(--green), 0.28);
+  background: rgba(92, 255, 138, 0.08);
   color: rgb(var(--green));
   font-size: 13px;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-decoration: none;
+  transition:
+    transform 0.18s ease,
+    border-color 0.18s ease,
+    background 0.18s ease;
 }
 
-.bot-flow-step-label {
-  color: rgb(var(--text));
-  font-size: 20px;
-  line-height: 1.35;
-}
-
-.bot-flow-modes {
-  grid-column: 1 / -1;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-}
-
-.bot-mode-chip {
-  padding: 12px 14px;
-  border-radius: 999px;
-  border: 1px solid rgba(var(--border2), 0.22);
-  background: rgba(92, 255, 138, 0.08);
-  color: rgb(var(--text));
-  font-size: 14px;
+.launch-path-action:hover {
+  transform: translateY(-1px);
+  border-color: rgba(var(--green), 0.4);
+  background: rgba(92, 255, 138, 0.14);
 }
 
 @media (max-width: 1100px) {
@@ -8517,12 +8522,16 @@ nav {
     grid-template-columns: 1fr;
   }
 
-  .bot-flow-card {
+  .launch-paths-grid {
     grid-template-columns: 1fr;
   }
 }
 
 @media (max-width: 720px) {
+  .hero-proof-row {
+    justify-content: flex-start;
+  }
+
   .surface-card {
     padding: 22px;
   }
@@ -8531,20 +8540,16 @@ nav {
     font-size: 24px;
   }
 
-  .bot-flow-card {
+  .launch-path-card {
     padding: 22px;
   }
 
-  .bot-flow-title {
-    font-size: 28px;
-  }
-
-  .bot-flow-steps {
-    grid-template-columns: 1fr;
+  .launch-path-title {
+    font-size: 23px;
   }
 
   .surfaces-section,
-  .bot-flow-section {
+  .launch-paths-section {
     padding-left: var(--space-5);
     padding-right: var(--space-5);
   }

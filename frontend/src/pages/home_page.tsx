@@ -1,4 +1,5 @@
 import { useEffect, useState, type ElementType } from "react";
+import { Link } from "react-router-dom";
 import { Activity, Bot, Eye, ShieldCheck, Sparkles, TerminalSquare } from "lucide-react";
 
 import { BackgroundBoxes } from "../components/background_boxes";
@@ -11,66 +12,89 @@ const LottiePlayer = "lottie-player" as ElementType;
 const feature_items = [
   {
     icon: ShieldCheck,
-    title: "Clear merge verdict",
+    title: "Decide faster",
     detail:
-      "Get a rule-based risk score, a plain-language verdict, and a clear read on how much confidence to place in the review.",
-    tag: "Scored",
+      "Get a deterministic risk score, a plain-language verdict, and a clear sense of how much confidence to place in the review.",
+    tag: "Verdict",
   },
   {
     icon: Eye,
-    title: "Start with the right files",
+    title: "Open the right files first",
     detail:
-      "Reviewer ranks the files most worth opening first so you can begin with the highest-impact parts of the pull request.",
-    tag: "Prioritized",
+      "Reviewer ranks the files worth opening first so you can start with the highest-impact part of the pull request.",
+    tag: "Focus",
   },
   {
     icon: Activity,
-    title: "Understand the risk shape",
+    title: "See what is driving risk",
     detail:
-      "See what is driving attention: sensitive code, dependencies, config, migrations, tests, and blast radius.",
-    tag: "Explained",
+      "Review signals stay legible: sensitive code, dependencies, config, migrations, tests, and blast radius.",
+    tag: "Signals",
   },
   {
     icon: Sparkles,
-    title: "Know what the result used",
+    title: "Trust the output",
     detail:
-      "Every report shows when the analysis is partial, cached, or live so the output stays useful without overclaiming.",
-    tag: "Honest",
+      "Every report shows when analysis is live, cached, or partial so the result stays useful without pretending to know more than it does.",
+    tag: "Source-aware",
   },
 ];
 
 const surface_items = [
   {
     icon: Eye,
-    eyebrow: "Review in browser",
+    eyebrow: "Browser",
     title: "Web Review Workspace",
     detail:
-      "Paste a public pull request URL, inspect the verdict, follow the top files, and understand exactly what pushed risk up or down.",
-    points: ["Paste PR URL", "Guided review workspace", "Explainable verdict"],
+      "Paste a pull request URL and move through a guided review workspace built for humans, not just raw output.",
+    points: ["Best for deep inspection", "Guided review path", "Explainable verdict"],
   },
   {
     icon: Bot,
-    eyebrow: "Review in GitHub",
+    eyebrow: "GitHub",
     title: "GitHub Review Bot",
     detail:
-      "Install the Reviewer app on a repository, select an open pull request, and choose whether reviews should run manually or automatically.",
-    points: ["Manual Review", "Automatic Review", "Review New Pushes"],
+      "Install the app on a repository and let Reviewer post summaries where your team already discusses code.",
+    points: ["Best for team workflow", "Manual or automatic", "Re-review on new pushes"],
   },
   {
     icon: TerminalSquare,
-    eyebrow: "Review in terminal",
+    eyebrow: "CLI",
     title: "CLI",
     detail:
-      "Install Reviewer locally, sign in once, analyze pull requests from the terminal, and publish summaries through the hosted backend flow.",
-    points: ["reviewer login", "reviewer analyze <pr-url>", "reviewer publish-summary <pr-url>"],
+      "Bring Reviewer into your local workflow with a terminal-first experience for analyzing and publishing review summaries.",
+    points: ["Best for power users", "`reviewer analyze`", "`reviewer publish-summary`"],
   },
 ];
 
-const bot_steps = [
-  "Connect GitHub",
-  "Choose repository",
-  "Select an open PR",
-  "Review now or enable automation",
+const launch_paths = [
+  {
+    title: "Start in the browser",
+    detail: "Use Reviewer like a guided review desk. Paste a PR, read the verdict, and follow the review path.",
+    action: "Analyze a pull request",
+    href: "/",
+    external: false,
+  },
+  {
+    title: "Install the bot",
+    detail: "Connect GitHub, choose a repository, decide the review mode, and let summaries land in the pull request itself.",
+    action: "Open GitHub Bot",
+    href: "/github",
+    external: false,
+  },
+  {
+    title: "Bring it to the terminal",
+    detail: "Use the CLI when review belongs in shell scripts, local workflows, or an engineer's usual toolkit.",
+    action: "Use the CLI",
+    href: "https://github.com/shalvirajpura2/reviewer",
+    external: true,
+  },
+];
+
+const proof_points = [
+  "Deterministic scoring, not vague AI-only opinions",
+  "One engine shared across web, GitHub, and CLI",
+  "Review output that explains why attention is needed",
 ];
 
 function format_avg_time(value: number | null) {
@@ -119,7 +143,7 @@ export function HomePage() {
         <div className="home-hero">
           <div className="hero-eyebrow">
             <span className="hero-dot" />
-            <span>Three review surfaces, one shared engine</span>
+            <span>AI code review for pull requests</span>
           </div>
 
           <div className="hero-lottie-shell" aria-hidden="true">
@@ -134,10 +158,10 @@ export function HomePage() {
           </div>
 
           <h1 className="hero-h1">
-            Review on the <span className="hl">website</span>, in <span className="hl">GitHub</span>, or from the <span className="hl">terminal</span>.
+            Catch pull request risk before it lands.
           </h1>
           <p className="hero-sub">
-            Reviewer is no longer just a web report. Use the <b>Web Review Workspace</b>, the <b>GitHub Review Bot</b>, or the <b>CLI</b> depending on where your team wants review feedback to land.
+            Reviewer helps teams review code in three places: a <b>guided browser workspace</b>, a <b>GitHub review bot</b>, and a <b>CLI</b> for terminal-first workflows. One review engine, three delivery surfaces.
           </p>
 
           <div className="hero-input-shell">
@@ -166,6 +190,12 @@ export function HomePage() {
               </div>
             </div>
           </div>
+
+          <div className="hero-proof-row">
+            {proof_points.map((proof_point) => (
+              <div key={proof_point} className="hero-proof-chip">{proof_point}</div>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -190,7 +220,7 @@ export function HomePage() {
       </div>
 
       <div className="surfaces-section">
-        <div className="section-label">Choose your surface</div>
+        <div className="section-label">Choose where Reviewer lives</div>
         <div className="surface-grid">
           {surface_items.map((surface_item) => {
             const Icon = surface_item.icon;
@@ -214,28 +244,24 @@ export function HomePage() {
         </div>
       </div>
 
-      <div className="bot-flow-section">
-        <div className="section-label">GitHub Review Bot flow</div>
-        <div className="bot-flow-card">
-          <div className="bot-flow-copy">
-            <div className="bot-flow-title">Install once, choose how Reviewer should behave on each repository.</div>
-            <div className="bot-flow-detail">
-              The website should guide users through repository selection, open pull request selection, and the two bot modes that matter: <b>Manual Review</b> and <b>Automatic Review</b>.
+      <div className="launch-paths-section">
+        <div className="section-label">How teams start</div>
+        <div className="launch-paths-grid">
+          {launch_paths.map((launch_path) => (
+            <div key={launch_path.title} className="launch-path-card">
+              <div className="launch-path-title">{launch_path.title}</div>
+              <div className="launch-path-detail">{launch_path.detail}</div>
+              {launch_path.external ? (
+                <a href={launch_path.href} target="_blank" rel="noreferrer" className="launch-path-action">
+                  {launch_path.action}
+                </a>
+              ) : (
+                <Link to={launch_path.href} className="launch-path-action">
+                  {launch_path.action}
+                </Link>
+              )}
             </div>
-          </div>
-          <div className="bot-flow-steps">
-            {bot_steps.map((step, index) => (
-              <div key={step} className="bot-flow-step">
-                <div className="bot-flow-step-number">0{index + 1}</div>
-                <div className="bot-flow-step-label">{step}</div>
-              </div>
-            ))}
-          </div>
-          <div className="bot-flow-modes">
-            <div className="bot-mode-chip">Manual Review</div>
-            <div className="bot-mode-chip">Automatic Review</div>
-            <div className="bot-mode-chip">Review New Pushes</div>
-          </div>
+          ))}
         </div>
       </div>
 
