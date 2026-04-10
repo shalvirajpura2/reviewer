@@ -227,6 +227,7 @@ export function GithubBotPage() {
   const [is_triggering_review, set_is_triggering_review] = useState(false);
   const [is_applying_onboarding, set_is_applying_onboarding] = useState(false);
   const [is_signing_out, set_is_signing_out] = useState(false);
+  const [repository_reload_nonce, set_repository_reload_nonce] = useState(0);
   const [onboarding_complete, set_onboarding_complete] = useState(false);
   const [onboarding_mode, set_onboarding_mode] = useState<OnboardingModeKey>("manual");
   const [configured_onboarding_modes, set_configured_onboarding_modes] = useState<Record<string, OnboardingModeKey>>({});
@@ -346,7 +347,17 @@ export function GithubBotPage() {
     return () => {
       request_controller.abort();
     };
-  }, [auth_session?.authenticated, auth_session?.login]);
+  }, [auth_session?.authenticated, auth_session?.login, repository_reload_nonce]);
+
+  function handle_open_app_install() {
+    const install_url = build_github_app_install_url("/github");
+    window.location.assign(install_url);
+  }
+
+  function handle_refresh_repositories() {
+    set_repository_reload_nonce((current) => current + 1);
+    set_surface_feedback(null);
+  }
 
   useEffect(() => {
     if (!selected_repository || !auth_session?.authenticated || !onboarding_complete) {
@@ -724,9 +735,17 @@ export function GithubBotPage() {
                     <div className="gb-empty-title">No repositories available yet</div>
                     <div className="gb-empty-copy">Install the Reviewer GitHub App on at least one repository, then return here to finish setup.</div>
                     <div className="gb-onboarding-actions">
-                      <a href={build_github_app_install_url("/github")} className="gb-onboarding-primary" target="_self" rel="noreferrer">
+                      <button type="button" className="gb-onboarding-primary" onClick={handle_open_app_install}>
                         Install GitHub App
-                      </a>
+                      </button>
+                      <button
+                        type="button"
+                        className="gb-onboarding-secondary"
+                        onClick={handle_refresh_repositories}
+                        disabled={is_loading_repositories}
+                      >
+                        {is_loading_repositories ? "Refreshing..." : "I installed it, refresh repositories"}
+                      </button>
                     </div>
                   </div>
                 ) : null}

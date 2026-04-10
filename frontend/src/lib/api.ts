@@ -254,10 +254,11 @@ export function build_github_auth_start_url(next_path = "/github") {
 
 export function build_github_app_install_url(next_path = "/github") {
   const normalized_next_path = next_path.startsWith("/") ? next_path : `/${next_path}`;
-  const return_target = `${window.location.origin}${normalized_next_path}`;
-  const encoded_state = encodeURIComponent(return_target);
+  const callback_url = `${resolve_backend_url()}/api/auth/github/app-install/callback`;
+  const encoded_callback_url = encodeURIComponent(callback_url);
+  const encoded_state = encodeURIComponent(normalized_next_path);
   const encoded_slug = encodeURIComponent(configured_github_app_slug);
-  return `https://github.com/apps/${encoded_slug}/installations/new?state=${encoded_state}`;
+  return `https://github.com/apps/${encoded_slug}/installations/new?state=${encoded_state}&redirect_uri=${encoded_callback_url}`;
 }
 
 export async function get_github_bot_pull_requests(owner: string, repo: string, signal?: AbortSignal): Promise<GithubBotPullRequestsResponse> {
