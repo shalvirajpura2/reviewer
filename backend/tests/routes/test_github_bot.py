@@ -3,6 +3,7 @@ import json
 from fastapi.testclient import TestClient
 
 from app.main import app
+from app.models.auth import GithubAuthSession
 from app.models.github_bot import (
     GithubBotPullRequestsResponse,
     GithubBotRepositoriesResponse,
@@ -15,8 +16,20 @@ from app.models.github_bot import (
 client = TestClient(app)
 
 
+def fake_web_session() -> GithubAuthSession:
+    return GithubAuthSession(
+        access_token="web-token",
+        token_type="bearer",
+        scope="read:user public_repo",
+        login="shalv",
+        user_id=7,
+        source="web",
+    )
+
+
 def test_list_connected_repositories_route(monkeypatch):
-    async def fake_list_connected_repositories():
+    async def fake_list_connected_repositories(github_token: str):
+        assert github_token == "web-token"
         return GithubBotRepositoriesResponse(
             repositories=[
                 GithubBotRepositorySummary(
@@ -33,6 +46,7 @@ def test_list_connected_repositories_route(monkeypatch):
         )
 
     monkeypatch.setattr("app.routes.github_bot.list_connected_repositories", fake_list_connected_repositories)
+    monkeypatch.setattr("app.routes.github_bot.require_web_auth_session", lambda session_id: fake_web_session())
 
     response = client.get("/api/github-bot/repositories", headers={"x-request-id": "req-bot-repos"})
 
@@ -42,9 +56,10 @@ def test_list_connected_repositories_route(monkeypatch):
 
 
 def test_list_repository_pull_requests_route(monkeypatch):
-    async def fake_list_repository_pull_requests(owner: str, repo: str):
+    async def fake_list_repository_pull_requests(owner: str, repo: str, github_token: str):
         assert owner == "acme"
         assert repo == "reviewer"
+        assert github_token == "web-token"
         return GithubBotPullRequestsResponse(
             repository=GithubBotRepositorySummary(
                 owner="acme",
@@ -72,6 +87,7 @@ def test_list_repository_pull_requests_route(monkeypatch):
         )
 
     monkeypatch.setattr("app.routes.github_bot.list_repository_pull_requests", fake_list_repository_pull_requests)
+    monkeypatch.setattr("app.routes.github_bot.require_web_auth_session", lambda session_id: fake_web_session())
 
     response = client.get("/api/github-bot/repositories/acme/reviewer/pulls")
 
@@ -80,14 +96,18 @@ def test_list_repository_pull_requests_route(monkeypatch):
 
 
 def test_repository_settings_routes(monkeypatch):
-    monkeypatch.setattr(
-        "app.routes.github_bot.get_repository_settings",
-        lambda owner, repo: GithubBotRepositorySettings(manual_review=True, automatic_review=False, review_new_pushes=False),
-    )
+    monkeypatch.setattr("app.routes.github_bot.require_web_auth_session", lambda session_id: fake_web_session())
 
-    def fake_update_repository_settings(owner: str, repo: str, settings: GithubBotRepositorySettings):
+    async def fake_get_repository_settings(owner: str, repo: str, github_token: str):
+        assert github_token == "web-token"
+        return GithubBotRepositorySettings(manual_review=True, automatic_review=False, review_new_pushes=False)
+
+    monkeypatch.setattr("app.routes.github_bot.get_repository_settings", fake_get_repository_settings)
+
+    async def fake_update_repository_settings(owner: str, repo: str, settings: GithubBotRepositorySettings, github_token: str):
         assert owner == "acme"
         assert repo == "reviewer"
+        assert github_token == "web-token"
         return settings
 
     monkeypatch.setattr("app.routes.github_bot.update_repository_settings", fake_update_repository_settings)
@@ -106,11 +126,12 @@ def test_repository_settings_routes(monkeypatch):
 def test_trigger_manual_review_route(monkeypatch):
     from app.models.review_domain import ReviewCommentPublication
 
-    async def fake_trigger_manual_review(owner: str, repo: str, pull_number: int, client_key: str):
+    async def fake_trigger_manual_review(owner: str, repo: str, pull_number: int, client_key: str, github_token: str):
         assert owner == "acme"
         assert repo == "reviewer"
         assert pull_number == 18
         assert client_key == "testclient"
+        assert github_token == "web-token"
         return ReviewCommentPublication(
             action="created",
             comment_id=501,
@@ -119,6 +140,7 @@ def test_trigger_manual_review_route(monkeypatch):
         )
 
     monkeypatch.setattr("app.routes.github_bot.trigger_manual_review", fake_trigger_manual_review)
+    monkeypatch.setattr("app.routes.github_bot.require_web_auth_session", lambda session_id: fake_web_session())
 
     response = client.post(
         "/api/github-bot/repositories/acme/reviewer/review",

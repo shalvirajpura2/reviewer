@@ -175,6 +175,16 @@ async def fetch_pr_metadata(parsed_pr: dict[str, str | int], github_token: str |
     )
 
 
+async def fetch_repository_metadata(owner: str, repo: str, github_token: str | None = None) -> dict[str, Any]:
+    payload = await github_fetch(
+        f"/repos/{owner}/{repo}",
+        github_token=github_token,
+        action_name="fetch the repository metadata",
+    )
+
+    return payload if isinstance(payload, dict) else {}
+
+
 async def fetch_pr_files(
     parsed_pr: dict[str, str | int],
     expected_file_count: int | None = None,
@@ -399,6 +409,29 @@ async def upsert_review_summary_comment(parsed_pr: dict[str, str | int], body: s
 async def fetch_repo_stars(owner: str, repo: str) -> int:
     payload = await github_fetch(f"/repos/{owner}/{repo}")
     return int(payload.get("stargazers_count", 0))
+
+
+async def fetch_user_repositories(github_token: str) -> list[dict[str, Any]]:
+    repositories: list[dict[str, Any]] = []
+    page = 1
+
+    while True:
+        payload = await github_fetch(
+            f"/user/repos?per_page=100&page={page}&affiliation=owner,collaborator,organization_member&sort=updated",
+            github_token=github_token,
+            action_name="fetch accessible GitHub repositories",
+        )
+
+        if not isinstance(payload, list) or not payload:
+            break
+
+        repositories.extend(item for item in payload if isinstance(item, dict))
+        if len(payload) < 100:
+            break
+
+        page += 1
+
+    return repositories
 
 
 async def fetch_open_pull_requests(owner: str, repo: str, github_token: str | None = None) -> list[dict[str, Any]]:
