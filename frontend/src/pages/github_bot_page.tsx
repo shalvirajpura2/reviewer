@@ -23,6 +23,14 @@ const default_repository_settings: GithubBotRepositorySettings = {
 
 const onboarding_storage_key = "reviewer_bot_onboarding_v1";
 
+type OnboardingModeKey = (typeof onboarding_modes)[number]["key"];
+
+type OnboardingState = {
+  login?: string;
+  active_repository?: string;
+  configured_repositories?: Record<string, OnboardingModeKey>;
+};
+
 const automation_modes = [
   {
     key: "manual_review",
@@ -64,8 +72,6 @@ const setup_steps = [
   "Choose one repository and inspect only its open pull requests.",
   "Trigger a manual review now or turn on automation for future pull requests.",
 ];
-
-type OnboardingModeKey = (typeof onboarding_modes)[number]["key"];
 
 function repo_state_class(app_installed: boolean) {
   if (app_installed) {
@@ -177,29 +183,33 @@ function onboarding_mode_from_settings(settings: GithubBotRepositorySettings): O
   return "manual";
 }
 
-function read_onboarding_repository(login: string) {
+function read_onboarding_state(login: string): OnboardingState {
   if (typeof window === "undefined") {
-    return "";
+    return {};
   }
 
   try {
     const raw_value = window.sessionStorage.getItem(onboarding_storage_key);
     if (!raw_value) {
-      return "";
+      return {};
     }
 
-    const parsed_value = JSON.parse(raw_value) as { login?: string; repository?: string };
+    const parsed_value = JSON.parse(raw_value) as OnboardingState;
     if (parsed_value.login !== login) {
-      return "";
+      return {};
     }
 
-    return parsed_value.repository ?? "";
+    return {
+      login,
+      active_repository: parsed_value.active_repository ?? "",
+      configured_repositories: parsed_value.configured_repositories ?? {},
+    };
   } catch {
-    return "";
+    return {};
   }
 }
 
-function save_onboarding_repository(login: string, repository: string) {
+function save_onboarding_state(login: string, active_repository: string, configured_repositories: Record<string, OnboardingModeKey>) {
   if (typeof window === "undefined") {
     return;
   }
@@ -208,7 +218,8 @@ function save_onboarding_repository(login: string, repository: string) {
     onboarding_storage_key,
     JSON.stringify({
       login,
-      repository,
+      active_repository,
+      configured_repositories,
     }),
   );
 }
@@ -231,6 +242,7 @@ export function GithubBotPage() {
   const [is_signing_out, set_is_signing_out] = useState(false);
   const [onboarding_complete, set_onboarding_complete] = useState(false);
   const [onboarding_mode, set_onboarding_mode] = useState<OnboardingModeKey>("manual");
+  const [configured_onboarding_modes, set_configured_onboarding_modes] = useState<Record<string, OnboardingModeKey>>({});
   const [surface_error, set_surface_error] = useState<string | null>(null);
   const [surface_feedback, set_surface_feedback] = useState<string | null>(null);
 
@@ -275,6 +287,7 @@ export function GithubBotPage() {
       set_selected_repository("");
       set_selected_pull_request(null);
       set_onboarding_complete(false);
+      set_configured_onboarding_modes({});
       return;
     }
 
@@ -287,7 +300,9 @@ export function GithubBotPage() {
       try {
         const repository_response = await get_github_bot_repositories(request_controller.signal);
         const repository_list = repository_response.repositories;
-        const saved_repository = read_onboarding_repository(auth_session?.login ?? "");
+        const onboarding_state = read_onboarding_state(auth_session?.login ?? "");
+        const saved_repository = onboarding_state.active_repository ?? "";
+        const saved_modes = onboarding_state.configured_repositories ?? {};
         const initial_repository =
           (saved_repository && repository_list.some((repository) => repository.full_name === saved_repository) ? saved_repository : "") ||
           repository_list[0]?.full_name ||
@@ -297,9 +312,10 @@ export function GithubBotPage() {
 
         set_repositories(repository_list);
         set_repo_settings(Object.fromEntries(repository_list.map((repository) => [repository.full_name, repository.settings])));
+        set_configured_onboarding_modes(saved_modes);
         set_selected_repository(initial_repository);
-        set_onboarding_mode(onboarding_mode_from_settings(initial_settings));
-        set_onboarding_complete(Boolean(saved_repository && initial_repository));
+        set_onboarding_mode(saved_modes[initial_repository] ?? onboarding_mode_from_settings(initial_settings));
+        set_onboarding_complete(Boolean(initial_repository && Object.keys(saved_modes).length > 0));
       } catch (error) {
         if (request_controller.signal.aborted) {
           return;
@@ -399,8 +415,10 @@ export function GithubBotPage() {
       return;
     }
 
-    set_onboarding_mode(onboarding_mode_from_settings(selected_repository_settings));
-  }, [onboarding_complete, selected_repository_card, selected_repository_settings]);
+    set_onboarding_mode(
+      configured_onboarding_modes[selected_repository_card.full_name] ?? onboarding_mode_from_settings(selected_repository_settings),
+    );
+  }, [configured_onboarding_modes, onboarding_complete, selected_repository_card, selected_repository_settings]);
 
   const selected_pull_request_card = useMemo(
     () => pull_requests.find((pull_request) => pull_request.number === selected_pull_request) ?? pull_requests[0] ?? null,
@@ -430,6 +448,10 @@ export function GithubBotPage() {
       automation_ready ? "Backend webhook automation is live for your visible repositories" : "Backend webhook automation still needs final setup",
     ];
   }, [automation_ready, repo_settings, repositories]);
+
+  const configured_repository_count = Object.keys(configured_onboarding_modes).length;
+  const current_repository_saved_mode = selected_repository_card ? configured_onboarding_modes[selected_repository_card.full_name] : undefined;
+  const current_repository_saved = Boolean(selected_repository_card && current_repository_saved_mode === onboarding_mode);
 
   async function handle_toggle(setting_key: keyof GithubBotRepositorySettings) {
     if (!selected_repository_card || is_saving_settings) {
@@ -533,7 +555,7 @@ export function GithubBotPage() {
     }
   }
 
-  async function handle_complete_onboarding() {
+  async function handle_save_onboarding_selection() {
     if (!selected_repository_card || !auth_session?.authenticated || is_applying_onboarding) {
       return;
     }
@@ -560,14 +582,28 @@ export function GithubBotPage() {
           repository.full_name === repository_key ? { ...repository, settings: saved_settings } : repository,
         ),
       );
-      save_onboarding_repository(auth_session.login, repository_key);
-      set_onboarding_complete(true);
-      set_surface_feedback(`Reviewer is ready on ${repository_key} with ${mode_label(saved_settings).toLowerCase()} mode.`);
+      const next_configured_modes = {
+        ...configured_onboarding_modes,
+        [repository_key]: onboarding_mode,
+      };
+      set_configured_onboarding_modes(next_configured_modes);
+      save_onboarding_state(auth_session.login, repository_key, next_configured_modes);
+      set_surface_feedback(`Saved ${mode_label(saved_settings).toLowerCase()} mode for ${repository_key}.`);
     } catch (error) {
       set_surface_error(error instanceof Error ? error.message : "Reviewer could not save the bot setup.");
     } finally {
       set_is_applying_onboarding(false);
     }
+  }
+
+  function handle_enter_dashboard() {
+    if (!selected_repository_card || !auth_session?.authenticated || configured_repository_count === 0) {
+      return;
+    }
+
+    save_onboarding_state(auth_session.login, selected_repository_card.full_name, configured_onboarding_modes);
+    set_onboarding_complete(true);
+    set_surface_feedback(`Opened the GitHub bot dashboard for ${selected_repository_card.full_name}.`);
   }
 
   async function handle_sign_out() {
@@ -714,7 +750,15 @@ export function GithubBotPage() {
                         <div className="gb-onboarding-repo-name">{repository.full_name}</div>
                         <div className="gb-onboarding-repo-meta">{repository.open_pull_requests} open PRs</div>
                       </div>
-                      <span className="gb-status-pill">{mode_label(repo_settings[repository.full_name] ?? repository.settings)}</span>
+                      <div className="gb-onboarding-repo-status">
+                        {configured_onboarding_modes[repository.full_name] ? (
+                          <span className="gb-saved-pill">
+                            <CheckCircle2 size={12} />
+                            Saved
+                          </span>
+                        ) : null}
+                        <span className="gb-status-pill">{mode_label(repo_settings[repository.full_name] ?? repository.settings)}</span>
+                      </div>
                     </button>
                   ))}
                 </div>
@@ -744,16 +788,32 @@ export function GithubBotPage() {
                   <div className="gb-onboarding-selected">
                     <span className="gb-section-kicker">Selected</span>
                     <div className="gb-onboarding-selected-name">{selected_repository_card?.full_name ?? "Choose a repository first"}</div>
+                    <div className="gb-onboarding-selected-copy">
+                      {current_repository_saved
+                        ? `Saved with ${onboarding_modes.find((mode) => mode.key === onboarding_mode)?.title.toLowerCase() ?? "manual review"}.`
+                        : "Choose a mode, then save it for this repository."}
+                    </div>
                   </div>
-                  <button
-                    type="button"
-                    className="gb-onboarding-primary gb-inline-action"
-                    onClick={() => void handle_complete_onboarding()}
-                    disabled={!selected_repository_card || is_applying_onboarding}
-                  >
-                    <Rocket size={14} />
-                    {is_applying_onboarding ? "Saving setup..." : "Finish setup"}
-                  </button>
+                  <div className="gb-onboarding-actions-inline">
+                    <button
+                      type="button"
+                      className="gb-onboarding-secondary gb-inline-action"
+                      onClick={() => void handle_save_onboarding_selection()}
+                      disabled={!selected_repository_card || is_applying_onboarding || current_repository_saved}
+                    >
+                      <CheckCircle2 size={14} />
+                      {is_applying_onboarding ? "Saving..." : current_repository_saved ? "Saved" : "Save mode"}
+                    </button>
+                    <button
+                      type="button"
+                      className="gb-onboarding-primary gb-inline-action"
+                      onClick={() => handle_enter_dashboard()}
+                      disabled={!selected_repository_card || configured_repository_count === 0}
+                    >
+                      <Rocket size={14} />
+                      Open dashboard
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>

@@ -9240,6 +9240,14 @@ nav {
   gap: 12px;
 }
 
+.gb-onboarding-repo-status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
 .gb-onboarding-repo-card-active,
 .gb-onboarding-mode-card-active {
   border-color: rgba(92, 255, 138, 0.28);
@@ -9357,6 +9365,35 @@ nav {
   gap: 8px;
 }
 
+.gb-onboarding-selected-copy {
+  color: rgb(var(--text2));
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.gb-onboarding-actions-inline {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.gb-saved-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: rgb(var(--green));
+  background: rgba(92, 255, 138, 0.1);
+}
+
 .gb-onboarding-repo-meta {
   margin-top: 6px;
   font-family: "JetBrains Mono", monospace;
@@ -9413,6 +9450,12 @@ nav {
   .gb-onboarding-repo-card {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .gb-onboarding-repo-status,
+  .gb-onboarding-actions-inline {
+    width: 100%;
+    justify-content: flex-start;
   }
 
   .gb-signout-button,
