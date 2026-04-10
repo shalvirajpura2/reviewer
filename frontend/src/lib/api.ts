@@ -1,4 +1,10 @@
 import type { BackendAnalysisResult, BackendMetadata } from "../types/review";
+import type {
+  GithubBotPullRequestsResponse,
+  GithubBotRepositoriesResponse,
+  GithubBotRepositorySettings,
+  ReviewCommentPublication,
+} from "../types/github_bot";
 import { normalize_pr_url, pr_url_validation_message } from "./pr_url";
 
 const configured_backend_url = import.meta.env.VITE_BACKEND_URL?.replace(/\/$/, "");
@@ -15,6 +21,18 @@ export type RepoStars = {
   stars: number;
 };
 
+export type BackendHealth = {
+  status: string;
+  github_token_configured: boolean;
+  github_app_configured: boolean;
+  github_web_auth_configured: boolean;
+  github_webhook_configured: boolean;
+  reviewer_publish_github_token_configured: boolean;
+  database_configured: boolean;
+  uptime_seconds: number;
+  cache_ttl_seconds: number;
+  stale_cache_ttl_seconds: number;
+};
 export type RecentAnalysis = {
   repo_name: string;
   pr_number: number;
@@ -34,6 +52,13 @@ export type PrPreview = {
 type ApiErrorPayload = {
   message?: string;
   detail?: string;
+};
+
+export type GithubWebSession = {
+  authenticated: boolean;
+  configured: boolean;
+  login: string;
+  user_id: number;
 };
 
 function resolve_backend_url() {
@@ -69,6 +94,7 @@ async function request_json<T>(path: string, init?: RequestInit, fallback_messag
   try {
     response = await fetch(`${resolve_backend_url()}${path}`, {
       ...init,
+      credentials: "include",
       signal: request_controller.signal,
     });
   } catch (error) {
@@ -187,4 +213,88 @@ export async function record_site_visit(client_id: string): Promise<SiteStats> {
 
 export async function get_repo_stars(): Promise<RepoStars> {
   return request_json<RepoStars>("/api/stats/repo-stars", undefined, "Reviewer repo stars are unavailable.");
+}
+
+export async function get_github_bot_repositories(signal?: AbortSignal): Promise<GithubBotRepositoriesResponse> {
+  return request_json<GithubBotRepositoriesResponse>(
+    "/api/github-bot/repositories",
+    {
+      method: "GET",
+      signal,
+    },
+    "Reviewer could not load connected GitHub repositories."
+  );
+}
+
+export async function get_github_web_session(signal?: AbortSignal): Promise<GithubWebSession> {
+  return request_json<GithubWebSession>(
+    "/api/auth/session",
+    {
+      method: "GET",
+      signal,
+    },
+    "Reviewer could not load the GitHub dashboard session."
+  );
+}
+
+export async function logout_github_web_session(): Promise<void> {
+  await request_json<{ ok: boolean }>(
+    "/api/auth/logout",
+    {
+      method: "POST",
+    },
+    "Reviewer could not clear the GitHub dashboard session."
+  );
+}
+
+export function build_github_auth_start_url(next_path = "/github") {
+  return `${resolve_backend_url()}/api/auth/github/start?next=${encodeURIComponent(next_path)}`;
+}
+
+export async function get_github_bot_pull_requests(owner: string, repo: string, signal?: AbortSignal): Promise<GithubBotPullRequestsResponse> {
+  return request_json<GithubBotPullRequestsResponse>(
+    `/api/github-bot/repositories/${owner}/${repo}/pulls`,
+    {
+      method: "GET",
+      signal,
+    },
+    "Reviewer could not load open pull requests for that repository."
+  );
+}
+
+export async function update_github_bot_settings(
+  owner: string,
+  repo: string,
+  settings: GithubBotRepositorySettings,
+): Promise<GithubBotRepositorySettings> {
+  return request_json<GithubBotRepositorySettings>(
+    `/api/github-bot/repositories/${owner}/${repo}/settings`,
+    {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(settings),
+    },
+    "Reviewer could not save repository review settings."
+  );
+}
+
+export async function trigger_github_bot_review(owner: string, repo: string, pull_number: number): Promise<ReviewCommentPublication> {
+  return request_json<ReviewCommentPublication>(
+    `/api/github-bot/repositories/${owner}/${repo}/review`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Reviewer-Client-Id": get_or_create_client_id(),
+      },
+      body: JSON.stringify({ pull_number }),
+    },
+    "Reviewer could not trigger a manual GitHub review for that pull request."
+  );
+}
+
+export async function get_backend_health(): Promise<BackendHealth> {
+  return request_json<BackendHealth>("/health", undefined, "Reviewer backend health is unavailable.");
 }

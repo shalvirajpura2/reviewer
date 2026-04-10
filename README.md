@@ -261,7 +261,7 @@ reviewer logout
 
 The CLI now guides users step by step during login, reuses the saved GitHub session automatically, and renders reports in readable sections so the next action is clear. `GITHUB_TOKEN` is still supported as an advanced fallback.
 
-Set `REVIEWER_BACKEND_API_BASE` to let the CLI hand off `publish-summary` to your hosted Reviewer backend. For bot comments, configure `GITHUB_APP_ID` and `GITHUB_APP_PRIVATE_KEY` on that backend. `REVIEWER_PUBLISH_GITHUB_TOKEN` remains available as a fallback.
+Set `REVIEWER_BACKEND_API_BASE` to let the CLI hand off `publish-summary` to your hosted Reviewer backend. For bot comments, configure `GITHUB_APP_ID`, `GITHUB_APP_PRIVATE_KEY`, and `GITHUB_WEBHOOK_SECRET` on that backend. `REVIEWER_PUBLISH_GITHUB_TOKEN` remains available as a fallback.
 
 ## Environment
 
@@ -318,3 +318,4 @@ Reviewer is being built to feel credible the moment a developer opens it:
 ## Builder
 
 Built by [Shalvi](https://shalvirajpura.xyz).
+

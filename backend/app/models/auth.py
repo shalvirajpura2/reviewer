@@ -9,7 +9,9 @@ class GithubAuthSession(BaseModel):
     scope: str = ""
     login: str
     user_id: int
-    source: Literal["device", "env"] = "device"
+    source: Literal["device", "env", "web"] = "device"
+    created_at: str = ""
+    expires_at: str = ""
 
 
 class GithubDeviceCode(BaseModel):
@@ -24,3 +26,10 @@ class GithubDeviceCode(BaseModel):
 class GithubViewer(BaseModel):
     login: str
     user_id: int
+
+
+class GithubWebSessionStatus(BaseModel):
+    authenticated: bool
+    configured: bool
+    login: str = ""
+    user_id: int = 0
