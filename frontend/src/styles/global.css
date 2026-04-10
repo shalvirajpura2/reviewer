@@ -9039,3 +9039,384 @@ nav {
   cursor: wait;
   opacity: 0.72;
 }
+
+.gb-pill,
+.gb-section-kicker,
+.gb-status-pill,
+.gb-preview-step-number {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.gb-pill,
+.gb-preview-step-number {
+  color: rgb(var(--green));
+  background: rgba(92, 255, 138, 0.1);
+}
+
+.gb-status-pill {
+  color: rgb(var(--text2));
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.gb-onboarding-shell {
+  display: grid;
+  gap: 20px;
+  padding: 28px;
+  border: 1px solid rgba(var(--border2), 0.18);
+  background:
+    radial-gradient(circle at top left, rgba(92, 255, 138, 0.08), transparent 28%),
+    rgba(10, 14, 22, 0.96);
+}
+
+.gb-onboarding-shell-wide {
+  grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.9fr);
+  align-items: stretch;
+}
+
+.gb-onboarding-hero,
+.gb-onboarding-preview,
+.gb-onboarding-panel {
+  padding: 24px;
+  border: 1px solid rgba(var(--border2), 0.18);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.gb-onboarding-title,
+.gb-dashboard-title,
+.gb-section-title {
+  margin-top: 14px;
+  font-family: "Plus Jakarta Sans", sans-serif;
+  font-weight: 650;
+  letter-spacing: -0.03em;
+  color: rgb(var(--text));
+}
+
+.gb-onboarding-title {
+  font-size: clamp(28px, 4vw, 42px);
+  line-height: 1.04;
+}
+
+.gb-dashboard-title {
+  font-size: clamp(24px, 3vw, 34px);
+  line-height: 1.08;
+}
+
+.gb-section-title {
+  font-size: 24px;
+  line-height: 1.12;
+}
+
+.gb-onboarding-copy,
+.gb-preview-step-copy,
+.gb-section-copy,
+.gb-onboarding-mode-copy {
+  color: rgb(var(--text2));
+  font-size: 14px;
+  line-height: 1.72;
+}
+
+.gb-onboarding-copy {
+  max-width: 56ch;
+  margin-top: 14px;
+}
+
+.gb-onboarding-actions,
+.gb-onboarding-footer,
+.gb-dashboard-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.gb-onboarding-actions {
+  margin-top: 24px;
+  justify-content: flex-start;
+  flex-wrap: wrap;
+}
+
+.gb-onboarding-primary,
+.gb-onboarding-secondary,
+.gb-signout-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 42px;
+  padding: 0 16px;
+  border-radius: 14px;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.gb-onboarding-primary {
+  background: rgb(var(--green));
+  color: rgb(var(--background));
+}
+
+.gb-onboarding-secondary,
+.gb-signout-button {
+  border: 1px solid rgba(var(--border2), 0.22);
+  color: rgb(var(--text));
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.gb-onboarding-preview {
+  display: grid;
+  gap: 14px;
+}
+
+.gb-preview-step {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 14px;
+  align-items: flex-start;
+}
+
+.gb-preview-step-title,
+.gb-onboarding-repo-name,
+.gb-onboarding-mode-title,
+.gb-onboarding-selected-name {
+  font-family: "Plus Jakarta Sans", sans-serif;
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.24;
+  color: rgb(var(--text));
+}
+
+.gb-dashboard-head {
+  align-items: flex-start;
+}
+
+.gb-section-head {
+  display: grid;
+  gap: 10px;
+}
+
+.gb-section-kicker {
+  justify-self: flex-start;
+  color: rgb(var(--amber));
+  background: rgba(255, 179, 64, 0.12);
+}
+
+.gb-onboarding-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.gb-onboarding-repo-list,
+.gb-onboarding-mode-grid {
+  display: grid;
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.gb-onboarding-repo-card,
+.gb-onboarding-mode-card {
+  width: 100%;
+  padding: 16px;
+  border: 1px solid rgba(var(--border2), 0.18);
+  background: rgba(255, 255, 255, 0.03);
+  text-align: left;
+  cursor: pointer;
+}
+
+.gb-onboarding-repo-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.gb-onboarding-repo-card-active,
+.gb-onboarding-mode-card-active {
+  border-color: rgba(92, 255, 138, 0.28);
+  background: rgba(92, 255, 138, 0.07);
+}
+
+.gb-dashboard-shell {
+  display: grid;
+  gap: 18px;
+}
+
+.gb-dashboard-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.gb-dashboard-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.gb-metric-card,
+.gb-dashboard-card {
+  padding: 20px;
+  border: 1px solid rgba(var(--border2), 0.18);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.gb-dashboard-card-tight {
+  padding: 18px;
+}
+
+.gb-metric-label {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: rgb(var(--text2));
+}
+
+.gb-metric-value {
+  margin-top: 12px;
+  font-family: "Plus Jakarta Sans", sans-serif;
+  font-size: 34px;
+  font-weight: 650;
+  line-height: 1;
+  color: rgb(var(--text));
+}
+
+.gb-dashboard-grid {
+  display: grid;
+  grid-template-columns: minmax(240px, 0.9fr) minmax(0, 1.4fr) minmax(280px, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.gb-dashboard-column {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+}
+
+.gb-repo-list-compact,
+.gb-activity-list-tight,
+.gb-settings-grid-tight {
+  margin-top: 14px;
+}
+
+.gb-repo-card-compact,
+.gb-mode-card-compact {
+  padding: 14px;
+}
+
+.gb-repo-copy-compact,
+.gb-panel-copy-tight {
+  margin-top: 8px;
+}
+
+.gb-pr-card-dashboard {
+  padding: 14px;
+}
+
+.gb-pr-card-select {
+  width: 100%;
+  text-align: left;
+}
+
+.gb-pr-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.gb-text-link {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgb(var(--text2));
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.gb-focus-card-first {
+  margin-top: 0;
+}
+
+.gb-onboarding-repo-meta,
+.gb-onboarding-selected {
+  display: grid;
+  gap: 8px;
+}
+
+.gb-onboarding-repo-meta {
+  margin-top: 6px;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 11px;
+  color: rgb(var(--text2));
+}
+
+.gb-onboarding-mode-title {
+  font-size: 17px;
+}
+
+.gb-onboarding-mode-copy {
+  margin-top: 8px;
+}
+
+.gb-onboarding-footer {
+  margin-top: 22px;
+  padding-top: 18px;
+  border-top: 1px solid rgba(var(--border2), 0.18);
+}
+
+@media (max-width: 1080px) {
+  .gb-onboarding-shell-wide,
+  .gb-onboarding-grid,
+  .gb-dashboard-grid,
+  .gb-dashboard-metrics {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .gb-onboarding-shell,
+  .gb-onboarding-hero,
+  .gb-onboarding-preview,
+  .gb-onboarding-panel {
+    padding: 20px;
+  }
+
+  .gb-onboarding-actions,
+  .gb-onboarding-footer,
+  .gb-dashboard-head,
+  .gb-dashboard-actions,
+  .gb-pr-actions {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .gb-onboarding-primary,
+  .gb-onboarding-secondary,
+  .gb-signout-button {
+    width: 100%;
+  }
+
+  .gb-onboarding-repo-card {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .gb-signout-button,
+  .gb-pr-actions .gb-onboarding-primary {
+    width: 100%;
+  }
+}
