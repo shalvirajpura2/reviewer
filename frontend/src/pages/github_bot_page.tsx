@@ -1,5 +1,5 @@
 import { Bot, CheckCircle2, Github, GitPullRequest, LogOut, Rocket, Sparkles } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { SiteFooter } from "../components/site_footer";
 import {
@@ -227,12 +227,14 @@ export function GithubBotPage() {
   const [is_triggering_review, set_is_triggering_review] = useState(false);
   const [is_applying_onboarding, set_is_applying_onboarding] = useState(false);
   const [is_signing_out, set_is_signing_out] = useState(false);
+  const [is_waiting_for_install_return, set_is_waiting_for_install_return] = useState(false);
   const [repository_reload_nonce, set_repository_reload_nonce] = useState(0);
   const [onboarding_complete, set_onboarding_complete] = useState(false);
   const [onboarding_mode, set_onboarding_mode] = useState<OnboardingModeKey>("manual");
   const [configured_onboarding_modes, set_configured_onboarding_modes] = useState<Record<string, OnboardingModeKey>>({});
   const [surface_error, set_surface_error] = useState<string | null>(null);
   const [surface_feedback, set_surface_feedback] = useState<string | null>(null);
+  const install_popup_ref = useRef<Window | null>(null);
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -349,12 +351,75 @@ export function GithubBotPage() {
     };
   }, [auth_session?.authenticated, auth_session?.login, repository_reload_nonce]);
 
+  useEffect(() => {
+    if (!is_waiting_for_install_return || !auth_session?.authenticated) {
+      return;
+    }
+
+    function refresh_after_focus() {
+      set_repository_reload_nonce((current) => current + 1);
+    }
+
+    const poll_id = window.setInterval(() => {
+      set_repository_reload_nonce((current) => current + 1);
+
+      if (install_popup_ref.current && install_popup_ref.current.closed) {
+        install_popup_ref.current = null;
+        set_repository_reload_nonce((current) => current + 1);
+      }
+    }, 6000);
+    const timeout_id = window.setTimeout(() => {
+      set_is_waiting_for_install_return(false);
+    }, 120000);
+
+    window.addEventListener("focus", refresh_after_focus);
+
+    return () => {
+      window.removeEventListener("focus", refresh_after_focus);
+      window.clearInterval(poll_id);
+      window.clearTimeout(timeout_id);
+    };
+  }, [auth_session?.authenticated, is_waiting_for_install_return]);
+
+  useEffect(() => {
+    if (!is_waiting_for_install_return || repositories.length === 0) {
+      return;
+    }
+
+    set_is_waiting_for_install_return(false);
+    set_surface_feedback("Installation detected. Choose a repository to continue setup.");
+  }, [is_waiting_for_install_return, repositories.length]);
+
   function handle_open_app_install() {
     const install_url = build_github_app_install_url("/github");
-    window.location.assign(install_url);
+
+    const popup_width = 1100;
+    const popup_height = 800;
+    const popup_left = Math.max(0, Math.round((window.screen.width - popup_width) / 2));
+    const popup_top = Math.max(0, Math.round((window.screen.height - popup_height) / 2));
+    const popup_features = [
+      `width=${popup_width}`,
+      `height=${popup_height}`,
+      `left=${popup_left}`,
+      `top=${popup_top}`,
+      "resizable=yes",
+      "scrollbars=yes",
+    ].join(",");
+
+    const popup_window = window.open(install_url, "reviewer-github-install", popup_features);
+    install_popup_ref.current = popup_window;
+
+    if (!popup_window) {
+      window.open(install_url, "_blank", "noopener,noreferrer");
+    }
+
+    set_is_waiting_for_install_return(true);
+    set_surface_error(null);
+    set_surface_feedback("Complete installation in the popup. This page will auto-refresh repositories when you return.");
   }
 
   function handle_refresh_repositories() {
+    set_is_waiting_for_install_return(false);
     set_repository_reload_nonce((current) => current + 1);
     set_surface_feedback(null);
   }
@@ -744,7 +809,7 @@ export function GithubBotPage() {
                         onClick={handle_refresh_repositories}
                         disabled={is_loading_repositories}
                       >
-                        {is_loading_repositories ? "Refreshing..." : "I installed it, refresh repositories"}
+                        {is_loading_repositories ? "Refreshing..." : is_waiting_for_install_return ? "Waiting for install... refresh now" : "I installed it, refresh repositories"}
                       </button>
                     </div>
                   </div>
