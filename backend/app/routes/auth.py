@@ -1,6 +1,8 @@
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse, RedirectResponse
+from urllib.parse import urlparse
 
+from app.core.settings import settings
 from app.models.auth import GithubWebSessionStatus
 from app.routes.analyze import error_response
 from app.services.web_auth_session_service import (
@@ -34,6 +36,14 @@ def use_secure_cookies(request: Request) -> bool:
     return resolve_public_base_url(request).startswith("https://")
 
 
+def session_cookie_samesite(request: Request) -> str:
+    backend_host = urlparse(resolve_public_base_url(request)).hostname or ""
+    frontend_host = urlparse(settings.frontend_app_url).hostname or ""
+    if backend_host and frontend_host and backend_host != frontend_host:
+        return "none"
+    return "lax"
+
+
 @router.get("/session", response_model=GithubWebSessionStatus)
 async def github_session_route(request: Request):
     session = load_web_auth_session(request.cookies.get(github_session_cookie_name))
@@ -65,7 +75,14 @@ async def github_auth_callback_route(request: Request, code: str = "", state: st
             resolve_frontend_redirect(request.cookies.get(github_oauth_next_cookie_name)),
             status_code=302,
         )
-        redirect_response.set_cookie(github_session_cookie_name, session_id, httponly=True, samesite="lax", secure=use_secure_cookies(request), path="/")
+        redirect_response.set_cookie(
+            github_session_cookie_name,
+            session_id,
+            httponly=True,
+            samesite=session_cookie_samesite(request),
+            secure=use_secure_cookies(request),
+            path="/",
+        )
         redirect_response.delete_cookie(github_oauth_state_cookie_name, path="/")
         redirect_response.delete_cookie(github_oauth_next_cookie_name, path="/")
         return redirect_response
