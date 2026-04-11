@@ -47,6 +47,35 @@ $env:REVIEWER_CONFIG_DIR="C:\Users\you\AppData\Roaming\reviewer-cli"
 
 ## Usage
 
+Quick start flow:
+
+1. Connect GitHub
+
+```bash
+reviewer login
+```
+
+2. Analyze a pull request
+
+```bash
+reviewer analyze https://github.com/owner/repo/pull/123
+```
+
+3. Publish or update the GitHub summary comment
+
+```bash
+reviewer publish-summary https://github.com/owner/repo/pull/123
+```
+
+4. Check session or logout
+
+```bash
+reviewer whoami
+reviewer logout
+```
+
+All commands:
+
 ```bash
 reviewer login
 reviewer whoami

@@ -10,6 +10,7 @@ from app.models.github_bot import (
 )
 from app.models.review_domain import ReviewCommentPublication
 from app.routes.analyze import error_response, resolve_client_key
+from app.routes.auth import require_web_csrf
 from app.services.github_bot_service import (
     get_repository_settings,
     list_connected_repositories,
@@ -72,6 +73,7 @@ async def get_repository_settings_route(owner: str, repo: str, request: Request)
 @router.put("/repositories/{owner}/{repo}/settings", response_model=GithubBotRepositorySettings)
 async def update_repository_settings_route(owner: str, repo: str, payload: GithubBotRepositorySettingsUpdate, request: Request):
     try:
+        require_web_csrf(request)
         session = require_web_auth_session(request.cookies.get(github_session_cookie_name))
         return await update_repository_settings(owner, repo, GithubBotRepositorySettings(**payload.model_dump()), session.access_token)
     except PermissionError as error:
@@ -87,6 +89,7 @@ async def update_repository_settings_route(owner: str, repo: str, payload: Githu
 @router.post("/repositories/{owner}/{repo}/review", response_model=ReviewCommentPublication)
 async def trigger_manual_review_route(owner: str, repo: str, payload: GithubBotManualReviewRequest, request: Request):
     try:
+        require_web_csrf(request)
         session = require_web_auth_session(request.cookies.get(github_session_cookie_name))
         return await trigger_manual_review(owner, repo, payload.pull_number, resolve_client_key(request), session.access_token)
     except PermissionError as error:

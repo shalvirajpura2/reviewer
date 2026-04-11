@@ -65,9 +65,13 @@ async def enforce_request_limit(client_key: str, action_name: str) -> None:
 
 async def build_live_analysis(parsed_pr: dict[str, str | int], cache_key: str, metadata: GithubPrMetadata) -> PrAnalysisResult:
     started_at = time.perf_counter()
-    files, partial_reasons = await fetch_pr_files(parsed_pr, metadata.changed_files)
-    commits, commit_partial_reasons = await fetch_pr_commits(parsed_pr, metadata.commits)
-    check_runs, check_partial_reasons = await fetch_commit_check_runs(parsed_pr, metadata.head_sha)
+    files_task = fetch_pr_files(parsed_pr, metadata.changed_files)
+    commits_task = fetch_pr_commits(parsed_pr, metadata.commits)
+    check_runs_task = fetch_commit_check_runs(parsed_pr, metadata.head_sha)
+    files_result, commits_result, check_runs_result = await asyncio.gather(files_task, commits_task, check_runs_task)
+    files, partial_reasons = files_result
+    commits, commit_partial_reasons = commits_result
+    check_runs, check_partial_reasons = check_runs_result
     classified_files = classify_files(files)
     signals = detect_signals(metadata, classified_files, commits, check_runs)
     result = build_result(

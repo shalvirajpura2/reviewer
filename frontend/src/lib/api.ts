@@ -10,6 +10,7 @@ import { normalize_pr_url, pr_url_validation_message } from "./pr_url";
 const configured_backend_url = import.meta.env.VITE_BACKEND_URL?.replace(/\/$/, "");
 const configured_github_app_slug = import.meta.env.VITE_GITHUB_APP_SLUG?.trim() || "reviewer-live";
 const request_timeout_ms = 30000;
+const reviewer_csrf_cookie_name = "reviewer_web_csrf";
 
 export type SiteStats = {
   visitor_count: number;
@@ -60,10 +61,72 @@ export type GithubWebSession = {
   configured: boolean;
   login: string;
   user_id: number;
+  csrf_token: string;
 };
 
 function resolve_backend_url() {
   return configured_backend_url || "http://localhost:8000";
+}
+
+function read_cookie_value(cookie_name: string): string {
+  const encoded_name = `${encodeURIComponent(cookie_name)}=`;
+  const raw_cookie = document.cookie || "";
+
+  for (const part of raw_cookie.split(";")) {
+    const trimmed_part = part.trim();
+    if (!trimmed_part.startsWith(encoded_name)) {
+      continue;
+    }
+
+    return decodeURIComponent(trimmed_part.slice(encoded_name.length));
+  }
+
+  return "";
+}
+
+function is_mutating_request(init?: RequestInit): boolean {
+  const request_method = (init?.method || "GET").toUpperCase();
+  return request_method === "POST" || request_method === "PUT" || request_method === "PATCH" || request_method === "DELETE";
+}
+
+function with_latest_csrf_header(init?: RequestInit): RequestInit | undefined {
+  const csrf_token = read_cookie_value(reviewer_csrf_cookie_name).trim();
+  if (!csrf_token) {
+    return init;
+  }
+
+  const next_headers = new Headers(init?.headers);
+  next_headers.set("X-Reviewer-CSRF", csrf_token);
+
+  return {
+    ...(init || {}),
+    headers: next_headers,
+  };
+}
+
+async function silently_refresh_web_session_context() {
+  try {
+    await fetch(`${resolve_backend_url()}/api/auth/session`, {
+      method: "GET",
+      credentials: "include",
+    });
+  } catch {
+    // Ignore refresh failures and keep the original request error handling path.
+  }
+}
+
+function should_retry_after_csrf_failure(path: string, init: RequestInit | undefined, response: Response, payload: unknown): payload is ApiErrorPayload {
+  if (path === "/api/auth/session") {
+    return false;
+  }
+
+  if (!is_mutating_request(init) || response.status !== 403) {
+    return false;
+  }
+
+  const api_error = payload as ApiErrorPayload | null;
+  const combined_message = `${api_error?.message || ""} ${api_error?.detail || ""}`.toLowerCase();
+  return combined_message.includes("csrf");
 }
 
 async function parse_json_response<T>(response: Response): Promise<T | null> {
@@ -75,45 +138,53 @@ async function parse_json_response<T>(response: Response): Promise<T | null> {
 }
 
 async function request_json<T>(path: string, init?: RequestInit, fallback_message = "Request failed.") {
-  let response: Response;
-  const request_controller = new AbortController();
-  const upstream_signal = init?.signal;
-  const timeout_id = window.setTimeout(() => {
-    request_controller.abort();
-  }, request_timeout_ms);
+  async function run_request(request_init?: RequestInit): Promise<Response> {
+    const request_controller = new AbortController();
+    const upstream_signal = request_init?.signal;
+    const timeout_id = window.setTimeout(() => {
+      request_controller.abort();
+    }, request_timeout_ms);
 
-  function abort_request() {
-    request_controller.abort();
-  }
+    function abort_request() {
+      request_controller.abort();
+    }
 
-  if (upstream_signal?.aborted) {
-    request_controller.abort();
-  } else {
-    upstream_signal?.addEventListener("abort", abort_request, { once: true });
-  }
-
-  try {
-    response = await fetch(`${resolve_backend_url()}${path}`, {
-      ...init,
-      credentials: "include",
-      signal: request_controller.signal,
-    });
-  } catch (error) {
     if (upstream_signal?.aborted) {
-      throw new Error("Request cancelled.");
+      request_controller.abort();
+    } else {
+      upstream_signal?.addEventListener("abort", abort_request, { once: true });
     }
 
-    if (error instanceof DOMException && error.name === "AbortError") {
-      throw new Error("Request timed out. Please try again.");
-    }
+    try {
+      return await fetch(`${resolve_backend_url()}${path}`, {
+        ...request_init,
+        credentials: "include",
+        signal: request_controller.signal,
+      });
+    } catch (error) {
+      if (upstream_signal?.aborted) {
+        throw new Error("Request cancelled.");
+      }
 
-    throw new Error("Network error. Please check your connection and try again.");
-  } finally {
-    window.clearTimeout(timeout_id);
-    upstream_signal?.removeEventListener("abort", abort_request);
+      if (error instanceof DOMException && error.name === "AbortError") {
+        throw new Error("Request timed out. Please try again.");
+      }
+
+      throw new Error("Network error. Please check your connection and try again.");
+    } finally {
+      window.clearTimeout(timeout_id);
+      upstream_signal?.removeEventListener("abort", abort_request);
+    }
   }
 
-  const payload = await parse_json_response<T | ApiErrorPayload>(response);
+  let response = await run_request(init);
+  let payload = await parse_json_response<T | ApiErrorPayload>(response);
+
+  if (should_retry_after_csrf_failure(path, init, response, payload)) {
+    await silently_refresh_web_session_context();
+    response = await run_request(with_latest_csrf_header(init));
+    payload = await parse_json_response<T | ApiErrorPayload>(response);
+  }
 
   if (!response.ok) {
     const api_error = payload as ApiErrorPayload | null;
@@ -238,11 +309,14 @@ export async function get_github_web_session(signal?: AbortSignal): Promise<Gith
   );
 }
 
-export async function logout_github_web_session(): Promise<void> {
+export async function logout_github_web_session(csrf_token: string): Promise<void> {
   await request_json<{ ok: boolean }>(
     "/api/auth/logout",
     {
       method: "POST",
+      headers: {
+        "X-Reviewer-CSRF": csrf_token,
+      },
     },
     "Reviewer could not clear the GitHub dashboard session."
   );
@@ -276,6 +350,7 @@ export async function update_github_bot_settings(
   owner: string,
   repo: string,
   settings: GithubBotRepositorySettings,
+  csrf_token: string,
 ): Promise<GithubBotRepositorySettings> {
   return request_json<GithubBotRepositorySettings>(
     `/api/github-bot/repositories/${owner}/${repo}/settings`,
@@ -283,6 +358,7 @@ export async function update_github_bot_settings(
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
+        "X-Reviewer-CSRF": csrf_token,
       },
       body: JSON.stringify(settings),
     },
@@ -290,7 +366,7 @@ export async function update_github_bot_settings(
   );
 }
 
-export async function trigger_github_bot_review(owner: string, repo: string, pull_number: number): Promise<ReviewCommentPublication> {
+export async function trigger_github_bot_review(owner: string, repo: string, pull_number: number, csrf_token: string): Promise<ReviewCommentPublication> {
   return request_json<ReviewCommentPublication>(
     `/api/github-bot/repositories/${owner}/${repo}/review`,
     {
@@ -298,6 +374,7 @@ export async function trigger_github_bot_review(owner: string, repo: string, pul
       headers: {
         "Content-Type": "application/json",
         "X-Reviewer-Client-Id": get_or_create_client_id(),
+        "X-Reviewer-CSRF": csrf_token,
       },
       body: JSON.stringify({ pull_number }),
     },

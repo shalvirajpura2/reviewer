@@ -524,7 +524,7 @@ export function GithubBotPage() {
   const current_repository_saved = Boolean(selected_repository_card && current_repository_saved_mode === onboarding_mode);
 
   async function handle_toggle(setting_key: keyof GithubBotRepositorySettings) {
-    if (!selected_repository_card || is_saving_settings) {
+    if (!selected_repository_card || is_saving_settings || !auth_session?.csrf_token) {
       return;
     }
 
@@ -553,6 +553,7 @@ export function GithubBotPage() {
         selected_repository_card.owner,
         selected_repository_card.repo,
         next_settings,
+        auth_session.csrf_token,
       );
       set_repo_settings((current) => ({
         ...current,
@@ -581,7 +582,7 @@ export function GithubBotPage() {
   }
 
   async function handle_review_now(pull_request_number: number) {
-    if (!selected_repository_card || is_triggering_review) {
+    if (!selected_repository_card || is_triggering_review || !auth_session?.csrf_token) {
       return;
     }
 
@@ -596,6 +597,7 @@ export function GithubBotPage() {
         selected_repository_card.owner,
         selected_repository_card.repo,
         pull_request_number,
+        auth_session.csrf_token,
       );
       set_repositories((current) =>
         current.map((repository) =>
@@ -626,7 +628,7 @@ export function GithubBotPage() {
   }
 
   async function handle_save_onboarding_selection() {
-    if (!selected_repository_card || !auth_session?.authenticated || is_applying_onboarding) {
+    if (!selected_repository_card || !auth_session?.authenticated || !auth_session.csrf_token || is_applying_onboarding) {
       return;
     }
 
@@ -642,6 +644,7 @@ export function GithubBotPage() {
         selected_repository_card.owner,
         selected_repository_card.repo,
         next_settings,
+        auth_session.csrf_token,
       );
       set_repo_settings((current) => ({
         ...current,
@@ -686,12 +689,17 @@ export function GithubBotPage() {
     set_surface_feedback(null);
 
     try {
-      await logout_github_web_session();
+      if (!auth_session?.csrf_token) {
+        throw new Error("Session token missing. Refresh the page and try again.");
+      }
+
+      await logout_github_web_session(auth_session.csrf_token);
       set_auth_session({
         authenticated: false,
         configured: auth_session?.configured ?? Boolean(backend_health?.github_web_auth_configured),
         login: "",
         user_id: 0,
+        csrf_token: "",
       });
       set_surface_feedback("Disconnected GitHub from the bot dashboard.");
     } catch (error) {

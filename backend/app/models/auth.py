@@ -33,3 +33,4 @@ class GithubWebSessionStatus(BaseModel):
     configured: bool
     login: str = ""
     user_id: int = 0
+    csrf_token: str = ""

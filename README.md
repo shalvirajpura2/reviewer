@@ -229,10 +229,37 @@ docker build -f backend/Dockerfile -t reviewer-backend backend
 
 ## CLI
 
-Install the published CLI with `pipx` for the cleanest global command setup:
+Follow this quick path:
+
+1. Install the published CLI with `pipx` for the cleanest global command setup:
 
 ```bash
 pipx install reviewer-cli
+```
+
+2. Connect GitHub:
+
+```bash
+reviewer login
+```
+
+3. Analyze a pull request:
+
+```bash
+reviewer analyze https://github.com/owner/repo/pull/123
+```
+
+4. Publish/update the summary comment in GitHub:
+
+```bash
+reviewer publish-summary https://github.com/owner/repo/pull/123
+```
+
+5. Verify active session or sign out:
+
+```bash
+reviewer whoami
+reviewer logout
 ```
 
 You can also install it with `pip`:
@@ -249,7 +276,7 @@ pip install -e backend
 
 Reviewer CLI now ships with the default GitHub device login client id, so most users can log in immediately after install. `GITHUB_CLIENT_ID` remains available as an override for local or self-hosted setups.
 
-Then run Reviewer directly from your terminal:
+Full command set:
 
 ```bash
 reviewer login
