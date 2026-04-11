@@ -1,6 +1,6 @@
 import type { CSSProperties } from "react";
 import { AlertCircle, ArrowRight, ExternalLink, GitBranch, Link2, X } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 
@@ -30,8 +30,22 @@ function format_date(value: string) {
   }).format(date);
 }
 
+function get_focusable_elements(container: HTMLElement | null): HTMLElement[] {
+  if (!container) {
+    return [];
+  }
+
+  return Array.from(
+    container.querySelectorAll<HTMLElement>(
+      'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+    ),
+  ).filter((element) => !element.hasAttribute("hidden") && !element.getAttribute("aria-hidden"));
+}
+
 export function PrInputBar({ mode = "hero" }: PrInputBarProps) {
   const navigate = useNavigate();
+  const preview_title_id = useId();
+  const preview_description_id = useId();
   const [pr_url, set_pr_url] = useState("");
   const [is_loading, set_is_loading] = useState(false);
   const [is_starting_review, set_is_starting_review] = useState(false);
@@ -40,6 +54,15 @@ export function PrInputBar({ mode = "hero" }: PrInputBarProps) {
   const [preview_error, set_preview_error] = useState<string | null>(null);
   const [is_preview_open, set_is_preview_open] = useState(false);
   const is_compact = mode === "compact";
+  const input_ref = useRef<HTMLInputElement | null>(null);
+  const dialog_ref = useRef<HTMLDivElement | null>(null);
+  const close_button_ref = useRef<HTMLButtonElement | null>(null);
+  const previous_active_element_ref = useRef<HTMLElement | null>(null);
+  const is_starting_review_ref = useRef(false);
+
+  useEffect(() => {
+    is_starting_review_ref.current = is_starting_review;
+  }, [is_starting_review]);
 
   useEffect(() => {
     if (!is_preview_open) {
@@ -48,11 +71,36 @@ export function PrInputBar({ mode = "hero" }: PrInputBarProps) {
     }
 
     const previous_overflow = document.body.style.overflow;
+    previous_active_element_ref.current = document.activeElement instanceof HTMLElement ? document.activeElement : input_ref.current;
     document.body.style.overflow = "hidden";
 
     function handle_key_down(event: KeyboardEvent) {
-      if (event.key === "Escape" && !is_starting_review) {
+      if (event.key === "Escape" && !is_starting_review_ref.current) {
         set_is_preview_open(false);
+        return;
+      }
+
+      if (event.key !== "Tab") {
+        return;
+      }
+
+      const focusable_elements = get_focusable_elements(dialog_ref.current);
+      if (focusable_elements.length === 0) {
+        event.preventDefault();
+        dialog_ref.current?.focus();
+        return;
+      }
+
+      const first_element = focusable_elements[0];
+      const last_element = focusable_elements[focusable_elements.length - 1];
+      const active_element = document.activeElement;
+
+      if (event.shiftKey && active_element === first_element) {
+        event.preventDefault();
+        last_element.focus();
+      } else if (!event.shiftKey && active_element === last_element) {
+        event.preventDefault();
+        first_element.focus();
       }
     }
 
@@ -60,6 +108,22 @@ export function PrInputBar({ mode = "hero" }: PrInputBarProps) {
     return () => {
       document.body.style.overflow = previous_overflow;
       window.removeEventListener("keydown", handle_key_down);
+      previous_active_element_ref.current?.focus();
+    };
+  }, [is_preview_open]);
+
+  useEffect(() => {
+    if (!is_preview_open) {
+      return;
+    }
+
+    const focus_target = is_starting_review ? dialog_ref.current : close_button_ref.current ?? dialog_ref.current;
+    const focus_timeout = window.setTimeout(() => {
+      focus_target?.focus();
+    }, 0);
+
+    return () => {
+      window.clearTimeout(focus_timeout);
     };
   }, [is_preview_open, is_starting_review]);
 
@@ -128,6 +192,7 @@ export function PrInputBar({ mode = "hero" }: PrInputBarProps) {
             <Link2 className="h-4 w-4 shrink-0" />
           </div>
           <input
+            ref={input_ref}
             value={pr_url}
             onChange={(event) => {
               const next_value = event.target.value;
@@ -188,22 +253,28 @@ export function PrInputBar({ mode = "hero" }: PrInputBarProps) {
       </div>
 
       {is_preview_open && preview_metadata ? createPortal(
-        <div className="pr-preview-modal" role="dialog" aria-modal="true" aria-label="Pull request preview">
+        <div
+          className="pr-preview-modal"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby={preview_title_id}
+          aria-describedby={preview_description_id}
+        >
           <button type="button" className="pr-preview-backdrop" aria-label="Close preview" onClick={close_preview} />
-          <div className="pr-preview-dialog">
+          <div ref={dialog_ref} className="pr-preview-dialog" tabIndex={-1}>
             {!is_starting_review ? (
               <>
                 <div className="pr-preview-dialog-top">
                   <div className="pr-preview-heading">
                     <div className="pr-preview-eyebrow">Pull request preview</div>
-                    <div className="pr-preview-title">{preview_metadata.title}</div>
+                    <div id={preview_title_id} className="pr-preview-title">{preview_metadata.title}</div>
                     <div className="pr-preview-repo">{preview_metadata.repo_full_name} #{preview_metadata.pull_number}</div>
                   </div>
-                  <button type="button" className="pr-preview-close" onClick={close_preview} aria-label="Close preview">
+                  <button ref={close_button_ref} type="button" className="pr-preview-close" onClick={close_preview} aria-label="Close preview">
                     <X className="h-4 w-4" />
                   </button>
                 </div>
-                <div className="pr-preview-copy">
+                <div id={preview_description_id} className="pr-preview-copy">
                   This looks like the right pull request. Start the review when you are ready.
                 </div>
                 <div className="pr-preview-stats">
@@ -243,8 +314,8 @@ export function PrInputBar({ mode = "hero" }: PrInputBarProps) {
             ) : (
               <div className="pr-preview-loading-shell">
                 <div className="pr-preview-eyebrow">Starting review</div>
-                <div className="pr-preview-title">{preview_metadata.title}</div>
-                <div className="pr-preview-copy">
+                <div id={preview_title_id} className="pr-preview-title">{preview_metadata.title}</div>
+                <div id={preview_description_id} className="pr-preview-copy">
                   Reviewer is preparing the review now.
                 </div>
                 <div className="rp-shimmer-bar" />

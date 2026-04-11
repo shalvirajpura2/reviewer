@@ -1,3 +1,4 @@
+import re
 import sys
 
 
@@ -9,25 +10,21 @@ ansi_muted = "\033[38;5;145m"
 ansi_white = "\033[38;5;255m"
 ansi_bold = "\033[1m"
 panel_width = 78
-ansi_pattern = __import__("re").compile(r"\x1b\[[0-9;]*m")
+ansi_pattern = re.compile(r"\x1b\[[0-9;]*m")
 
 
 reviewer_banner_lines = [
-    "██████╗ ███████╗██╗   ██╗██╗███████╗██╗    ██╗███████╗██████╗",
-    "██╔══██╗██╔════╝██║   ██║██║██╔════╝██║    ██║██╔════╝██╔══██╗",
-    "██████╔╝█████╗  ██║   ██║██║█████╗  ██║ █╗ ██║█████╗  ██████╔╝",
-    "██╔══██╗██╔══╝  ╚██╗ ██╔╝██║██╔══╝  ██║███╗██║██╔══╝  ██╔══██╗",
-    "██║  ██║███████╗ ╚████╔╝ ██║███████╗╚███╔███╔╝███████╗██║  ██║",
-    "╚═╝  ╚═╝╚══════╝  ╚═══╝  ╚═╝╚══════╝ ╚══╝╚══╝ ╚══════╝╚═╝  ╚═╝",
+    "██████  ███████ ██    ██ ██ ███████ ██     ██ ███████ ██████",
+    "██   ██ ██      ██    ██ ██ ██      ██     ██ ██      ██   ██",
+    "██████  █████   ██    ██ ██ █████   ██  █  ██ █████   ██████",
+    "██   ██ ██       ██  ██  ██ ██      ██ ███ ██ ██      ██   ██",
+    "██   ██ ███████   ████   ██ ███████  ███ ███  ███████ ██   ██",
 ]
 
 reviewer_banner_ascii_lines = [
-    "RRRRR   EEEEE  V   V  IIIII  EEEEE  W   W  EEEEE  RRRRR",
-    "R   RR  E      V   V    I    E      W   W  E      R   RR",
-    "RRRRR   EEEE   V   V    I    EEEE   W W W  EEEE   RRRRR",
-    "R  RR   E       V V     I    E      WW WW  E      R  RR",
-    "R   RR  EEEEE    V    IIIII  EEEEE  W   W  EEEEE  R   RR",
+    "REVIEWER",
 ]
+
 
 def colorize(value: str, color: str, bold: bool = False) -> str:
     prefix = f"{ansi_bold}{color}" if bold else color
@@ -97,7 +94,7 @@ def can_render_unicode() -> bool:
 
 
 def render_hero_panel() -> str:
-    eyebrow = colorize("deterministic github review", ansi_muted)
+    eyebrow = colorize("deterministic review for public GitHub pull requests", ansi_muted)
     banner_source = reviewer_banner_lines if can_render_unicode() else reviewer_banner_ascii_lines
     banner_lines = render_centered_lines(banner_source, ansi_green, bold=True)
     return render_panel(
@@ -118,21 +115,25 @@ def render_welcome() -> str:
     return join_blocks(
         render_banner(),
         render_panel(
-            "Start Here",
+            "Available Commands",
             [
-                f"{colorize('1.', ansi_green, bold=True)} Sign in with {colorize('reviewer login', ansi_white, bold=True)}",
-                f"{colorize('2.', ansi_green, bold=True)} Analyze a pull request with {colorize('reviewer analyze <pr-url>', ansi_white, bold=True)}",
-                f"{colorize('3.', ansi_green, bold=True)} Post a GitHub summary with {colorize('reviewer publish-summary <pr-url>', ansi_white, bold=True)}",
+                f"{colorize('reviewer login', ansi_white, bold=True)}                         Connect GitHub for protected commands",
+                f"{colorize('reviewer analyze <pr-url>', ansi_white, bold=True)}              Analyze a public pull request",
+                f"{colorize('reviewer publish-summary <pr-url>', ansi_white, bold=True)}      Publish or update a PR summary",
+                f"{colorize('reviewer whoami', ansi_white, bold=True)}                        Show the active GitHub session",
+                f"{colorize('reviewer logout', ansi_white, bold=True)}                        Clear the saved GitHub session",
             ],
-            footer="Use reviewer --help for the full command reference.",
+            footer="Use `reviewer --help` for full command options.",
         ),
         render_panel(
-            "Session",
+            "Quick Start",
             [
-                f"{colorize('reviewer whoami', ansi_white, bold=True)}   View the active GitHub account",
-                f"{colorize('reviewer logout', ansi_white, bold=True)}   Clear the saved Reviewer session",
+                f"{colorize('1.', ansi_green, bold=True)} Install with {colorize('pip install reviewer-cli', ansi_white, bold=True)}",
+                f"{colorize('2.', ansi_green, bold=True)} Run {colorize('reviewer', ansi_white, bold=True)} to open this command hub",
+                f"{colorize('3.', ansi_green, bold=True)} Sign in with {colorize('reviewer login', ansi_white, bold=True)}",
+                f"{colorize('4.', ansi_green, bold=True)} Analyze with {colorize('reviewer analyze <pr-url>', ansi_white, bold=True)}",
             ],
-            footer="Your CLI stays signed in until you log out or your token expires.",
+            footer="Protected commands start login automatically.",
         ),
     )
 
@@ -180,4 +181,3 @@ def render_status(label: str, message: str) -> str:
     }
     color = palette.get(label, ansi_muted)
     return f"{colorize(f'[{label}]', color, bold=True)} {message}"
-

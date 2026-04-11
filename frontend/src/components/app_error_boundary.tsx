@@ -18,7 +18,22 @@ export class AppErrorBoundary extends Component<AppErrorBoundaryProps, AppErrorB
     return { has_error: true };
   }
 
-  componentDidCatch(_error: Error, _error_info: ErrorInfo) {}
+  componentDidCatch(error: Error, error_info: ErrorInfo) {
+    const error_payload = {
+      message: error.message,
+      stack: error.stack,
+      component_stack: error_info.componentStack,
+    };
+
+    console.error("Reviewer UI crashed.", error_payload);
+
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    window.dispatchEvent(new CustomEvent("reviewer:ui-error", { detail: error_payload }));
+    (window as Window & { reportError?: (error: Error) => void }).reportError?.(error);
+  }
 
   render() {
     if (this.state.has_error) {

@@ -231,41 +231,41 @@ docker build -f backend/Dockerfile -t reviewer-backend backend
 
 Follow this quick path:
 
-1. Install the published CLI with `pipx` for the cleanest global command setup:
+1. Install the published CLI:
 
 ```bash
-pipx install reviewer-cli
+pip install reviewer-cli
 ```
 
-2. Connect GitHub:
+2. Open the CLI first to see the available commands:
+
+```bash
+reviewer
+```
+
+3. Connect GitHub when you are ready:
 
 ```bash
 reviewer login
 ```
 
-3. Analyze a pull request:
+4. Analyze a pull request:
 
 ```bash
 reviewer analyze https://github.com/owner/repo/pull/123
 ```
 
-4. Publish/update the summary comment in GitHub:
+5. Publish/update the summary comment in GitHub:
 
 ```bash
 reviewer publish-summary https://github.com/owner/repo/pull/123
 ```
 
-5. Verify active session or sign out:
+6. Verify the active session or sign out:
 
 ```bash
 reviewer whoami
 reviewer logout
-```
-
-You can also install it with `pip`:
-
-```bash
-pip install reviewer-cli
 ```
 
 For local development in this repository:

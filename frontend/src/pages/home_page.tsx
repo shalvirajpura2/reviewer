@@ -38,7 +38,7 @@ const surface_items = [
     title: "CLI",
     detail:
       "Use Reviewer from the terminal when you want review inside local workflows, scripts, or your usual engineering toolkit.",
-    points: ["1) Install: `pipx install reviewer-cli`", "2) Login: `reviewer login`", "3) Analyze: `reviewer analyze <pr-url>`", "4) Publish: `reviewer publish-summary <pr-url>`"],
+    points: ["1) Install: `pip install reviewer-cli`", "2) See commands: `reviewer`", "3) Analyze: `reviewer analyze <pr-url>`", "4) Publish: `reviewer publish-summary <pr-url>`"],
     action: "View CLI setup",
     href: "https://github.com/shalvirajpura2/reviewer",
     external: true,

@@ -1,10 +1,20 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, model_validator
 
 
 class GithubBotRepositorySettings(BaseModel):
     manual_review: bool = True
     automatic_review: bool = False
     review_new_pushes: bool = False
+
+    @model_validator(mode="after")
+    def normalize_dependent_modes(self):
+        if self.review_new_pushes:
+            self.automatic_review = True
+
+        if not self.automatic_review:
+            self.review_new_pushes = False
+
+        return self
 
 
 class GithubBotRepositoryActivity(BaseModel):

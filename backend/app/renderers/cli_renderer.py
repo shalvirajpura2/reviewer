@@ -9,10 +9,22 @@ def render_cli_text(result: PrAnalysisResult) -> str:
         [
             ("Repository", f"{result.metadata.repo_full_name} #{result.metadata.pull_number}"),
             ("Title", result.metadata.title),
+            ("Author", f"@{result.metadata.author}"),
+            ("Branches", f"{result.metadata.head_branch} -> {result.metadata.base_branch}"),
             ("Verdict", result.verdict),
             ("Confidence", f"{result.label} ({result.score}/100)"),
             ("Source", result.analysis_context.cache_status),
         ]
+    )
+
+    change_items = render_bullets(
+        [
+            f"Files changed: {result.metadata.changed_files}",
+            f"Commits reviewed: {result.metadata.commits}",
+            f"Diff size: +{result.metadata.additions} / -{result.metadata.deletions}",
+            *[f"Affected area: {item}" for item in result.affected_areas[:3]],
+        ],
+        "No high-signal change summary was generated.",
     )
 
     focus_items = render_steps(result.review_focus[:3], "No specific review focus was generated.")
@@ -51,6 +63,7 @@ def render_cli_text(result: PrAnalysisResult) -> str:
     return join_blocks(
         render_title("Reviewer Report", "A guided pull request review summary"),
         render_section("Summary", summary_items),
+        render_section("Change Surface", change_items),
         render_section("Focus Now", focus_items),
         render_section("Start Here", top_file_items),
         render_section("Safeguards", safeguard_items),

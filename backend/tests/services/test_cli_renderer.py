@@ -84,6 +84,9 @@ def test_render_cli_text_includes_guided_sections():
     assert "Reviewer Report" in output
     assert "Summary" in output
     assert "Repository" in output and "acme/reviewer #9" in output
+    assert "Author" in output and "@shalv" in output
+    assert "Change Surface" in output
+    assert "Diff size: +48 / -10" in output
     assert "Focus Now" in output
     assert "1. Sensitive paths changed" in output
     assert "Start Here" in output

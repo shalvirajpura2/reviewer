@@ -44,11 +44,15 @@ TOP_FILE_REASON_LABELS = {
 
 
 def build_affected_areas(files: list[ClassifiedFile]) -> list[str]:
-    tags: set[str] = set()
+    tags: list[str] = []
+    seen_tags: set[str] = set()
     for file in files:
         for tag in file.tags:
-            tags.add(tag)
-    return list(tags)[:10]
+            if tag in seen_tags:
+                continue
+            seen_tags.add(tag)
+            tags.append(tag)
+    return tags[:10]
 
 
 def build_review_focus(signals: list[RiskSignal]) -> list[str]:

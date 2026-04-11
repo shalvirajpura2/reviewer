@@ -96,6 +96,26 @@ async def start_device_login() -> GithubDeviceCode:
             raise ConnectionError("GitHub could not be reached from the login service.")
 
     if response.status_code >= 400:
+        response_message = ""
+        error_code = ""
+        if response.content:
+            try:
+                payload = response.json()
+            except ValueError:
+                payload = None
+            if isinstance(payload, dict):
+                response_message = str(payload.get("error_description") or payload.get("message") or "").strip()
+                error_code = str(payload.get("error") or "").strip()
+
+        if error_code == "invalid_client":
+            raise ValueError("GitHub device login could not be started because the client id is invalid.")
+
+        if response.status_code in {429, 500, 502, 503, 504}:
+            raise ConnectionError("GitHub device login is temporarily unavailable. Please try again.")
+
+        if response_message:
+            raise ValueError(f"GitHub device login could not be started: {response_message}")
+
         raise ValueError("GitHub device login could not be started.")
 
     payload = response.json()

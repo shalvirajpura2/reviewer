@@ -136,6 +136,31 @@ def test_update_repository_settings_delegates_to_store(monkeypatch):
     assert settings.manual_review is True
 
 
+def test_update_repository_settings_normalizes_review_new_pushes(monkeypatch):
+    captured = {}
+
+    def fake_save_repository_settings(owner: str, repo: str, settings: GithubBotRepositorySettings):
+        captured["settings"] = settings
+        return settings
+
+    async def fake_fetch_user_repositories(github_token: str):
+        return [{"full_name": "acme/reviewer"}]
+
+    monkeypatch.setattr(github_bot_service, "save_repository_settings", fake_save_repository_settings)
+    monkeypatch.setattr(github_bot_service, "fetch_user_repositories", fake_fetch_user_repositories)
+
+    settings = asyncio.run(github_bot_service.update_repository_settings(
+        "acme",
+        "reviewer",
+        GithubBotRepositorySettings(manual_review=True, automatic_review=False, review_new_pushes=True),
+        "web-token",
+    ))
+
+    assert settings.automatic_review is True
+    assert settings.review_new_pushes is True
+    assert captured["settings"].automatic_review is True
+
+
 @pytest.mark.asyncio
 async def test_trigger_manual_review_records_repository_activity(monkeypatch):
     captured = {}
@@ -177,3 +202,19 @@ async def test_trigger_manual_review_records_repository_activity(monkeypatch):
     assert captured["activity_pull_number"] == 18
     assert captured["activity_trigger_source"] == "manual_review"
     assert captured["activity_comment_id"] == 501
+
+
+@pytest.mark.asyncio
+async def test_trigger_manual_review_rejects_repository_when_manual_mode_is_disabled(monkeypatch):
+    async def fake_fetch_user_repositories(github_token: str):
+        return [{"full_name": "acme/reviewer"}]
+
+    monkeypatch.setattr(github_bot_service, "fetch_user_repositories", fake_fetch_user_repositories)
+    monkeypatch.setattr(
+        github_bot_service,
+        "load_repository_settings",
+        lambda owner, repo: GithubBotRepositorySettings(manual_review=False, automatic_review=False, review_new_pushes=False),
+    )
+
+    with pytest.raises(ValueError, match="Manual review is turned off"):
+        await github_bot_service.trigger_manual_review("acme", "reviewer", 18, "testclient", "web-token")

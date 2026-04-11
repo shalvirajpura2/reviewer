@@ -16,6 +16,10 @@ from app.models.github_bot import (
 client = TestClient(app)
 
 
+def csrf_headers() -> dict[str, str]:
+    return {"x-reviewer-csrf": "csrf-token"}
+
+
 def fake_web_session() -> GithubAuthSession:
     return GithubAuthSession(
         access_token="web-token",
@@ -97,6 +101,7 @@ def test_list_repository_pull_requests_route(monkeypatch):
 
 def test_repository_settings_routes(monkeypatch):
     monkeypatch.setattr("app.routes.github_bot.require_web_auth_session", lambda session_id: fake_web_session())
+    client.cookies.set("reviewer_web_csrf", "csrf-token")
 
     async def fake_get_repository_settings(owner: str, repo: str, github_token: str):
         assert github_token == "web-token"
@@ -116,6 +121,7 @@ def test_repository_settings_routes(monkeypatch):
     put_response = client.put(
         "/api/github-bot/repositories/acme/reviewer/settings",
         json={"manual_review": True, "automatic_review": True, "review_new_pushes": True},
+        headers=csrf_headers(),
     )
 
     assert get_response.status_code == 200
@@ -141,11 +147,12 @@ def test_trigger_manual_review_route(monkeypatch):
 
     monkeypatch.setattr("app.routes.github_bot.trigger_manual_review", fake_trigger_manual_review)
     monkeypatch.setattr("app.routes.github_bot.require_web_auth_session", lambda session_id: fake_web_session())
+    client.cookies.set("reviewer_web_csrf", "csrf-token")
 
     response = client.post(
         "/api/github-bot/repositories/acme/reviewer/review",
         json={"pull_number": 18},
-        headers={"x-request-id": "req-bot-review"},
+        headers={"x-request-id": "req-bot-review", **csrf_headers()},
     )
 
     assert response.status_code == 200

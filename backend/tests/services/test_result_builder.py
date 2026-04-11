@@ -169,3 +169,15 @@ def test_build_result_marks_old_merged_pr_ci_as_unavailable():
     assert result.safeguards.ci_state == "unavailable"
     assert result.safeguards.summary == "GitHub no longer exposes CI checks for this historical merged PR."
     assert result.analysis_context.confidence_in_score == "medium"
+
+
+def test_build_result_keeps_affected_area_order_deterministic():
+    metadata = build_metadata()
+    files = [
+        build_file("frontend/src/app.tsx", ["frontend", "shared_core"], tags=["ui", "frontend", "shared-core"]),
+        build_file("backend/app/routes/analyze.py", ["backend", "api"], tags=["backend", "api", "shared-core"]),
+    ]
+
+    result = build_result(metadata, files, [], [])
+
+    assert result.affected_areas == ["ui", "frontend", "shared-core", "backend", "api"]

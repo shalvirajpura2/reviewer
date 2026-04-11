@@ -1,4 +1,5 @@
 import json
+import httpx
 
 from app.models.auth import GithubAuthSession, GithubViewer
 from app.services import auth_session_service, github_client
@@ -114,3 +115,29 @@ def test_login_with_device_flow_prints_guided_steps(monkeypatch):
     assert any("1. Open this link" in message for message in messages)
     assert any("CODE-123" in message for message in messages)
     assert any("Signed in as @shalv" in message for message in messages)
+
+
+def test_start_device_login_maps_invalid_client_error(monkeypatch):
+    class FakeClient:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return False
+
+        async def post(self, url, headers=None, data=None):
+            request = httpx.Request("POST", url)
+            return httpx.Response(
+                401,
+                request=request,
+                json={"error": "invalid_client", "error_description": "The client_id is not registered."},
+            )
+
+    monkeypatch.setattr(auth_session_service.httpx, "AsyncClient", lambda timeout=20.0: FakeClient())
+
+    try:
+        __import__("asyncio").run(auth_session_service.start_device_login())
+    except ValueError as error:
+        assert "client id is invalid" in str(error)
+    else:
+        raise AssertionError("Expected start_device_login() to raise ValueError for an invalid client id.")

@@ -11,6 +11,10 @@ const configured_backend_url = import.meta.env.VITE_BACKEND_URL?.replace(/\/$/, 
 const configured_github_app_slug = import.meta.env.VITE_GITHUB_APP_SLUG?.trim() || "reviewer-live";
 const request_timeout_ms = 30000;
 const reviewer_csrf_cookie_name = "reviewer_web_csrf";
+let cached_site_stats: SiteStats | null = null;
+let site_stats_inflight_request: Promise<SiteStats> | null = null;
+let cached_repo_stars: RepoStars | null = null;
+let repo_stars_inflight_request: Promise<RepoStars> | null = null;
 
 export type SiteStats = {
   visitor_count: number;
@@ -256,7 +260,24 @@ export async function analyze_pr(pr_url: string, force_refresh = false, signal?:
 }
 
 export async function get_site_stats(): Promise<SiteStats> {
-  return request_json<SiteStats>("/api/stats", undefined, "Reviewer stats are unavailable.");
+  if (cached_site_stats) {
+    return cached_site_stats;
+  }
+
+  if (site_stats_inflight_request) {
+    return site_stats_inflight_request;
+  }
+
+  site_stats_inflight_request = request_json<SiteStats>("/api/stats", undefined, "Reviewer stats are unavailable.")
+    .then((stats) => {
+      cached_site_stats = stats;
+      return stats;
+    })
+    .finally(() => {
+      site_stats_inflight_request = null;
+    });
+
+  return site_stats_inflight_request;
 }
 
 export async function get_recent_analyses(): Promise<RecentAnalysis[]> {
@@ -270,7 +291,7 @@ export async function get_recent_analyses(): Promise<RecentAnalysis[]> {
 }
 
 export async function record_site_visit(client_id: string): Promise<SiteStats> {
-  return request_json<SiteStats>(
+  const stats = await request_json<SiteStats>(
     "/api/stats/visit",
     {
       method: "POST",
@@ -281,10 +302,30 @@ export async function record_site_visit(client_id: string): Promise<SiteStats> {
     },
     "Reviewer visit stats are unavailable."
   );
+
+  cached_site_stats = stats;
+  return stats;
 }
 
 export async function get_repo_stars(): Promise<RepoStars> {
-  return request_json<RepoStars>("/api/stats/repo-stars", undefined, "Reviewer repo stars are unavailable.");
+  if (cached_repo_stars) {
+    return cached_repo_stars;
+  }
+
+  if (repo_stars_inflight_request) {
+    return repo_stars_inflight_request;
+  }
+
+  repo_stars_inflight_request = request_json<RepoStars>("/api/stats/repo-stars", undefined, "Reviewer repo stars are unavailable.")
+    .then((repo_stars) => {
+      cached_repo_stars = repo_stars;
+      return repo_stars;
+    })
+    .finally(() => {
+      repo_stars_inflight_request = null;
+    });
+
+  return repo_stars_inflight_request;
 }
 
 export async function get_github_bot_repositories(signal?: AbortSignal): Promise<GithubBotRepositoriesResponse> {

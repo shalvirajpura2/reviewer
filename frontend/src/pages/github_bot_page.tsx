@@ -77,6 +77,10 @@ function mode_copy(settings: GithubBotRepositorySettings) {
     return "automatic review";
   }
 
+  if (!settings.manual_review) {
+    return "all publishing modes off";
+  }
+
   return "manual review";
 }
 
@@ -89,6 +93,10 @@ function mode_label(settings: GithubBotRepositorySettings) {
     return "Automatic";
   }
 
+  if (!settings.manual_review) {
+    return "Off";
+  }
+
   return "Manual";
 }
 
@@ -99,6 +107,10 @@ function format_mode_label(mode: string) {
 function format_trigger_label(trigger: string) {
   if (!trigger) {
     return "manual review";
+  }
+
+  if (trigger === "disabled") {
+    return "disabled";
   }
 
   return format_mode_label(trigger);
@@ -135,6 +147,10 @@ function repository_summary(repository: GithubBotRepositorySummary, settings: Gi
     return "Reviewer is installed and will post a summary automatically whenever a new pull request opens.";
   }
 
+  if (!settings.manual_review) {
+    return "Reviewer is connected, but publishing is fully turned off for this repository right now.";
+  }
+
   return "Keep the bot quiet by default, then trigger a single review when a pull request needs a deeper pass.";
 }
 
@@ -168,6 +184,26 @@ function onboarding_mode_from_settings(settings: GithubBotRepositorySettings): O
   }
 
   return "manual";
+}
+
+function next_repository_settings(
+  current_settings: GithubBotRepositorySettings,
+  setting_key: keyof GithubBotRepositorySettings,
+): GithubBotRepositorySettings {
+  const next_settings = {
+    ...current_settings,
+    [setting_key]: !current_settings[setting_key],
+  };
+
+  if (setting_key === "automatic_review" && !next_settings.automatic_review) {
+    next_settings.review_new_pushes = false;
+  }
+
+  if (setting_key === "review_new_pushes" && next_settings.review_new_pushes) {
+    next_settings.automatic_review = true;
+  }
+
+  return next_settings;
 }
 
 function read_onboarding_state(login: string): OnboardingState {
@@ -512,6 +548,7 @@ export function GithubBotPage() {
     () => pull_requests.find((pull_request) => pull_request.number === selected_pull_request) ?? pull_requests[0] ?? null,
     [pull_requests, selected_pull_request],
   );
+  const manual_review_enabled = selected_repository_settings.manual_review;
 
   const automation_ready = Boolean(
     backend_health?.github_app_configured
@@ -528,10 +565,7 @@ export function GithubBotPage() {
       return;
     }
 
-    const next_settings = {
-      ...selected_repository_settings,
-      [setting_key]: !selected_repository_settings[setting_key],
-    };
+    const next_settings = next_repository_settings(selected_repository_settings, setting_key);
     const repository_key = selected_repository_card.full_name;
     const previous_settings = selected_repository_settings;
 
@@ -1043,9 +1077,13 @@ export function GithubBotPage() {
                             type="button"
                             className="gb-onboarding-primary gb-inline-action"
                             onClick={() => void handle_review_now(pull_request.number)}
-                            disabled={is_triggering_review}
+                            disabled={is_triggering_review || !manual_review_enabled}
                           >
-                            {is_triggering_review && queued_pull_request === pull_request.number ? "Reviewing..." : "Review now"}
+                            {is_triggering_review && queued_pull_request === pull_request.number
+                              ? "Reviewing..."
+                              : !manual_review_enabled
+                                ? "Manual review off"
+                                : "Review now"}
                           </button>
                         </div>
                       </div>

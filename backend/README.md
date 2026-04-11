@@ -4,13 +4,7 @@ Reviewer CLI exposes the shared pull request analysis engine as a guided termina
 
 ## Install
 
-After the package is published, install it with `pipx` for the cleanest global command setup:
-
-```bash
-pipx install reviewer-cli
-```
-
-You can also install it with `pip`:
+After the package is published, install it with `pip`:
 
 ```bash
 pip install reviewer-cli
@@ -49,25 +43,31 @@ $env:REVIEWER_CONFIG_DIR="C:\Users\you\AppData\Roaming\reviewer-cli"
 
 Quick start flow:
 
-1. Connect GitHub
+1. Open the CLI to see the available commands
+
+```bash
+reviewer
+```
+
+2. Connect GitHub
 
 ```bash
 reviewer login
 ```
 
-2. Analyze a pull request
+3. Analyze a pull request
 
 ```bash
 reviewer analyze https://github.com/owner/repo/pull/123
 ```
 
-3. Publish or update the GitHub summary comment
+4. Publish or update the GitHub summary comment
 
 ```bash
 reviewer publish-summary https://github.com/owner/repo/pull/123
 ```
 
-4. Check session or logout
+5. Check session or logout
 
 ```bash
 reviewer whoami

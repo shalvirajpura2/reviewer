@@ -167,6 +167,9 @@ def repository_settings_mode(settings: GithubBotRepositorySettings) -> str:
     if settings.automatic_review:
         return "automatic_review"
 
+    if not settings.manual_review:
+        return "disabled"
+
     return "manual_review"
 
 
@@ -218,6 +221,9 @@ async def trigger_manual_review(
 ):
     if github_token:
         await ensure_repository_access(owner, repo, github_token)
+    repository_settings = load_repository_settings(owner, repo)
+    if trigger_source == "manual_review" and not repository_settings.manual_review:
+        raise ValueError("Manual review is turned off for this repository. Enable it in the dashboard before posting a summary.")
     publication = await publish_review_summary(
         build_pull_request_url(owner, repo, pull_number),
         client_key,

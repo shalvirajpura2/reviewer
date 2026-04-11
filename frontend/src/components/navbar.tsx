@@ -2,7 +2,7 @@ import { Github, Star } from "lucide-react";
 import { useEffect, useState } from "react";
 import { NavLink } from "react-router-dom";
 
-import { get_or_create_client_id, get_repo_stars, get_site_stats, record_site_visit } from "../lib/api";
+import { get_or_create_client_id, get_repo_stars, record_site_visit } from "../lib/api";
 import { cn } from "../lib/cn";
 import { BrandLogo } from "./brand_logo";
 
@@ -35,8 +35,7 @@ export function Navbar() {
     async function load_nav_data() {
       try {
         const client_id = get_or_create_client_id();
-        await record_site_visit(client_id);
-        const stats = await get_site_stats();
+        const stats = await record_site_visit(client_id);
 
         if (is_active) {
           set_visitor_count(`#${stats.visitor_count.toLocaleString()}`);

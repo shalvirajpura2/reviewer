@@ -93,9 +93,11 @@ def test_main_without_command_shows_welcome(capsys):
     output = strip_ansi(captured.out)
 
     assert exit_code == 0
-    assert "deterministic github review" in output
-    assert "Start Here" in output
+    assert "deterministic review for public github pull requests" in output.lower()
+    assert "Available Commands" in output
+    assert "Quick Start" in output
     assert "reviewer login" in output
+    assert "pip install reviewer-cli" in output
 
 
 def test_build_parser_supports_login_commands():
@@ -133,6 +135,7 @@ def test_main_runs_login_command(monkeypatch, capsys):
 
     assert exit_code == 0
     assert "Signed in as @shalv" in output
+    assert "GitHub connected as @shalv." in output
     assert "Run `reviewer analyze <pr-url>`" in output
 
 
@@ -149,6 +152,7 @@ def test_main_runs_whoami_command(monkeypatch, capsys):
     assert exit_code == 0
     assert "Reviewer Session" in output
     assert "Account : @shalv" in output
+    assert "GitHub session is active for @shalv." in output
 
 
 def test_main_runs_logout_command(monkeypatch, capsys):
@@ -159,7 +163,7 @@ def test_main_runs_logout_command(monkeypatch, capsys):
     output = strip_ansi(captured.out)
 
     assert exit_code == 0
-    assert "Logged out from Reviewer CLI." in output
+    assert "GitHub session cleared." in output
     assert "reviewer login" in output
 
 
@@ -184,6 +188,7 @@ def test_main_runs_analyze_command(monkeypatch, capsys):
     assert exit_code == 0
     assert "Reviewer Report" in output
     assert "Summary" in output
+    assert "Change Surface" in output
 
 
 def test_main_runs_publish_summary_command(monkeypatch, capsys):
@@ -210,8 +215,7 @@ def test_main_runs_publish_summary_command(monkeypatch, capsys):
 
     assert exit_code == 0
     assert "GitHub summary comment updated" in output
-    assert "github.com/apps/reviewer-live" in output
-    assert "open the pull request" in output.lower()
+    assert "open the pull request to review the published summary comment" in output.lower()
 
 
 def test_main_returns_error_code_for_known_failures(monkeypatch, capsys):
@@ -230,6 +234,53 @@ def test_main_returns_error_code_for_known_failures(monkeypatch, capsys):
 
     assert exit_code == 1
     assert "[error] Unsupported URL format" in error_output
+    assert "Check the PR URL and try `reviewer analyze <pr-url>` again." in error_output
+
+
+def test_main_runs_whoami_without_session(monkeypatch, capsys):
+    async def fake_whoami_session():
+        return None
+
+    monkeypatch.setattr("app.cli.main.whoami_session", fake_whoami_session)
+
+    exit_code = main(["whoami"])
+    captured = capsys.readouterr()
+    error_output = strip_ansi(captured.err)
+
+    assert exit_code == 1
+    assert "No active GitHub session." in error_output
+    assert "Run `reviewer login` to connect GitHub." in error_output
+
+
+def test_main_prints_login_recovery_for_login_errors(monkeypatch, capsys):
+    async def fake_login_with_device_flow():
+        raise ValueError("GitHub device login could not be started because the client id is invalid.")
+
+    monkeypatch.setattr("app.cli.main.login_with_device_flow", fake_login_with_device_flow)
+
+    exit_code = main(["login"])
+    captured = capsys.readouterr()
+    error_output = strip_ansi(captured.err)
+
+    assert exit_code == 1
+    assert "GitHub device login could not be started because the client id is invalid." in error_output
+    assert "Check your internet connection, try again, or set `GITHUB_CLIENT_ID` for a custom setup." in error_output
+
+
+def test_main_prints_publish_recovery_for_backend_publish_errors(monkeypatch, capsys):
+    async def fake_publish_summary_via_backend(pr_url: str):
+        raise PermissionError("Reviewer backend publishing is not configured. Set REVIEWER_BACKEND_API_BASE first.")
+
+    monkeypatch.setattr("app.cli.main.settings.reviewer_backend_api_base", "https://reviewer.live")
+    monkeypatch.setattr("app.cli.main.publish_summary_via_backend", fake_publish_summary_via_backend)
+
+    exit_code = main(["publish-summary", "https://github.com/acme/reviewer/pull/9"])
+    captured = capsys.readouterr()
+    error_output = strip_ansi(captured.err)
+
+    assert exit_code == 1
+    assert "Reviewer backend publishing is not configured." in error_output
+    assert "Set `REVIEWER_BACKEND_API_BASE` for hosted publishing, or configure the backend bot credentials first." in error_output
 
 
 def test_main_runs_publish_summary_via_backend(monkeypatch, capsys):
