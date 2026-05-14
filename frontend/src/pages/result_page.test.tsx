@@ -63,7 +63,7 @@ describe("ResultPage", () => {
     await view.unmount();
   });
 
-  it("shows API failures and retries with force refresh from a loaded result", async () => {
+  it("keeps the current result visible when force refresh fails", async () => {
     analyze_pr_mock.mockResolvedValueOnce(build_backend_analysis());
     analyze_pr_mock.mockRejectedValueOnce(new Error("Live analysis failed."));
     const view = await render_result_page();
@@ -75,8 +75,9 @@ describe("ResultPage", () => {
     await click_element(button_by_text("Fetch fresh live analysis"));
 
     await wait_for(() => {
-      expect(document.body.textContent).toContain("analysis unavailable");
+      expect(document.body.textContent).toContain("fresh analysis unavailable");
       expect(document.body.textContent).toContain("Live analysis failed.");
+      expect(document.body.textContent).toContain("Mergeable with routine review");
     });
 
     expect(analyze_pr_mock).toHaveBeenNthCalledWith(1, "https://github.com/acme/reviewer/pull/42", false, expect.any(AbortSignal));

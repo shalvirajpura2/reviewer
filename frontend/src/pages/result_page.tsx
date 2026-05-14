@@ -871,7 +871,7 @@ export function ResultPage() {
             </div>
           </div>
         )
-      ) : error_message || !result ? (
+      ) : !result ? (
         <div className="rp-error rp-anim" style={{ "--rp-delay": "0ms" } as CSSProperties}>
           <div className="rp-error-title">analysis unavailable</div>
           <div className="rp-error-msg">{error_message ?? "Reviewer could not analyze that pull request."}</div>
@@ -899,6 +899,13 @@ export function ResultPage() {
               </a>
             </div>
           </div>
+
+          {error_message ? (
+            <div className="rp-error rp-anim" style={{ "--rp-delay": "30ms" } as CSSProperties}>
+              <div className="rp-error-title">fresh analysis unavailable</div>
+              <div className="rp-error-msg">{error_message}</div>
+            </div>
+          ) : null}
 
           <div className="rp-hero rp-anim" style={{ "--rp-delay": "60ms" } as CSSProperties}>
             <DecisionHeader

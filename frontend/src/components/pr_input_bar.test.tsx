@@ -2,7 +2,7 @@ import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { PrInputBar } from "./pr_input_bar";
-import { button_by_text, change_input, click_element, create_deferred, render_component, wait_for } from "../test/component_test_utils";
+import { button_by_text, change_input, click_element, create_deferred, render_component, run_timers, wait_for } from "../test/component_test_utils";
 import { build_backend_metadata } from "../test/fixtures";
 import { preview_pr } from "../lib/api";
 
@@ -69,6 +69,7 @@ describe("PrInputBar", () => {
   });
 
   it("opens the preview and navigates to the result page after confirmation", async () => {
+    vi.useFakeTimers();
     preview_pr_mock.mockResolvedValueOnce({ metadata: build_backend_metadata() });
     const view = await render_input_bar();
     const input = document.body.querySelector<HTMLInputElement>("input.pr-url");
@@ -84,9 +85,12 @@ describe("PrInputBar", () => {
     await click_element(button_by_text("Analyze this PR"));
     expect(document.body.textContent).toContain("Starting review");
 
+    await run_timers(async () => {
+      await vi.advanceTimersByTimeAsync(1050);
+    });
     await wait_for(() => {
       expect(document.body.textContent).toContain("Result route opened");
-    }, 2000);
+    });
 
     expect(preview_pr_mock).toHaveBeenCalledWith(valid_pr_url);
     await view.unmount();

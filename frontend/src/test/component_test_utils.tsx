@@ -53,6 +53,12 @@ export async function change_input(input: HTMLInputElement, value: string) {
   });
 }
 
+export async function run_timers(callback: () => Promise<void> | void) {
+  await act(async () => {
+    await callback();
+  });
+}
+
 export async function wait_for(assertion: () => void, timeout_ms = 1000) {
   const started_at = Date.now();
   let last_error: unknown;
