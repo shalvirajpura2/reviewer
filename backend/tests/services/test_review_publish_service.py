@@ -81,9 +81,9 @@ async def fake_upsert_review_summary_comment(parsed_pr, body: str, github_token=
 def test_publish_review_summary_returns_publication_payload(monkeypatch):
     monkeypatch.setattr("app.services.review_publish_service.enforce_request_limit", fake_enforce_request_limit)
     monkeypatch.setattr("app.services.review_publish_service.fetch_pr_metadata", fake_fetch_pr_metadata)
-    monkeypatch.setattr("app.services.review_publish_service.fetch_pr_files", fake_fetch_pr_files)
-    monkeypatch.setattr("app.services.review_publish_service.fetch_pr_commits", fake_fetch_pr_commits)
-    monkeypatch.setattr("app.services.review_publish_service.fetch_commit_check_runs", fake_fetch_commit_check_runs)
+    monkeypatch.setattr("app.services.review_analysis_generator.fetch_pr_files", fake_fetch_pr_files)
+    monkeypatch.setattr("app.services.review_analysis_generator.fetch_pr_commits", fake_fetch_pr_commits)
+    monkeypatch.setattr("app.services.review_analysis_generator.fetch_commit_check_runs", fake_fetch_commit_check_runs)
     monkeypatch.setattr("app.services.review_publish_service.upsert_review_summary_comment", fake_upsert_review_summary_comment)
 
     result = asyncio.run(publish_review_summary("https://github.com/acme/reviewer/pull/7", "reviewer_cli"))
@@ -127,9 +127,9 @@ def test_publish_review_summary_prefers_github_app_installation_token(monkeypatc
 
     monkeypatch.setattr("app.services.review_publish_service.enforce_request_limit", fake_enforce_request_limit)
     monkeypatch.setattr("app.services.review_publish_service.fetch_pr_metadata", fake_fetch_pr_metadata_with_token)
-    monkeypatch.setattr("app.services.review_publish_service.fetch_pr_files", fake_fetch_pr_files_with_token)
-    monkeypatch.setattr("app.services.review_publish_service.fetch_pr_commits", fake_fetch_pr_commits_with_token)
-    monkeypatch.setattr("app.services.review_publish_service.fetch_commit_check_runs", fake_fetch_commit_check_runs_with_token)
+    monkeypatch.setattr("app.services.review_analysis_generator.fetch_pr_files", fake_fetch_pr_files_with_token)
+    monkeypatch.setattr("app.services.review_analysis_generator.fetch_pr_commits", fake_fetch_pr_commits_with_token)
+    monkeypatch.setattr("app.services.review_analysis_generator.fetch_commit_check_runs", fake_fetch_commit_check_runs_with_token)
     monkeypatch.setattr("app.services.review_publish_service.github_app_is_configured", lambda: True)
     monkeypatch.setattr("app.services.review_publish_service.fetch_installation_access_token", fake_fetch_installation_access_token)
     monkeypatch.setattr("app.services.review_publish_service.upsert_review_summary_comment", fake_upsert_review_summary_comment_with_token)

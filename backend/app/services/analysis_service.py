@@ -5,13 +5,12 @@ from app.core.settings import settings
 from app.models.analysis import GithubPrMetadata, PrAnalysisResult, PrPreviewResult
 from app.services.analysis_cache_store import analysis_cache_store
 from app.services.fallback_policy import fallback_policy
-from app.services.file_classifier import classify_files
-from app.services.github_client import fetch_commit_check_runs, fetch_pr_commits, fetch_pr_files, fetch_pr_metadata
+from app.services.github_client import fetch_pr_metadata
 from app.services.inflight_task_registry import InflightTaskRegistry
 from app.services.pr_url_parser import parse_pr_url
 from app.services.request_limiter import request_limiter
-from app.services.result_builder import build_result
-from app.services.signal_detector import detect_signals
+from app.services.result_builder import build_result_from_review_analysis
+from app.services.review_analysis_generator import generate_review_analysis
 from app.services.stats_service import record_analysis, store_cached_analysis
 
 
@@ -65,25 +64,8 @@ async def enforce_request_limit(client_key: str, action_name: str) -> None:
 
 async def build_live_analysis(parsed_pr: dict[str, str | int], cache_key: str, metadata: GithubPrMetadata) -> PrAnalysisResult:
     started_at = time.perf_counter()
-    files_task = fetch_pr_files(parsed_pr, metadata.changed_files)
-    commits_task = fetch_pr_commits(parsed_pr, metadata.commits)
-    check_runs_task = fetch_commit_check_runs(parsed_pr, metadata.head_sha)
-    files_result, commits_result, check_runs_result = await asyncio.gather(files_task, commits_task, check_runs_task)
-    files, partial_reasons = files_result
-    commits, commit_partial_reasons = commits_result
-    check_runs, check_partial_reasons = check_runs_result
-    classified_files = classify_files(files)
-    signals = detect_signals(metadata, classified_files, commits, check_runs)
-    result = build_result(
-        metadata,
-        classified_files,
-        commits,
-        signals,
-        check_runs=check_runs,
-        cache_status="live",
-        total_files=metadata.changed_files,
-        partial_reasons=[*partial_reasons, *commit_partial_reasons, *check_partial_reasons],
-    )
+    review_analysis = await generate_review_analysis(parsed_pr, metadata, cache_status="live")
+    result = build_result_from_review_analysis(review_analysis)
     write_memory_cached_result(cache_key, result)
     store_cached_analysis(cache_key, result)
     duration_ms = (time.perf_counter() - started_at) * 1000

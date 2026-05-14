@@ -1,6 +1,8 @@
 import argparse
 import asyncio
+import json
 import sys
+from typing import Any
 
 import httpx
 
@@ -14,6 +16,17 @@ from app.services.review_publish_service import publish_review_summary
 
 
 cli_client_key = "reviewer_cli"
+
+
+def redacted_session_payload(session) -> dict[str, Any]:
+    payload = session.model_dump()
+    if "access_token" in payload:
+        payload["access_token"] = "[redacted]"
+    return payload
+
+
+def print_json(payload: dict[str, Any]) -> None:
+    print(json.dumps(payload, indent=2))
 
 
 def error_recovery_steps(command: str | None, error: Exception) -> list[str]:
@@ -42,6 +55,9 @@ def error_recovery_steps(command: str | None, error: Exception) -> list[str]:
     if command == "publish-summary" and "backend publishing is not configured" in message:
         return ["Set `REVIEWER_BACKEND_API_BASE` for hosted publishing, or configure the backend bot credentials first."]
 
+    if command == "publish-summary" and "reviewer_publish_api_token" in message:
+        return ["Set `REVIEWER_PUBLISH_API_TOKEN` to the backend publishing token and try again."]
+
     if command == "login":
         return ["Run `reviewer` to review the command list, then try `reviewer login` again."]
 
@@ -66,11 +82,14 @@ def print_cli_error(command: str | None, error: Exception) -> None:
 async def publish_summary_via_backend(pr_url: str) -> ReviewCommentPublication:
     if not settings.reviewer_backend_api_base:
         raise ValueError("Reviewer backend publishing is not configured. Set REVIEWER_BACKEND_API_BASE first.")
+    if not settings.reviewer_publish_api_token:
+        raise PermissionError("Reviewer backend publishing requires REVIEWER_PUBLISH_API_TOKEN.")
 
     async with httpx.AsyncClient(timeout=30.0) as client:
         try:
             response = await client.post(
                 f"{settings.reviewer_backend_api_base}/api/publish-summary",
+                headers={"X-Reviewer-Publish-Token": settings.reviewer_publish_api_token},
                 json={"pr_url": pr_url},
             )
         except httpx.TimeoutException:
@@ -124,7 +143,7 @@ async def run_login(output_format: str) -> int:
     session = await login_with_device_flow()
 
     if output_format == "json":
-        print(session.model_dump_json(indent=2))
+        print_json(redacted_session_payload(session))
     else:
         print(render_status("ok", f"GitHub connected as @{session.login}."))
         print(render_status("next", "Run `reviewer analyze <pr-url>` or `reviewer publish-summary <pr-url>`."))
@@ -140,7 +159,7 @@ async def run_whoami(output_format: str) -> int:
         return 1
 
     if output_format == "json":
-        print(session.model_dump_json(indent=2))
+        print_json(redacted_session_payload(session))
     else:
         print("Reviewer Session")
         print("================")

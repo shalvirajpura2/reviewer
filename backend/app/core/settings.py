@@ -29,6 +29,7 @@ class Settings:
     github_api_base = os.getenv("GITHUB_API_BASE", "https://api.github.com")
     reviewer_config_dir = os.getenv("REVIEWER_CONFIG_DIR", "")
     reviewer_publish_github_token = os.getenv("REVIEWER_PUBLISH_GITHUB_TOKEN", "")
+    reviewer_publish_api_token = os.getenv("REVIEWER_PUBLISH_API_TOKEN", "")
     reviewer_backend_api_base = os.getenv("REVIEWER_BACKEND_API_BASE", "").rstrip("/")
     frontend_app_url = os.getenv("FRONTEND_APP_URL", "http://localhost:5173").rstrip("/")
     web_session_ttl_seconds = int(os.getenv("WEB_SESSION_TTL_SECONDS", "43200"))

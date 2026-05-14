@@ -34,6 +34,7 @@ export type BackendHealth = {
   github_web_auth_configured: boolean;
   github_webhook_configured: boolean;
   reviewer_publish_github_token_configured: boolean;
+  reviewer_publish_api_token_configured: boolean;
   database_configured: boolean;
   uptime_seconds: number;
   cache_ttl_seconds: number;
@@ -424,5 +425,5 @@ export async function trigger_github_bot_review(owner: string, repo: string, pul
 }
 
 export async function get_backend_health(): Promise<BackendHealth> {
-  return request_json<BackendHealth>("/health", undefined, "Reviewer backend health is unavailable.");
+  return request_json<BackendHealth>("/api/readiness", undefined, "Reviewer backend readiness is unavailable.");
 }

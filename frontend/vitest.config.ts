@@ -2,8 +2,22 @@ import { defineConfig } from "vitest/config";
 
 export default defineConfig({
   test: {
-    environment: "node",
     globals: true,
-    include: ["src/**/*.test.ts"],
+    projects: [
+      {
+        test: {
+          name: "unit",
+          environment: "node",
+          include: ["src/**/*.test.ts"],
+        },
+      },
+      {
+        test: {
+          name: "components",
+          environment: "happy-dom",
+          include: ["src/**/*.test.tsx"],
+        },
+      },
+    ],
   },
 });
