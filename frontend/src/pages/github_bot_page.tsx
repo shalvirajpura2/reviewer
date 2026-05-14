@@ -305,12 +305,11 @@ export function GithubBotPage() {
       set_surface_error(null);
 
       try {
-        const [session_response, health_response] = await Promise.all([
-          get_github_web_session(request_controller.signal),
-          get_backend_health(),
-        ]);
+        const session_response = await get_github_web_session(request_controller.signal);
         set_auth_session(session_response);
-        set_backend_health(health_response);
+        if (!session_response.authenticated) {
+          set_backend_health(null);
+        }
       } catch (error) {
         if (request_controller.signal.aborted) {
           return;
@@ -330,6 +329,34 @@ export function GithubBotPage() {
       request_controller.abort();
     };
   }, []);
+
+  useEffect(() => {
+    if (!auth_session?.authenticated) {
+      set_backend_health(null);
+      return;
+    }
+
+    let is_active = true;
+
+    async function load_backend_readiness() {
+      try {
+        const health_response = await get_backend_health();
+        if (is_active) {
+          set_backend_health(health_response);
+        }
+      } catch {
+        if (is_active) {
+          set_backend_health(null);
+        }
+      }
+    }
+
+    void load_backend_readiness();
+
+    return () => {
+      is_active = false;
+    };
+  }, [auth_session?.authenticated]);
 
   useEffect(() => {
     if (!auth_session?.authenticated) {

@@ -1,9 +1,9 @@
 from contextlib import asynccontextmanager
+from fastapi import FastAPI, Request, HTTPException
 import logging
 import time
 from uuid import uuid4
 
-from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -15,6 +15,7 @@ from app.routes.github_bot import router as github_bot_router
 from app.routes.publish import router as publish_router
 from app.routes.stats import router as stats_router
 from app.services.github_client import close_github_client
+from app.services.web_auth_session_service import github_session_cookie_name, load_web_auth_session
 
 logging.basicConfig(
     level=getattr(logging, settings.log_level, logging.INFO),
@@ -125,7 +126,18 @@ app.include_router(stats_router)
 
 
 @app.get("/health")
-async def health_check() -> dict[str, str | bool | int]:
+async def health_check() -> dict[str, str | int]:
+    return {
+        "status": "ok",
+        "uptime_seconds": int(time.time() - started_at),
+    }
+
+
+@app.get("/api/readiness")
+async def readiness_check(request: Request) -> dict[str, str | bool | int]:
+    if load_web_auth_session(request.cookies.get(github_session_cookie_name)) is None:
+        raise HTTPException(status_code=403, detail="GitHub login is required before reading backend readiness.")
+
     return {
         "status": "ok",
         "github_token_configured": bool(settings.github_token),
@@ -133,6 +145,7 @@ async def health_check() -> dict[str, str | bool | int]:
         "github_web_auth_configured": bool(settings.github_client_id and settings.github_client_secret),
         "github_webhook_configured": bool(settings.github_webhook_secret),
         "reviewer_publish_github_token_configured": bool(settings.reviewer_publish_github_token),
+        "reviewer_publish_api_token_configured": bool(settings.reviewer_publish_api_token),
         "database_configured": bool(settings.database_url),
         "uptime_seconds": int(time.time() - started_at),
         "cache_ttl_seconds": settings.cache_ttl_seconds,

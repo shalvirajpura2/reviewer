@@ -1,3 +1,4 @@
+import json
 import re
 
 from app.cli.main import build_parser, main
@@ -153,6 +154,21 @@ def test_main_runs_whoami_command(monkeypatch, capsys):
     assert "Reviewer Session" in output
     assert "Account : @shalv" in output
     assert "GitHub session is active for @shalv." in output
+
+
+def test_main_redacts_whoami_json_access_token(monkeypatch, capsys):
+    async def fake_whoami_session():
+        return build_session()
+
+    monkeypatch.setattr("app.cli.main.whoami_session", fake_whoami_session)
+
+    exit_code = main(["whoami", "--format", "json"])
+    captured = capsys.readouterr()
+    payload = json.loads(captured.out)
+
+    assert exit_code == 0
+    assert payload["access_token"] == "[redacted]"
+    assert "token-123" not in captured.out
 
 
 def test_main_runs_logout_command(monkeypatch, capsys):

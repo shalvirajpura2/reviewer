@@ -148,14 +148,54 @@ def test_publish_summary_route_returns_publication(monkeypatch):
         )
 
     monkeypatch.setattr("app.routes.publish.publish_review_summary", fake_publish_review_summary)
+    monkeypatch.setattr("app.routes.publish.settings.reviewer_publish_api_token", "publish-secret")
 
     response = client.post(
         "/api/publish-summary",
         json={"pr_url": "https://github.com/acme/reviewer/pull/9"},
-        headers={"x-request-id": "req-publish-200"},
+        headers={"x-request-id": "req-publish-200", "x-reviewer-publish-token": "publish-secret"},
     )
 
     assert response.status_code == 200
     assert response.headers["X-Request-Id"] == "req-publish-200"
     assert response.json()["action"] == "created"
     assert response.json()["comment_id"] == 501
+
+
+def test_publish_summary_route_requires_publish_token(monkeypatch):
+    monkeypatch.setattr("app.routes.publish.settings.reviewer_publish_api_token", "publish-secret")
+
+    response = client.post(
+        "/api/publish-summary",
+        json={"pr_url": "https://github.com/acme/reviewer/pull/9"},
+        headers={"x-request-id": "req-publish-403"},
+    )
+
+    assert response.status_code == 403
+    assert response.json()["error_code"] == "forbidden"
+
+
+def test_health_route_hides_readiness_configuration():
+    response = client.get("/health")
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "ok"
+    assert "github_app_configured" not in response.json()
+    assert "reviewer_publish_github_token_configured" not in response.json()
+
+
+def test_readiness_route_requires_github_session():
+    response = client.get("/api/readiness")
+
+    assert response.status_code == 403
+
+
+def test_readiness_route_returns_configuration_for_github_session(monkeypatch):
+    monkeypatch.setattr("app.main.load_web_auth_session", lambda session_id: object())
+
+    response = client.get("/api/readiness", cookies={"reviewer_web_session": "session-1"})
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "ok"
+    assert "github_app_configured" in response.json()
+    assert "reviewer_publish_api_token_configured" in response.json()
