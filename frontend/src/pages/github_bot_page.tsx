@@ -247,6 +247,278 @@ function save_onboarding_state(login: string, active_repository: string, configu
   );
 }
 
+type BotOnboardingProps = {
+  repositories: GithubBotRepositorySummary[];
+  selected_repository: string;
+  selected_repository_card: GithubBotRepositorySummary | null;
+  repo_settings: Record<string, GithubBotRepositorySettings>;
+  configured_onboarding_modes: Record<string, OnboardingModeKey>;
+  onboarding_mode: OnboardingModeKey;
+  configured_repository_count: number;
+  current_repository_saved: boolean;
+  is_loading_repositories: boolean;
+  is_waiting_for_install_return: boolean;
+  is_applying_onboarding: boolean;
+  on_install_app: () => void;
+  on_refresh_repositories: () => void;
+  on_select_repository: (repository: string) => void;
+  on_select_mode: (mode: OnboardingModeKey) => void;
+  on_save_selection: () => void;
+  on_enter_dashboard: () => void;
+};
+
+function BotOnboarding({
+  repositories,
+  selected_repository,
+  selected_repository_card,
+  repo_settings,
+  configured_onboarding_modes,
+  onboarding_mode,
+  configured_repository_count,
+  current_repository_saved,
+  is_loading_repositories,
+  is_waiting_for_install_return,
+  is_applying_onboarding,
+  on_install_app,
+  on_refresh_repositories,
+  on_select_repository,
+  on_select_mode,
+  on_save_selection,
+  on_enter_dashboard,
+}: BotOnboardingProps) {
+  return (
+    <div className="gb-onboarding-grid">
+      <div className="gb-onboarding-panel">
+        <div className="gb-section-head">
+          <span className="gb-section-kicker">Step 1</span>
+          <h2 className="gb-section-title">Select a repository</h2>
+        </div>
+        <p className="gb-section-copy">Only public repositories you can access and where the Reviewer app is installed appear here.</p>
+        {is_loading_repositories ? <div className="gb-panel-note">Loading repositories...</div> : null}
+        {!is_loading_repositories && repositories.length === 0 ? (
+          <div className="gb-empty-state">
+            <div className="gb-empty-title">No repositories available yet</div>
+            <div className="gb-empty-copy">Install the Reviewer GitHub App on at least one repository, then return here to finish setup.</div>
+            <div className="gb-onboarding-actions">
+              <button type="button" className="gb-onboarding-primary" onClick={on_install_app}>
+                Install GitHub App
+              </button>
+              <button
+                type="button"
+                className="gb-onboarding-secondary"
+                onClick={on_refresh_repositories}
+                disabled={is_loading_repositories}
+              >
+                {is_loading_repositories ? "Refreshing..." : is_waiting_for_install_return ? "Waiting for install... refresh now" : "I installed it, refresh repositories"}
+              </button>
+            </div>
+          </div>
+        ) : null}
+        <div className="gb-onboarding-repo-list">
+          {repositories.map((repository) => (
+            <button
+              key={repository.full_name}
+              type="button"
+              className={`gb-onboarding-repo-card ${selected_repository === repository.full_name ? "gb-onboarding-repo-card-active" : ""}`}
+              onClick={() => on_select_repository(repository.full_name)}
+            >
+              <div>
+                <div className="gb-onboarding-repo-name">{repository.full_name}</div>
+                <div className="gb-onboarding-repo-meta">{repository.open_pull_requests} open PRs</div>
+              </div>
+              <div className="gb-onboarding-repo-status">
+                {configured_onboarding_modes[repository.full_name] ? (
+                  <span className="gb-saved-pill">
+                    <CheckCircle2 size={12} />
+                    Saved
+                  </span>
+                ) : null}
+                <span className="gb-status-pill">{mode_label(repo_settings[repository.full_name] ?? repository.settings)}</span>
+              </div>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="gb-onboarding-panel">
+        <div className="gb-section-head">
+          <span className="gb-section-kicker">Step 2</span>
+          <h2 className="gb-section-title">Choose the review mode</h2>
+        </div>
+        <p className="gb-section-copy">Save the behavior you want for this repository before entering the dashboard.</p>
+        <div className="gb-onboarding-mode-grid">
+          {onboarding_modes.map((mode) => (
+            <button
+              key={mode.key}
+              type="button"
+              className={`gb-onboarding-mode-card ${onboarding_mode === mode.key ? "gb-onboarding-mode-card-active" : ""}`}
+              onClick={() => on_select_mode(mode.key)}
+              disabled={!selected_repository_card}
+            >
+              <div className="gb-onboarding-mode-title">{mode.title}</div>
+              <div className="gb-onboarding-mode-copy">{mode.detail}</div>
+            </button>
+          ))}
+        </div>
+        <div className="gb-onboarding-footer">
+          <div className="gb-onboarding-selected">
+            <span className="gb-section-kicker">Selected</span>
+            <div className="gb-onboarding-selected-name">{selected_repository_card?.full_name ?? "Choose a repository first"}</div>
+            <div className="gb-onboarding-selected-copy">
+              {current_repository_saved
+                ? `Saved with ${onboarding_modes.find((mode) => mode.key === onboarding_mode)?.title.toLowerCase() ?? "manual review"}.`
+                : "Choose a mode, then save it for this repository."}
+            </div>
+          </div>
+          <div className="gb-onboarding-actions-inline">
+            <button
+              type="button"
+              className="gb-onboarding-secondary gb-inline-action"
+              onClick={on_save_selection}
+              disabled={!selected_repository_card || is_applying_onboarding || current_repository_saved}
+            >
+              <CheckCircle2 size={14} />
+              {is_applying_onboarding ? "Saving..." : current_repository_saved ? "Saved" : "Save mode"}
+            </button>
+            <button
+              type="button"
+              className="gb-onboarding-primary gb-inline-action"
+              onClick={on_enter_dashboard}
+              disabled={!selected_repository_card || configured_repository_count === 0}
+            >
+              <Rocket size={14} />
+              Continue to dashboard
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+type RepositoryPickerProps = {
+  repositories: GithubBotRepositorySummary[];
+  selected_repository: string;
+  repo_settings: Record<string, GithubBotRepositorySettings>;
+  is_loading_repositories: boolean;
+  on_select_repository: (repository: string) => void;
+};
+
+function RepositoryPicker({
+  repositories,
+  selected_repository,
+  repo_settings,
+  is_loading_repositories,
+  on_select_repository,
+}: RepositoryPickerProps) {
+  return (
+    <div className="gb-dashboard-card gb-dashboard-card-tight">
+      <div className="gb-panel-top">
+        <div>
+          <div className="gb-panel-label">repositories</div>
+          <div className="gb-panel-title">Repositories</div>
+        </div>
+        <Github className="gb-panel-icon" />
+      </div>
+      {is_loading_repositories ? <div className="gb-panel-note">Loading repositories you can manage...</div> : null}
+      {!is_loading_repositories && repositories.length === 0 ? (
+        <div className="gb-empty-state">
+          <div className="gb-empty-title">No repositories available</div>
+          <div className="gb-empty-copy">Reviewer could not find a public repository connected to your account yet.</div>
+        </div>
+      ) : null}
+      <div className="gb-repo-list gb-repo-list-compact">
+        {repositories.map((repository) => {
+          const repository_settings = repo_settings[repository.full_name] ?? repository.settings;
+
+          return (
+            <button
+              key={repository.full_name}
+              type="button"
+              className={`gb-repo-card gb-repo-card-compact ${selected_repository === repository.full_name ? "gb-repo-card-active" : ""}`}
+              onClick={() => on_select_repository(repository.full_name)}
+            >
+              <div className="gb-repo-top">
+                <div>
+                  <div className="gb-repo-name">{repository.repo}</div>
+                  <div className="gb-repo-meta">{repository.owner}</div>
+                </div>
+                <span className="gb-status-pill">{mode_label(repository_settings)}</span>
+              </div>
+              <div className="gb-repo-copy gb-repo-copy-compact">{repository.open_pull_requests} open PRs - {repository.default_branch}</div>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+type BotStatusPanelProps = {
+  selected_repository_card: GithubBotRepositorySummary | null;
+  selected_repository_settings: GithubBotRepositorySettings;
+  selected_pull_request_card: GithubBotPullRequestSummary | null;
+  automation_ready: boolean;
+};
+
+function BotStatusPanel({
+  selected_repository_card,
+  selected_repository_settings,
+  selected_pull_request_card,
+  automation_ready,
+}: BotStatusPanelProps) {
+  const selected_repository_activity = selected_repository_card?.activity ?? null;
+
+  return (
+    <div className="gb-dashboard-card gb-dashboard-card-tight">
+      <div className="gb-panel-top">
+        <div>
+          <div className="gb-panel-label">status</div>
+          <div className="gb-panel-title">Status</div>
+        </div>
+        <CheckCircle2 className="gb-panel-icon" />
+      </div>
+      <div className="gb-focus-card gb-focus-card-first">
+        <div className="gb-focus-label">Repository</div>
+        <div className="gb-focus-title">{selected_repository_card?.full_name ?? "No repository selected"}</div>
+        <div className="gb-focus-copy">{mode_copy(selected_repository_settings)} - {selected_repository_card?.open_pull_requests ?? 0} open PRs</div>
+      </div>
+      {selected_repository_activity?.last_review_at ? (
+        <div className="gb-focus-card gb-focus-card-secondary">
+          <div className="gb-focus-label">Latest activity</div>
+          <div className="gb-focus-title">PR #{selected_repository_activity.last_pull_number}</div>
+          <div className="gb-focus-copy">
+            {selected_repository_activity.last_action || "updated"} via {format_trigger_label(selected_repository_activity.last_trigger)} - {format_updated_label(selected_repository_activity.last_review_at)}
+          </div>
+          {selected_repository_activity.last_comment_url ? (
+            <div className="gb-focus-actions">
+              <a href={selected_repository_activity.last_comment_url} target="_blank" rel="noreferrer" className="gb-text-link">
+                Open summary comment
+              </a>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+      {selected_pull_request_card ? (
+        <div className="gb-focus-card gb-focus-card-secondary">
+          <div className="gb-focus-label">Selected PR</div>
+          <div className="gb-focus-title">{selected_pull_request_card.title}</div>
+          <div className="gb-focus-copy">
+            {selected_pull_request_card.author} - updated {format_updated_label(selected_pull_request_card.updated_at)}
+          </div>
+        </div>
+      ) : null}
+      <div className="gb-panel-callout">
+        <Sparkles className="gb-callout-icon" />
+        <div>
+          <div className="gb-callout-title">Automation status</div>
+          <div className="gb-callout-copy">{automation_ready ? "Automatic Review and Review New Pushes can now be driven by GitHub webhooks." : "Finish backend webhook setup to turn saved repository automation settings into live bot behavior."}</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function GithubBotPage() {
   const [repositories, set_repositories] = useState<GithubBotRepositorySummary[]>([]);
   const [selected_repository, set_selected_repository] = useState("");
@@ -559,7 +831,6 @@ export function GithubBotPage() {
   const selected_repository_settings = selected_repository_card
     ? (repo_settings[selected_repository_card.full_name] ?? selected_repository_card.settings)
     : default_repository_settings;
-  const selected_repository_activity = selected_repository_card?.activity ?? null;
 
   useEffect(() => {
     if (!selected_repository_card || onboarding_complete) {
@@ -586,6 +857,19 @@ export function GithubBotPage() {
   const configured_repository_count = Object.keys(configured_onboarding_modes).length;
   const current_repository_saved_mode = selected_repository_card ? configured_onboarding_modes[selected_repository_card.full_name] : undefined;
   const current_repository_saved = Boolean(selected_repository_card && current_repository_saved_mode === onboarding_mode);
+
+  function handle_select_onboarding_repository(repository: string) {
+    set_selected_repository(repository);
+    set_selected_pull_request(null);
+    set_surface_feedback(null);
+  }
+
+  function handle_select_dashboard_repository(repository: string) {
+    set_selected_repository(repository);
+    set_selected_pull_request(null);
+    set_queued_pull_request(null);
+    set_surface_feedback(null);
+  }
 
   async function handle_toggle(setting_key: keyof GithubBotRepositorySettings) {
     if (!selected_repository_card || is_saving_settings || !auth_session?.csrf_token) {
@@ -856,116 +1140,25 @@ export function GithubBotPage() {
             {surface_error ? <div className="gb-surface-message gb-surface-error">{surface_error}</div> : null}
             {surface_feedback ? <div className="gb-surface-message gb-surface-success">{surface_feedback}</div> : null}
 
-            <div className="gb-onboarding-grid">
-              <div className="gb-onboarding-panel">
-                <div className="gb-section-head">
-                  <span className="gb-section-kicker">Step 1</span>
-                  <h2 className="gb-section-title">Select a repository</h2>
-                </div>
-                <p className="gb-section-copy">Only public repositories you can access and where the Reviewer app is installed appear here.</p>
-                {is_loading_repositories ? <div className="gb-panel-note">Loading repositories...</div> : null}
-                {!is_loading_repositories && repositories.length === 0 ? (
-                  <div className="gb-empty-state">
-                    <div className="gb-empty-title">No repositories available yet</div>
-                    <div className="gb-empty-copy">Install the Reviewer GitHub App on at least one repository, then return here to finish setup.</div>
-                    <div className="gb-onboarding-actions">
-                      <button type="button" className="gb-onboarding-primary" onClick={handle_open_app_install}>
-                        Install GitHub App
-                      </button>
-                      <button
-                        type="button"
-                        className="gb-onboarding-secondary"
-                        onClick={handle_refresh_repositories}
-                        disabled={is_loading_repositories}
-                      >
-                        {is_loading_repositories ? "Refreshing..." : is_waiting_for_install_return ? "Waiting for install... refresh now" : "I installed it, refresh repositories"}
-                      </button>
-                    </div>
-                  </div>
-                ) : null}
-                <div className="gb-onboarding-repo-list">
-                  {repositories.map((repository) => (
-                    <button
-                      key={repository.full_name}
-                      type="button"
-                      className={`gb-onboarding-repo-card ${selected_repository === repository.full_name ? "gb-onboarding-repo-card-active" : ""}`}
-                      onClick={() => {
-                        set_selected_repository(repository.full_name);
-                        set_selected_pull_request(null);
-                        set_surface_feedback(null);
-                      }}
-                    >
-                      <div>
-                        <div className="gb-onboarding-repo-name">{repository.full_name}</div>
-                        <div className="gb-onboarding-repo-meta">{repository.open_pull_requests} open PRs</div>
-                      </div>
-                      <div className="gb-onboarding-repo-status">
-                        {configured_onboarding_modes[repository.full_name] ? (
-                          <span className="gb-saved-pill">
-                            <CheckCircle2 size={12} />
-                            Saved
-                          </span>
-                        ) : null}
-                        <span className="gb-status-pill">{mode_label(repo_settings[repository.full_name] ?? repository.settings)}</span>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="gb-onboarding-panel">
-                <div className="gb-section-head">
-                  <span className="gb-section-kicker">Step 2</span>
-                  <h2 className="gb-section-title">Choose the review mode</h2>
-                </div>
-                <p className="gb-section-copy">Save the behavior you want for this repository before entering the dashboard.</p>
-                <div className="gb-onboarding-mode-grid">
-                  {onboarding_modes.map((mode) => (
-                    <button
-                      key={mode.key}
-                      type="button"
-                      className={`gb-onboarding-mode-card ${onboarding_mode === mode.key ? "gb-onboarding-mode-card-active" : ""}`}
-                      onClick={() => set_onboarding_mode(mode.key)}
-                      disabled={!selected_repository_card}
-                    >
-                      <div className="gb-onboarding-mode-title">{mode.title}</div>
-                      <div className="gb-onboarding-mode-copy">{mode.detail}</div>
-                    </button>
-                  ))}
-                </div>
-                <div className="gb-onboarding-footer">
-                  <div className="gb-onboarding-selected">
-                    <span className="gb-section-kicker">Selected</span>
-                    <div className="gb-onboarding-selected-name">{selected_repository_card?.full_name ?? "Choose a repository first"}</div>
-                    <div className="gb-onboarding-selected-copy">
-                      {current_repository_saved
-                        ? `Saved with ${onboarding_modes.find((mode) => mode.key === onboarding_mode)?.title.toLowerCase() ?? "manual review"}.`
-                        : "Choose a mode, then save it for this repository."}
-                    </div>
-                  </div>
-                  <div className="gb-onboarding-actions-inline">
-                    <button
-                      type="button"
-                      className="gb-onboarding-secondary gb-inline-action"
-                      onClick={() => void handle_save_onboarding_selection()}
-                      disabled={!selected_repository_card || is_applying_onboarding || current_repository_saved}
-                    >
-                      <CheckCircle2 size={14} />
-                      {is_applying_onboarding ? "Saving..." : current_repository_saved ? "Saved" : "Save mode"}
-                    </button>
-                    <button
-                      type="button"
-                      className="gb-onboarding-primary gb-inline-action"
-                      onClick={() => handle_enter_dashboard()}
-                      disabled={!selected_repository_card || configured_repository_count === 0}
-                    >
-                      <Rocket size={14} />
-                      Continue to dashboard
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
+            <BotOnboarding
+              repositories={repositories}
+              selected_repository={selected_repository}
+              selected_repository_card={selected_repository_card}
+              repo_settings={repo_settings}
+              configured_onboarding_modes={configured_onboarding_modes}
+              onboarding_mode={onboarding_mode}
+              configured_repository_count={configured_repository_count}
+              current_repository_saved={current_repository_saved}
+              is_loading_repositories={is_loading_repositories}
+              is_waiting_for_install_return={is_waiting_for_install_return}
+              is_applying_onboarding={is_applying_onboarding}
+              on_install_app={handle_open_app_install}
+              on_refresh_repositories={handle_refresh_repositories}
+              on_select_repository={handle_select_onboarding_repository}
+              on_select_mode={set_onboarding_mode}
+              on_save_selection={() => void handle_save_onboarding_selection()}
+              on_enter_dashboard={handle_enter_dashboard}
+            />
           </div>
         </section>
         <SiteFooter />
@@ -1014,50 +1207,13 @@ export function GithubBotPage() {
 
         <div className="gb-dashboard-grid">
           <div className="gb-dashboard-column gb-dashboard-column-repos">
-            <div className="gb-dashboard-card gb-dashboard-card-tight">
-            <div className="gb-panel-top">
-              <div>
-                <div className="gb-panel-label">repositories</div>
-                <div className="gb-panel-title">Repositories</div>
-              </div>
-              <Github className="gb-panel-icon" />
-            </div>
-            {is_loading_repositories ? <div className="gb-panel-note">Loading repositories you can manage...</div> : null}
-            {!is_loading_repositories && repositories.length === 0 ? (
-              <div className="gb-empty-state">
-                <div className="gb-empty-title">No repositories available</div>
-                <div className="gb-empty-copy">Reviewer could not find a public repository connected to your account yet.</div>
-              </div>
-            ) : null}
-            <div className="gb-repo-list gb-repo-list-compact">
-              {repositories.map((repository) => {
-                const repository_settings = repo_settings[repository.full_name] ?? repository.settings;
-
-                return (
-                  <button
-                    key={repository.full_name}
-                    type="button"
-                    className={`gb-repo-card gb-repo-card-compact ${selected_repository === repository.full_name ? "gb-repo-card-active" : ""}`}
-                    onClick={() => {
-                      set_selected_repository(repository.full_name);
-                      set_selected_pull_request(null);
-                      set_queued_pull_request(null);
-                      set_surface_feedback(null);
-                    }}
-                  >
-                    <div className="gb-repo-top">
-                      <div>
-                        <div className="gb-repo-name">{repository.repo}</div>
-                        <div className="gb-repo-meta">{repository.owner}</div>
-                      </div>
-                      <span className="gb-status-pill">{mode_label(repository_settings)}</span>
-                    </div>
-                    <div className="gb-repo-copy gb-repo-copy-compact">{repository.open_pull_requests} open PRs - {repository.default_branch}</div>
-                  </button>
-                );
-              })}
-            </div>
-            </div>
+            <RepositoryPicker
+              repositories={repositories}
+              selected_repository={selected_repository}
+              repo_settings={repo_settings}
+              is_loading_repositories={is_loading_repositories}
+              on_select_repository={handle_select_dashboard_repository}
+            />
           </div>
 
           <div className="gb-dashboard-column gb-dashboard-column-main">
@@ -1163,52 +1319,12 @@ export function GithubBotPage() {
             </div>
             </div>
 
-            <div className="gb-dashboard-card gb-dashboard-card-tight">
-            <div className="gb-panel-top">
-              <div>
-                <div className="gb-panel-label">status</div>
-              <div className="gb-panel-title">Status</div>
-              </div>
-              <CheckCircle2 className="gb-panel-icon" />
-            </div>
-              <div className="gb-focus-card gb-focus-card-first">
-                <div className="gb-focus-label">Repository</div>
-                <div className="gb-focus-title">{selected_repository_card?.full_name ?? "No repository selected"}</div>
-                <div className="gb-focus-copy">{mode_copy(selected_repository_settings)} - {selected_repository_card?.open_pull_requests ?? 0} open PRs</div>
-              </div>
-              {selected_repository_activity?.last_review_at ? (
-                <div className="gb-focus-card gb-focus-card-secondary">
-                  <div className="gb-focus-label">Latest activity</div>
-                  <div className="gb-focus-title">PR #{selected_repository_activity.last_pull_number}</div>
-                  <div className="gb-focus-copy">
-                    {selected_repository_activity.last_action || "updated"} via {format_trigger_label(selected_repository_activity.last_trigger)} - {format_updated_label(selected_repository_activity.last_review_at)}
-                  </div>
-                  {selected_repository_activity.last_comment_url ? (
-                    <div className="gb-focus-actions">
-                      <a href={selected_repository_activity.last_comment_url} target="_blank" rel="noreferrer" className="gb-text-link">
-                        Open summary comment
-                      </a>
-                    </div>
-                  ) : null}
-                </div>
-              ) : null}
-              {selected_pull_request_card ? (
-                <div className="gb-focus-card gb-focus-card-secondary">
-                  <div className="gb-focus-label">Selected PR</div>
-                  <div className="gb-focus-title">{selected_pull_request_card.title}</div>
-                  <div className="gb-focus-copy">
-                    {selected_pull_request_card.author} - updated {format_updated_label(selected_pull_request_card.updated_at)}
-                  </div>
-                </div>
-              ) : null}
-              <div className="gb-panel-callout">
-                <Sparkles className="gb-callout-icon" />
-                <div>
-                  <div className="gb-callout-title">Automation status</div>
-                  <div className="gb-callout-copy">{automation_ready ? "Automatic Review and Review New Pushes can now be driven by GitHub webhooks." : "Finish backend webhook setup to turn saved repository automation settings into live bot behavior."}</div>
-                </div>
-              </div>
-            </div>
+            <BotStatusPanel
+              selected_repository_card={selected_repository_card}
+              selected_repository_settings={selected_repository_settings}
+              selected_pull_request_card={selected_pull_request_card}
+              automation_ready={automation_ready}
+            />
           </div>
         </div>
         </div>
