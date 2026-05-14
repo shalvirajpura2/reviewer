@@ -1,4 +1,4 @@
-import type { CSSProperties } from "react";
+import type { CSSProperties, RefObject } from "react";
 import { useEffect, useRef, useState } from "react";
 import { Link, Navigate, useLocation, useSearchParams } from "react-router-dom";
 
@@ -263,6 +263,142 @@ function FocusPanel({ file, next_actions }: { file: ReviewTopRiskFile; next_acti
   );
 }
 
+type DecisionHeaderProps = {
+  result: ReviewResult;
+  share_feedback: string | null;
+  is_refreshing: boolean;
+  on_copy_summary: () => void;
+  on_copy_link: () => void;
+  on_share_review: () => void;
+  on_refresh: () => void;
+};
+
+function DecisionHeader({
+  result,
+  share_feedback,
+  is_refreshing,
+  on_copy_summary,
+  on_copy_link,
+  on_share_review,
+  on_refresh,
+}: DecisionHeaderProps) {
+  return (
+    <div className="rp-hero-copy">
+      <div className="rp-verdict-eyebrow">decision</div>
+      <div className={`rp-verdict-text ${verdict_tone(result.verdict)}`}>{verdict_copy(result)}</div>
+      <div className="rp-verdict-summary">{result.summary}</div>
+      <div className="rp-share-row">
+        <button type="button" className="rp-secondary-btn" onClick={on_copy_summary}>
+          Copy summary
+        </button>
+        <button type="button" className="rp-secondary-btn" onClick={on_copy_link}>
+          Copy link
+        </button>
+        <button type="button" className="rp-secondary-btn" onClick={on_share_review}>
+          Share review
+        </button>
+        <button type="button" className="rp-secondary-btn rp-secondary-btn-strong" onClick={on_refresh} disabled={is_refreshing}>
+          {is_refreshing ? "Refreshing..." : "Fetch fresh live analysis"}
+        </button>
+      </div>
+      {share_feedback ? <div className="rp-share-feedback">{share_feedback}</div> : null}
+    </div>
+  );
+}
+
+type ScoreDialProps = {
+  result: ReviewResult;
+  backend_snapshot: string[];
+  dial_ref: RefObject<HTMLDivElement | null>;
+};
+
+function ScoreDial({ result, backend_snapshot, dial_ref }: ScoreDialProps) {
+  return (
+    <div className="rp-hero-rail">
+      <div className="rp-score-card">
+        <div
+          ref={dial_ref}
+          className="rp-dial-ring"
+          style={{
+            "--rp-progress": "0%",
+            "--rp-tone": confidence_color(result.merge_confidence),
+          } as CSSProperties}
+        >
+          <div className="rp-dial-inner">
+            <div className="rp-dial-num">0</div>
+            <div className="rp-dial-label">confidence</div>
+          </div>
+        </div>
+      </div>
+
+      <div className="rp-mini-stats rp-mini-stats-stack">
+        {backend_snapshot.map((item) => (
+          <div key={item} className="rp-mini-stat rp-mini-stat-wide">
+            <span className="rp-mini-stat-val">{item}</span>
+          </div>
+        ))}
+        <div className="rp-mini-stat rp-mini-stat-source">
+          <span className="rp-mini-stat-val">{source_badge_short(result)}</span>
+          <span className="rp-mini-stat-key">source</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+type ReviewQueueProps = {
+  top_files: ReviewTopRiskFile[];
+  focused: ReviewTopRiskFile | null;
+  on_select_file: (filename: string) => void;
+};
+
+function ReviewQueue({ top_files, focused, on_select_file }: ReviewQueueProps) {
+  return (
+    <div className="rp-queue-panel">
+      <div className="rp-panel-header">
+        <div className="rp-card-label">review queue</div>
+        <div className="rp-panel-hint">Click a file to inspect it in detail</div>
+      </div>
+      {top_files.length > 0 ? (
+        top_files.map((file, index) => (
+          <button
+            key={file.filename}
+            type="button"
+            className={`rp-file-row ${focused?.filename === file.filename ? "rp-active" : ""}`}
+            onClick={() => on_select_file(file.filename)}
+          >
+            <span className="rp-file-rank">{String(index + 1).padStart(2, "0")}</span>
+            <span>
+              <span className="rp-file-name">{file.filename}</span>
+              <span className="rp-file-reason">{file.reasons[0] ?? "Review this file first."}</span>
+            </span>
+            <span className={severity_class(file.risk_level)}>{severity_label(file.risk_level)}</span>
+          </button>
+        ))
+      ) : (
+        <div className="rp-empty-state">No prioritized files identified.</div>
+      )}
+    </div>
+  );
+}
+
+type FileFocusPanelProps = {
+  focused: ReviewTopRiskFile | null;
+  next_actions: string[];
+};
+
+function FileFocusPanel({ focused, next_actions }: FileFocusPanelProps) {
+  return (
+    <div className="rp-focus-panel">
+      <div className="rp-panel-header">
+        <div className="rp-card-label">selected file</div>
+        <div className="rp-panel-hint">Context updates when you switch files</div>
+      </div>
+      {focused ? <FocusPanel key={focused.filename} file={focused} next_actions={next_actions} /> : <div className="rp-empty-state">No prioritized file available.</div>}
+    </div>
+  );
+}
+
 function ReviewSignalsPanel({ result }: { result: ReviewResult }) {
   return (
     <div className="rp-guide-panel">
@@ -326,7 +462,7 @@ function ReviewNotesPanel({ result }: { result: ReviewResult }) {
   );
 }
 
-function ReviewSafeguardsPanel({ result }: { result: ReviewResult }) {
+function SafeguardsPanel({ result }: { result: ReviewResult }) {
   return (
     <div className="rp-guide-panel">
       <div className="rp-panel-header">
@@ -368,7 +504,7 @@ function ReviewSafeguardsPanel({ result }: { result: ReviewResult }) {
   );
 }
 
-function ReviewLimitsPanel({ result }: { result: ReviewResult }) {
+function LimitsPanel({ result }: { result: ReviewResult }) {
   return (
     <div className="rp-guide-panel">
       <div className="rp-panel-header">
@@ -765,56 +901,16 @@ export function ResultPage() {
           </div>
 
           <div className="rp-hero rp-anim" style={{ "--rp-delay": "60ms" } as CSSProperties}>
-            <div className="rp-hero-copy">
-              <div className="rp-verdict-eyebrow">decision</div>
-              <div className={`rp-verdict-text ${verdict_tone(result.verdict)}`}>{verdict_copy(result)}</div>
-              <div className="rp-verdict-summary">{result.summary}</div>
-              <div className="rp-share-row">
-                <button type="button" className="rp-secondary-btn" onClick={() => void handle_copy_summary()}>
-                  Copy summary
-                </button>
-                <button type="button" className="rp-secondary-btn" onClick={() => void handle_copy_link()}>
-                  Copy link
-                </button>
-                <button type="button" className="rp-secondary-btn" onClick={() => void handle_share_review()}>
-                  Share review
-                </button>
-                <button type="button" className="rp-secondary-btn rp-secondary-btn-strong" onClick={() => void run_analysis(true)} disabled={is_refreshing}>
-                  {is_refreshing ? "Refreshing..." : "Fetch fresh live analysis"}
-                </button>
-              </div>
-              {share_feedback ? <div className="rp-share-feedback">{share_feedback}</div> : null}
-            </div>
-
-            <div className="rp-hero-rail">
-              <div className="rp-score-card">
-                <div
-                  ref={dial_ref}
-                  className="rp-dial-ring"
-                  style={{
-                    "--rp-progress": "0%",
-                    "--rp-tone": confidence_color(result.merge_confidence),
-                  } as CSSProperties}
-                >
-                  <div className="rp-dial-inner">
-                    <div className="rp-dial-num">0</div>
-                    <div className="rp-dial-label">confidence</div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="rp-mini-stats rp-mini-stats-stack">
-                {backend_snapshot.map((item) => (
-                  <div key={item} className="rp-mini-stat rp-mini-stat-wide">
-                    <span className="rp-mini-stat-val">{item}</span>
-                  </div>
-                ))}
-                <div className="rp-mini-stat rp-mini-stat-source">
-                  <span className="rp-mini-stat-val">{source_badge_short(result)}</span>
-                  <span className="rp-mini-stat-key">source</span>
-                </div>
-              </div>
-            </div>
+            <DecisionHeader
+              result={result}
+              share_feedback={share_feedback}
+              is_refreshing={is_refreshing}
+              on_copy_summary={() => void handle_copy_summary()}
+              on_copy_link={() => void handle_copy_link()}
+              on_share_review={() => void handle_share_review()}
+              on_refresh={() => void run_analysis(true)}
+            />
+            <ScoreDial result={result} backend_snapshot={backend_snapshot} dial_ref={dial_ref} />
           </div>
 
           <div className="rp-summary-grid rp-anim" style={{ "--rp-delay": "100ms" } as CSSProperties}>
@@ -861,46 +957,15 @@ export function ResultPage() {
             </div>
 
             <div className="rp-main-grid">
-              <div className="rp-queue-panel">
-                <div className="rp-panel-header">
-                  <div className="rp-card-label">review queue</div>
-                  <div className="rp-panel-hint">Click a file to inspect it in detail</div>
-                </div>
-                {top_files.length > 0 ? (
-                  top_files.map((file, index) => (
-                    <button
-                      key={file.filename}
-                      type="button"
-                      className={`rp-file-row ${focused?.filename === file.filename ? "rp-active" : ""}`}
-                      onClick={() => set_selected_file(file.filename)}
-                    >
-                      <span className="rp-file-rank">{String(index + 1).padStart(2, "0")}</span>
-                      <span>
-                        <span className="rp-file-name">{file.filename}</span>
-                        <span className="rp-file-reason">{file.reasons[0] ?? "Review this file first."}</span>
-                      </span>
-                      <span className={severity_class(file.risk_level)}>{severity_label(file.risk_level)}</span>
-                    </button>
-                  ))
-                ) : (
-                  <div className="rp-empty-state">No prioritized files identified.</div>
-                )}
-              </div>
-
-              <div className="rp-focus-panel">
-                <div className="rp-panel-header">
-                  <div className="rp-card-label">selected file</div>
-                  <div className="rp-panel-hint">Context updates when you switch files</div>
-                </div>
-                {focused ? <FocusPanel key={focused.filename} file={focused} next_actions={next_actions} /> : <div className="rp-empty-state">No prioritized file available.</div>}
-              </div>
+              <ReviewQueue top_files={top_files} focused={focused} on_select_file={set_selected_file} />
+              <FileFocusPanel focused={focused} next_actions={next_actions} />
             </div>
           </div>
 
           <div className="rp-support-grid rp-anim" style={{ "--rp-delay": "150ms" } as CSSProperties}>
-            <ReviewSafeguardsPanel result={result} />
+            <SafeguardsPanel result={result} />
             <ReviewNotesPanel result={result} />
-            <ReviewLimitsPanel result={result} />
+            <LimitsPanel result={result} />
           </div>
 
           <button
