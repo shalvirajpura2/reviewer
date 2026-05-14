@@ -549,6 +549,10 @@ def build_result(
         partial_reasons=partial_reasons,
     )
 
+    return build_result_from_review_analysis(review_analysis)
+
+
+def build_result_from_review_analysis(review_analysis: ReviewAnalysis) -> PrAnalysisResult:
     return PrAnalysisResult(
         metadata=review_analysis.metadata,
         score=review_analysis.score,
